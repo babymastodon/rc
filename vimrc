@@ -8,3 +8,4 @@ set autochdir
 set pastetoggle=<F2>
 map <F1> <Esc>
 imap <F1> <Esc>
+set bs=2
