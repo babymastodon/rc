@@ -9,3 +9,4 @@ set pastetoggle=<F2>
 map <F1> <Esc>
 imap <F1> <Esc>
 set bs=2
+au BufNewFile,BufRead wscript* set filetype=python
