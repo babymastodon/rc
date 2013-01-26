@@ -11,3 +11,5 @@ imap <F1> <Esc>
 set bs=2
 au BufNewFile,BufRead wscript* set filetype=python
 syntax on
+
+au FileType ruby setl sw=2 sts=2 et
