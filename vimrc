@@ -1,8 +1,8 @@
 filetype plugin on
 filetype indent on
 set nosmartindent
-set tabstop=4
-set shiftwidth=4
+set tabstop=2
+set shiftwidth=2
 set expandtab
 set autochdir
 set pastetoggle=<F2>
@@ -12,4 +12,4 @@ set bs=2
 au BufNewFile,BufRead wscript* set filetype=python
 syntax on
 
-au FileType ruby setl sw=2 sts=2 et
+au FileType python setl sw=4 sts=4 et
