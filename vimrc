@@ -15,5 +15,13 @@ syntax on
 au FileType python setl sw=4 sts=4 et
 au FileType mcs51a setl sw=3 sts=3 et
 
+let g:netrw_preview = 1
+
 " also download: http://www.thouters.be/downloads/vim-mcs51-v3.zip
 " for asm syntax highlighting
+
+au BufNewFile,BufRead *.cpp set syntax=cpp11
+
+" use the system clipboard as the default yank location
+" (need to install vim from source)
+set clipboard=unnamed
