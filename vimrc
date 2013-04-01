@@ -17,6 +17,8 @@ au FileType mcs51a setl sw=3 sts=3 et
 
 let g:netrw_preview = 1
 
+set shcf=-ci
+
 " also download: http://www.thouters.be/downloads/vim-mcs51-v3.zip
 " for asm syntax highlighting
 
