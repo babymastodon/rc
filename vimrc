@@ -24,6 +24,9 @@ set shcf=-ci
 
 au BufNewFile,BufRead *.cpp set syntax=cpp11
 
+" Disable Ex Mode
+:map Q <Nop>
+
 " use the system clipboard as the default yank location
 " (need to install vim from source)
 set clipboard=unnamedplus
