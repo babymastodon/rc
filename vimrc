@@ -35,8 +35,8 @@ set clipboard=unnamedplus
 command -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
 
 " More intuitive movement
-:noremap K {
-:noremap J }
+:noremap K k
+:noremap J j
 :noremap H ^
 :noremap L $
 
