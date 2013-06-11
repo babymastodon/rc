@@ -34,6 +34,8 @@ set clipboard=unnamedplus
 " Insert Ascii Text Headers
 command -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
 
-" disable capital k and j
-nnoremap K k
-nnoremap J j
+" More intuitive movement
+:noremap K H
+:noremap J L
+:noremap H ^
+:noremap L $
