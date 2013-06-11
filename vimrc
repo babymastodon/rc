@@ -40,3 +40,13 @@ command -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
 :noremap H ^
 :noremap L $
 
+" moar commands
+:command WQ wq
+:command Wq wq
+:command W w
+:command Q q
+:command Tabe tabe
+:command TAbe tabe
+:command TABe tabe
+:command TABE tabe
+:command E e
