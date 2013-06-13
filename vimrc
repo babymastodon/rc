@@ -49,3 +49,11 @@ command -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
 :command TAbe tabe
 :command TABe tabe
 :command TABE tabe
+
+" tab navigation like firefox
+nnoremap <C-S-tab> :tabprevious<CR>
+nnoremap <C-tab>   :tabnext<CR>
+nnoremap <C-t>     :tabnew<CR>
+inoremap <C-S-tab> <Esc>:tabprevious<CR>i
+inoremap <C-tab>   <Esc>:tabnext<CR>i
+inoremap <C-t>     <Esc>:tabnew<CR>
