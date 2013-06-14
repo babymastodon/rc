@@ -25,7 +25,7 @@ set shcf=-ci
 au BufNewFile,BufRead *.cpp set syntax=cpp11
 
 " Disable Ex Mode
-:map Q <Nop>
+:nnoremap Q <Nop>
 
 " use the system clipboard as the default yank location
 " (need to install vim from source)
@@ -51,20 +51,9 @@ command -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
 :command TABE tabe
 
 " tab navigation like firefox
-nnoremap <C-S-tab> :tabprevious<CR>
-nnoremap <C-tab>   :tabnext<CR>
-nnoremap <C-t>     :tabnew<CR>
-inoremap <C-S-tab> <Esc>:tabprevious<CR>i
-inoremap <C-tab>   <Esc>:tabnext<CR>i
-inoremap <C-t>     <Esc>:tabnew<CR>
-
-nnoremap <A-F1> 1gt
-nnoremap <A-F2> 2gt
-nnoremap <A-F3> 3gt
-nnoremap <A-F4> 4gt
-nnoremap <A-F5> 5gt
-nnoremap <A-F6> 6gt
-nnoremap <A-F7> 7gt
-nnoremap <A-F8> 8gt
-nnoremap <A-F9> 9gt
-nnoremap <A-F0> 10gt
+:nnoremap <C-S-tab> :tabprevious<CR>
+:nnoremap <C-tab>   :tabnext<CR>
+:nnoremap <C-t>     :tabnew<CR>
+:inoremap <C-S-tab> <Esc>:tabprevious<CR>i
+:inoremap <C-tab>   <Esc>:tabnext<CR>i
+:inoremap <C-t>     <Esc>:tabnew<CR>
