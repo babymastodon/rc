@@ -44,14 +44,14 @@ noremap <C-j> 10j10<C-e>
 noremap <C-k> 10k10<C-y>
 
 " moar commands
-:command WQ wq
-:command Wq wq
-:command W w
-:command Q q
-:command Tabe tabe
-:command TAbe tabe
-:command TABe tabe
-:command TABE tabe
+:command! WQ wq
+:command! Wq wq
+:command! W w
+:command! Q q
+:command! Tabe tabe
+:command! TAbe tabe
+:command! TABe tabe
+:command! TABE tabe
 
 " tab navigation like firefox
 :nnoremap <C-S-tab> :tabprevious<CR>
