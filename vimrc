@@ -32,7 +32,7 @@ au BufNewFile,BufRead *.cpp set syntax=cpp11
 set clipboard=unnamedplus
 
 " Insert Ascii Text Headers
-command -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
+command! -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
 
 " More intuitive movement
 :noremap H ^
