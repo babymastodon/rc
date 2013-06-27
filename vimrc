@@ -57,3 +57,7 @@ command -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
 :inoremap <C-S-tab> <Esc>:tabprevious<CR>i
 :inoremap <C-tab>   <Esc>:tabnext<CR>i
 :inoremap <C-t>     <Esc>:tabnew<CR>
+
+" easy scrolling
+noremap <C-j> 14j14<C-e>
+noremap <C-k> 14k14<C-y>
