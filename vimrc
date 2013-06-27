@@ -35,10 +35,13 @@ set clipboard=unnamedplus
 command -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
 
 " More intuitive movement
-:noremap K k
-:noremap J j
 :noremap H ^
 :noremap L $
+
+noremap J 5j
+noremap K 5k
+noremap <C-j> 10j10<C-e>
+noremap <C-k> 10k10<C-y>
 
 " moar commands
 :command WQ wq
@@ -58,6 +61,3 @@ command -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
 :inoremap <C-tab>   <Esc>:tabnext<CR>i
 :inoremap <C-t>     <Esc>:tabnew<CR>
 
-" easy scrolling
-noremap <C-j> 14j14<C-e>
-noremap <C-k> 14k14<C-y>
