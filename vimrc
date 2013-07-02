@@ -42,8 +42,8 @@ noremap <C-l> $
 
 noremap J 5j
 noremap K 5k
-noremap <C-j> 15j15<C-e>
-noremap <C-k> 15k15<C-y>
+noremap <C-j> 15<C-e>
+noremap <C-k> 15<C-y>
 
 " moar commands
 :command! WQ wq
