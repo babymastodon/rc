@@ -35,7 +35,10 @@ set clipboard=unnamedplus
 command! -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
 
 " display whitespace
-nnoremap W :set list!<CR>
+nnoremap S :set list!<CR>
+
+" save
+nnoremap W :w<CR>
 
 " More intuitive movement
 noremap H 10h
