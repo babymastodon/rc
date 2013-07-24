@@ -34,6 +34,9 @@ set clipboard=unnamedplus
 " Insert Ascii Text Headers
 command! -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
 
+" display whitespace
+nnoremap W :set list!<CR>
+
 " More intuitive movement
 noremap H 10h
 noremap L 10l
