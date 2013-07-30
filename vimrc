@@ -29,7 +29,8 @@ au BufNewFile,BufRead *.cpp set syntax=cpp11
 
 " use the system clipboard as the default yank location
 " (need to install vim from source)
-set clipboard=unnamedplus
+silent! set clipboard^=unnamedplus 
+set clipboard^=unnamed 
 
 " Insert Ascii Text Headers
 command! -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
