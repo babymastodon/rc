@@ -53,6 +53,9 @@ noremap K 5k
 noremap <C-j> 15<C-e>
 noremap <C-k> 15<C-y>
 
+" Map join to Y
+noremap Y J
+
 " moar commands
 :command! WQ wq
 :command! Wq wq
@@ -66,8 +69,8 @@ noremap <C-k> 15<C-y>
 " tab navigation like firefox
 :nnoremap <C-S-tab> :tabprevious<CR>
 :nnoremap <C-tab>   :tabnext<CR>
-:nnoremap <C-t>     :tabnew<CR>
+:nnoremap <C-t>     :tabe .<CR>
 :inoremap <C-S-tab> <Esc>:tabprevious<CR>i
 :inoremap <C-tab>   <Esc>:tabnext<CR>i
-:inoremap <C-t>     <Esc>:tabnew<CR>
+:inoremap <C-t>     <Esc>:tabe .<CR>
 
