@@ -54,7 +54,10 @@ noremap <C-j> 15<C-e>
 noremap <C-k> 15<C-y>
 
 " Map join to Y
-noremap Y J
+nnoremap Y J
+
+" Map open directory to ctrl-d
+nnoremap <C-d> :e .<CR>
 
 " moar commands
 :command! WQ wq
