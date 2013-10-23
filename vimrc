@@ -43,7 +43,7 @@ nnoremap S :set list!<CR>
 nnoremap W :w<CR>
 
 " reload buffer
-nnoremap E :edit!
+nnoremap E :edit!<CR>
 
 " More intuitive movement
 noremap H 10h
