@@ -42,6 +42,9 @@ nnoremap S :set list!<CR>
 " write to file
 nnoremap W :w<CR>
 
+" reload buffer
+nnoremap E :edit!
+
 " More intuitive movement
 noremap H 10h
 noremap L 10l
