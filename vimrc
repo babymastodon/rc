@@ -56,8 +56,8 @@ noremap K 5k
 noremap <C-j> 15<C-e>
 noremap <C-k> 15<C-y>
 
-" Map join to Y
-nnoremap Y J
+" Map join to T
+nnoremap T :join<CR>
 
 " Map open directory to ctrl-d
 nnoremap <C-d> :e .<CR>
