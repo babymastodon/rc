@@ -83,7 +83,7 @@ nnoremap <C-d> :e .<CR>
 " 80 character line limit python
 if (&ft == 'python')
   highlight OverLength ctermbg=red ctermfg=white guibg=#592929
-  match OverLength /\%81v.\+/
+  2match OverLength /\%>80v.\+/
 endif
 
 " highlight trailing whitespace
