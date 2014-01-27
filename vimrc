@@ -81,10 +81,8 @@ nnoremap <C-d> :e .<CR>
 :inoremap <C-t>     <Esc>:tabe .<CR>
 
 " 80 character line limit python
-if (&ft == 'python')
-  highlight OverLength ctermbg=red ctermfg=white guibg=#592929
-  2match OverLength /\%>80v.\+/
-endif
+highlight OverLength ctermbg=red ctermfg=white
+autocmd FileType python 2match OverLength /\%>80v.\+/
 
 " highlight trailing whitespace
 highlight ExtraWhitespace ctermbg=red guibg=red
