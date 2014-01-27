@@ -80,3 +80,8 @@ nnoremap <C-d> :e .<CR>
 :inoremap <C-tab>   <Esc>:tabnext<CR>i
 :inoremap <C-t>     <Esc>:tabe .<CR>
 
+" 80 character line limit python
+if (&ft == 'python')
+  highlight OverLength ctermbg=red ctermfg=white guibg=#592929
+  match OverLength /\%81v.\+/
+endif
