@@ -85,3 +85,7 @@ if (&ft == 'python')
   highlight OverLength ctermbg=red ctermfg=white guibg=#592929
   match OverLength /\%81v.\+/
 endif
+
+" highlight trailing whitespace
+highlight ExtraWhitespace ctermbg=red ctermfg=white guibg=#592929
+match ExtraWhitespace /\s\+$/
