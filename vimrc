@@ -1,37 +1,47 @@
-filetype plugin on
-filetype indent on
-set nosmartindent
+" tabs are saved as spaces
+set expandtab
+
+" filepaths relative to the current file
+set autochdir
+
+" default tab widths
+set bs=2
 set tabstop=2
 set shiftwidth=2
-set expandtab
-set autochdir
-set pastetoggle=<F2>
-map <F1> <Esc>
-imap <F1> <Esc>
-set bs=2
-au BufNewFile,BufRead wscript* set filetype=python
-syntax on
 
+" smartindent only good for C
+set nosmartindent
+
+" specific tab widths
 au FileType python setl sw=4 sts=4 et
 au FileType java setl sw=4 sts=4 et
 au FileType mcs51a setl sw=3 sts=3 et
 
+" custom file extensions
+au BufNewFile,BufRead *.cpp set syntax=cpp11
+au BufRead,BufNewFile *.go set filetype=go
+au BufNewFile,BufRead wscript* set filetype=python
+
+" show netrw previews in vertically split window
 let g:netrw_preview = 1
 
+" execute shell command with flags
 set shcf=-ci
-
-" also download: http://www.thouters.be/downloads/vim-mcs51-v3.zip
-" for asm syntax highlighting
-
-au BufNewFile,BufRead *.cpp set syntax=cpp11
 
 " Disable Ex Mode
 :nnoremap Q <Nop>
 
 " use the system clipboard as the default yank location
 " (need to install vim from source)
-silent! set clipboard^=unnamedplus 
-set clipboard^=unnamed 
+silent! set clipboard^=unnamedplus
+set clipboard^=unnamed
+
+" pressing F2 enters paste mode
+set pastetoggle=<F2>
+
+" map F1 to escape
+map <F1> <Esc>
+imap <F1> <Esc>
 
 " Insert Ascii Text Headers
 command! -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
@@ -56,9 +66,6 @@ noremap K 5k
 noremap <C-j> 15<C-e>
 noremap <C-k> 15<C-y>
 
-" Map join to T
-nnoremap T :join<CR>
-
 " Map open directory to ctrl-d
 nnoremap <C-d> :e .<CR>
 
@@ -72,12 +79,8 @@ nnoremap <C-d> :e .<CR>
 :command! TABe tabe
 :command! TABE tabe
 
-" tab navigation like firefox
-:nnoremap <C-S-tab> :tabprevious<CR>
-:nnoremap <C-tab>   :tabnext<CR>
+" Ctrl-t opens a new tab
 :nnoremap <C-t>     :tabe .<CR>
-:inoremap <C-S-tab> <Esc>:tabprevious<CR>i
-:inoremap <C-tab>   <Esc>:tabnext<CR>i
 :inoremap <C-t>     <Esc>:tabe .<CR>
 
 " 80 character line limit python
@@ -91,3 +94,23 @@ autocmd BufWinEnter * match ExtraWhitespace /\s\+$/
 autocmd InsertEnter * match ExtraWhitespace /\s\+\%#\@<!$/
 autocmd InsertLeave * match ExtraWhitespace /\s\+$/
 autocmd BufWinLeave * call clearmatches()
+
+" fix bug in go-vim syntax file
+let go_highlight_trailing_whitespace_error = 0
+
+
+" Vundle packages
+set nocompatible
+filetype off
+syntax on
+set rtp+=~/.vim/bundle/vundle/
+call vundle#rc()
+
+
+Bundle 'gmarik/vundle'
+Bundle 'vim-pandoc/vim-pandoc'
+Bundle 'jnwhiteh/vim-golang'
+Bundle 'vim-scripts/Cpp11-Syntax-Support'
+
+filetype plugin on
+filetype indent on
