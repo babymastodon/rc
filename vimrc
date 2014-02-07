@@ -25,9 +25,6 @@ au BufNewFile,BufRead wscript* set filetype=python
 " show netrw previews in vertically split window
 let g:netrw_preview = 1
 
-" execute shell command with flags
-set shcf=-ci
-
 " Disable Ex Mode
 :nnoremap Q <Nop>
 
