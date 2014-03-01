@@ -14,7 +14,6 @@ set nosmartindent
 
 " specific tab widths
 au FileType python setl sw=4 sts=4 et
-au FileType java setl sw=4 sts=4 et
 au FileType mcs51a setl sw=3 sts=3 et
 
 " custom file extensions
