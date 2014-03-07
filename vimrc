@@ -79,8 +79,12 @@ nnoremap <C-d> :e .<CR>
 :nnoremap <C-t>     :tabe .<CR>
 :inoremap <C-t>     <Esc>:tabe .<CR>
 
+" tags are stored in the .git directory of the project
+:set tags=.git/tags;
 " jump backwards in the ctag stack
 :nnoremap <C-[> <C-t>
+" open the tag in a vertical split
+:nnoremap <C-\> :vsp <CR>:exec("tag ".expand("<cword>"))<CR>
 
 " 80 character line limit python
 highlight OverLength ctermbg=red ctermfg=white
