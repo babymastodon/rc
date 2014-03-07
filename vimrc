@@ -79,6 +79,9 @@ nnoremap <C-d> :e .<CR>
 :nnoremap <C-t>     :tabe .<CR>
 :inoremap <C-t>     <Esc>:tabe .<CR>
 
+" jump backwards in the ctag stack
+:nnoremap <C-[> <C-t>
+
 " 80 character line limit python
 highlight OverLength ctermbg=red ctermfg=white
 autocmd FileType python 2match OverLength /\%>80v.\+/
