@@ -103,6 +103,9 @@ let go_highlight_trailing_whitespace_error = 0
 
 " default ycm compilation flags
 let g:ycm_global_ycm_extra_conf = '~/.ycm_extra_conf.py'
+" disable ycm autoconfirmation
+let g:ycm_confirm_extra_conf = 0
+
 
 " Vundle packages
 set nocompatible
