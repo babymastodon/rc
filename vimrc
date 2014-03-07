@@ -101,6 +101,8 @@ autocmd BufWinLeave * call clearmatches()
 " fix bug in go-vim syntax file
 let go_highlight_trailing_whitespace_error = 0
 
+" default ycm compilation flags
+let g:ycm_global_ycm_extra_conf = '~/.ycm_extra_conf.py'
 
 " Vundle packages
 set nocompatible
@@ -114,6 +116,7 @@ Bundle 'gmarik/vundle'
 Bundle 'vim-pandoc/vim-pandoc'
 Bundle 'jnwhiteh/vim-golang'
 Bundle 'vim-scripts/Cpp11-Syntax-Support'
+Bundle 'Valloric/YouCompleteMe'
 
 filetype plugin on
 filetype indent on
