@@ -82,7 +82,7 @@ nnoremap <C-d> :e .<CR>
 " tags are stored in the .git directory of the project
 :set tags=.git/tags;
 " jump backwards in the ctag stack
-:nnoremap <C-[> <C-t>
+:nnoremap <C-p> <C-t>
 " open the tag in a vertical split
 :nnoremap <C-\> :vsp <CR>:exec("tag ".expand("<cword>"))<CR>
 
