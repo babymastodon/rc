@@ -105,6 +105,8 @@ let go_highlight_trailing_whitespace_error = 0
 let g:ycm_global_ycm_extra_conf = '~/.ycm_extra_conf.py'
 " disable ycm autoconfirmation
 let g:ycm_confirm_extra_conf = 0
+" get identifiers from tag files
+let g:ycm_collect_identifiers_from_tags_files = 1
 
 
 " Vundle packages
