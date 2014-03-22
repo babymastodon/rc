@@ -86,7 +86,7 @@ nnoremap <C-d> :e .<CR>
 " open the tag in a vertical split
 :nnoremap <C-\> :vsp <CR>:exec("tag ".expand("<cword>"))<CR>
 " disable preview split on autocomplete
-set completeopt-=preview
+:set completeopt-=preview
 
 " 80 character line limit python
 highlight OverLength ctermbg=red ctermfg=white
