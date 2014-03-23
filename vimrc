@@ -92,6 +92,9 @@ nnoremap <C-d> :e .<CR>
 highlight OverLength ctermbg=red ctermfg=white
 autocmd FileType python 2match OverLength /\%>80v.\+/
 
+" Press F4 to toggle highlighting on/off, and show current value.
+:noremap <F4> :set hlsearch! hlsearch?<CR>
+
 " highlight trailing whitespace
 highlight ExtraWhitespace ctermbg=red guibg=red
 match ExtraWhitespace /\s\+$/
