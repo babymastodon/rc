@@ -79,8 +79,8 @@ set splitright
 :command! TABE tabe
 
 " Ctrl-t opens a new tab
-:nnoremap <C-t>     :tabe .<CR>
-:inoremap <C-t>     <Esc>:tabe .<CR>
+:nnoremap <C-t>     :tabe<CR>
+:inoremap <C-t>     <Esc>:tabe<CR>
 
 " autoload tag files
 :set tags=./tags;
