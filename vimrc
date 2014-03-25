@@ -65,6 +65,9 @@ noremap <C-k> 15<C-y>
 " Map open directory to ctrl-d
 nnoremap <C-d> :e .<CR>
 
+" Splits open on the right
+set splitright
+
 " moar commands
 :command! WQ wq
 :command! Wq wq
@@ -79,12 +82,10 @@ nnoremap <C-d> :e .<CR>
 :nnoremap <C-t>     :tabe .<CR>
 :inoremap <C-t>     <Esc>:tabe .<CR>
 
-" tags are stored in the .git directory of the project
-:set tags=.git/tags;
+" autoload tag files
+:set tags=./tags;
 " jump backwards in the ctag stack
 :nnoremap <C-p> <C-t>
-" open the tag in a vertical split
-:nnoremap <C-\> :vsp <CR>:exec("tag ".expand("<cword>"))<CR>
 " disable preview split on autocomplete
 :set completeopt-=preview
 
@@ -112,6 +113,36 @@ let g:ycm_global_ycm_extra_conf = '~/.ycm_extra_conf.py'
 let g:ycm_confirm_extra_conf = 0
 " get identifiers from tag files
 let g:ycm_collect_identifiers_from_tags_files = 1
+
+
+" enable cscope support
+set cscopetag
+set csto=1
+set cscopeverbose
+nnoremap <C-\>s :cs find s <C-R>=expand("<cword>")<CR><CR>
+nnoremap <C-\>g :cs find g <C-R>=expand("<cword>")<CR><CR>
+nnoremap <C-\>c :cs find c <C-R>=expand("<cword>")<CR><CR>
+nnoremap <C-\>t :cs find t <C-R>=expand("<cword>")<CR><CR>
+nnoremap <C-\>e :cs find e <C-R>=expand("<cword>")<CR><CR>
+nnoremap <C-\>f :cs find f <C-R>=expand("<cfile>")<CR><CR>
+nnoremap <C-\>i :cs find i ^<C-R>=expand("<cfile>")<CR>$<CR>
+nnoremap <C-\>d :cs find d <C-R>=expand("<cword>")<CR><CR>
+function! LoadCscope()
+  let db = findfile("cscope.out", ".;")
+  if (!empty(db))
+    let path = strpart(db, 0, match(db, "/cscope.out$"))
+    set nocscopeverbose " suppress 'duplicate connection' error
+    exe "cs add " . db . " " . path
+    set cscopeverbose
+  endif
+endfunction
+au BufEnter /* call LoadCscope()
+
+
+" configure multi-key timeouts
+set timeoutlen=4000
+set ttimeout
+set ttimeoutlen=100
 
 
 " Vundle packages
