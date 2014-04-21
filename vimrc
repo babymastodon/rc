@@ -127,10 +127,6 @@ let g:pandoc_use_conceal = 1
 let g:tex_conceal = "adgm"
 hi Conceal ctermbg=231 ctermfg=Black
 
-" italic escape codes
-set t_ZH=[3m
-set t_ZR=[23m
-
 " enable cscope support
 set cscopetag
 set csto=1
