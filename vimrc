@@ -97,14 +97,14 @@ set splitright
 noremap <C-m> :join<CR>
 
 " 80 character line limit python
-highlight OverLength ctermbg=red ctermfg=white
+highlight OverLength ctermbg=green ctermfg=white
 autocmd FileType python 2match OverLength /\%>80v.\+/
 
 " Press F4 to toggle highlighting on/off, and show current value.
 :noremap <F4> :set hlsearch! hlsearch?<CR>
 
 " highlight trailing whitespace
-highlight ExtraWhitespace ctermbg=red guibg=red
+highlight ExtraWhitespace ctermbg=green guibg=green
 match ExtraWhitespace /\s\+$/
 autocmd BufWinEnter * match ExtraWhitespace /\s\+$/
 autocmd InsertEnter * match ExtraWhitespace /\s\+\%#\@<!$/
@@ -126,6 +126,7 @@ let g:pandoc_use_hard_wraps = 1
 let g:pandoc_use_conceal = 1
 let g:tex_conceal = "adgm"
 hi Conceal ctermbg=231 ctermfg=Black
+hi pandocNewLine ctermbg=231 ctermfg=Black
 
 " enable cscope support
 set cscopetag
