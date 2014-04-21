@@ -14,3 +14,14 @@ PS1="$GREEN\u@\h$NO_COLOUR:\w$YELLOW\$(parse_git_branch)$NO_COLOUR\$ "
 if [ -d "$HOME/bin" ] ; then
     PATH="$HOME/bin:$PATH"
 fi
+
+# store the ssh auth sock in the home folder for access from tmux
+if [ ! -z "$SSH_AUTH_SOCK" -a "$SSH_AUTH_SOCK" != "$HOME/.ssh/agent_sock" ] ; then
+  unlink "$HOME/.ssh/agent_sock" 2>/dev/null
+  ln -s "$SSH_AUTH_SOCK" "$HOME/.ssh/agent_sock"
+  export SSH_AUTH_SOCK="$HOME/.ssh/agent_sock"
+fi
+
+# aliases for tmux
+alias newmoo="tmux new -s moo"
+alias moo="tmux attach -dt moo"
