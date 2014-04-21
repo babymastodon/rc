@@ -8,8 +8,8 @@ ln -sf $PWD/bashrc_extra ~/.bashrc_extra
 
 # source .bashrc_extra from .bashrc
 touch ~/.bashrc
-cat ~/.bashrc | grep -v 'source .bashrc_extra' > /tmp/bashrc
-echo source .bashrc_extra >> /tmp/bashrc
+cat ~/.bashrc | grep -v 'bashrc_extra' > /tmp/bashrc
+echo source ~/.bashrc_extra >> /tmp/bashrc
 mv /tmp/bashrc ~/.bashrc
 
 
