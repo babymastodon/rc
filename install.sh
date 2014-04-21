@@ -11,6 +11,7 @@ touch ~/.bashrc
 cat ~/.bashrc | grep -v 'bashrc_extra' > /tmp/bashrc
 echo source ~/.bashrc_extra >> /tmp/bashrc
 mv /tmp/bashrc ~/.bashrc
+source ~/.bashrc
 
 
 # install scripts into the bin
