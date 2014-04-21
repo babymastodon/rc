@@ -1,5 +1,6 @@
 #!/bin/bash
-# enable italics in the terminfo
+
+# enable italic characters in the terminal
 
 rm -rf ~/.terminfo
 mkdir ~/.terminfo
