@@ -123,7 +123,9 @@ let g:ycm_collect_identifiers_from_tags_files = 1
 
 " pandoc auto formatting
 let g:pandoc_use_hard_wraps = 1
-let g:pandoc_use_conceal = 0
+let g:pandoc_use_conceal = 1
+let g:tex_conceal = "adgm"
+hi Conceal ctermbg=231 ctermfg=Black
 
 " italic escape codes
 set t_ZH=[3m
