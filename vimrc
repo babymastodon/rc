@@ -11,6 +11,7 @@ set shiftwidth=2
 
 " smartindent only good for C
 set nosmartindent
+set autoindent
 
 " specific tab widths
 au FileType python setl sw=4 sts=4 et
@@ -19,7 +20,10 @@ au FileType mcs51a setl sw=3 sts=3 et
 " custom file extensions
 au BufNewFile,BufRead *.cpp set syntax=cpp11
 au BufRead,BufNewFile *.go set filetype=go
-au BufNewFile,BufRead wscript* set filetype=python
+au BufNewFile,BufRead *.md set filetype=pandoc
+
+" all folds open by default
+au BufRead * normal zR
 
 " show netrw previews in vertically split window
 let g:netrw_preview = 1
@@ -89,8 +93,8 @@ set splitright
 " disable preview split on autocomplete
 :set completeopt-=preview
 
-" ctrl m joins selected lines in visual mode
-vnoremap <C-n> :join<CR>
+" ctrl m joins selected lines in all modes
+noremap <C-m> :join<CR>
 
 " 80 character line limit python
 highlight OverLength ctermbg=red ctermfg=white
@@ -117,6 +121,13 @@ let g:ycm_confirm_extra_conf = 0
 " get identifiers from tag files
 let g:ycm_collect_identifiers_from_tags_files = 1
 
+" pandoc auto formatting
+let g:pandoc_use_hard_wraps = 1
+let g:pandoc_use_conceal = 0
+
+" italic escape codes
+set t_ZH=[3m
+set t_ZR=[23m
 
 " enable cscope support
 set cscopetag
