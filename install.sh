@@ -21,3 +21,11 @@ ln -sf $PWD/trackpoint.sh ~/bin/
 
 # enable italic fonts in the terminal
 bash ./enable_italics.sh
+
+
+# install vim plugins
+if [ ! -d ~/.vim/bundle/vundle ]
+then
+  mkdir -p ~/.vim/bundle
+  git clone https://github.com/gmarik/vundle.git ~/.vim/bundle/vundle
+fi
