@@ -93,8 +93,8 @@ set splitright
 " disable preview split on autocomplete
 :set completeopt-=preview
 
-" ctrl m joins selected lines in all modes
-noremap <C-m> :join<CR>
+" enter joins selected lines in visual mode
+vnoremap <C-m> :join<CR>
 
 " 80 character line limit python
 highlight OverLength ctermbg=green ctermfg=white
