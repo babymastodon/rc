@@ -1,0 +1,20 @@
+--- /home/hogbait/Desktop/gnome-themes-standard-3.10.0/themes/Adwaita/gtk-3.0/gtk-widgets.css	2013-09-24 07:05:47.000000000 -0400
++++ gtk-widgets.css	2014-05-03 12:52:08.481752195 -0400
+@@ -4169,7 +4169,7 @@
+ 
+ .gnome-panel-menu-bar.menubar .menuitem:hover,
+ PanelApplet > GtkMenuBar.menubar .menuitem:hover {
+-    text-shadow: 0 1px @os_chrome_bg_color;
++    text-shadow: none;
+ }
+ 
+ .gnome-panel-menu-bar.menubar .menu,
+@@ -4217,6 +4217,8 @@
+     background-color: @os_chrome_selected_bg_color;
+     border-width: 0;
+     border-radius: 0;
++    color: @os_chrome_fg_color;
++    text-shadow: none;
+ }
+ 
+ PanelApplet:hover {
