@@ -29,3 +29,8 @@ then
   mkdir -p ~/.vim/bundle
   git clone https://github.com/gmarik/vundle.git ~/.vim/bundle/vundle
 fi
+
+# set git defaults
+git config --global user.email "hogbait@gmail.com"
+git config --global user.name "Zack Drach"
+git config --global core.editor vim
