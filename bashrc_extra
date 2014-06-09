@@ -25,3 +25,13 @@ fi
 # aliases for tmux
 alias newmoo="tmux new -s moo"
 alias moo="tmux attach -dt moo"
+
+# enable bash completion
+if [ -f /etc/bash_completion ] && ! shopt -oq posix; then
+    . /etc/bash_completion
+fi
+
+# enable git autocompletion
+if [ -f ~/.git-completion.bash ]; then
+  . ~/.git-completion.bash
+fi
