@@ -121,6 +121,9 @@ let g:ycm_confirm_extra_conf = 0
 " get identifiers from tag files
 let g:ycm_collect_identifiers_from_tags_files = 1
 
+" syntastic checkers
+let g:syntastic_python_checkers = ['flake8']
+
 " pandoc auto formatting
 let g:pandoc_use_hard_wraps = 1
 let g:pandoc_use_conceal = 1
@@ -172,6 +175,7 @@ Bundle 'vim-pandoc/vim-pandoc'
 Bundle 'jnwhiteh/vim-golang'
 Bundle 'vim-scripts/Cpp11-Syntax-Support'
 Bundle 'Valloric/YouCompleteMe'
+Bundle 'scrooloose/syntastic'
 
 filetype plugin on
 filetype indent on
