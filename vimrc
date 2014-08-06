@@ -94,8 +94,15 @@ set splitright
 :set tags=./tags;
 " jump backwards in the ctag stack
 :nnoremap <C-p> <C-t>
+" next/previous tag match
+:nnoremap + :tnext<CR>
+:nnoremap _ :tprevious<CR>
+
 " disable preview split on autocomplete
 :set completeopt-=preview
+
+" fancy status line
+:set statusline=%<%F\ %h%m%r%y%=%-14.(%l,%c%V%)\ %P
 
 " enter joins selected lines in visual mode
 vnoremap <C-m> :join<CR>
@@ -137,6 +144,7 @@ let g:pandoc_use_conceal = 1
 let g:tex_conceal = "adgm"
 hi Conceal ctermbg=231 ctermfg=Black
 hi pandocNewLine ctermbg=231 ctermfg=Black
+let g:pandoc#modules#disabled = ["folding"]
 
 " enable cscope support
 set cscopetag
