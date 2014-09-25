@@ -18,7 +18,6 @@ source ~/.bashrc
 mkdir -p ~/bin
 
 
-
 # install vim plugins
 if [ ! -d ~/.vim/bundle/vundle ]
 then
@@ -27,7 +26,5 @@ then
 fi
 
 # set git defaults
-git config --global user.email "hogbait@gmail.com"
-git config --global user.name "Zack Drach"
 git config --global core.editor vim
 git config --global push.default simple
