@@ -20,6 +20,7 @@ au FileType mcs51a setl sw=3 sts=3 et
 " custom file extensions
 au BufNewFile,BufRead *.cpp set syntax=cpp11
 au BufRead,BufNewFile *.go set filetype=go
+au BufRead,BufNewFile *.go setlocal noexpandtab
 au BufNewFile,BufRead *.md set filetype=pandoc
 au BufNewFile,BufRead *.coffee set filetype=coffeescript
 
@@ -107,9 +108,9 @@ set splitright
 " enter joins selected lines in visual mode
 vnoremap <C-m> :join<CR>
 
-" 80 character line limit python
+" 120 character line limit python
 highlight OverLength ctermbg=green ctermfg=white
-autocmd FileType python 2match OverLength /\%>80v.\+/
+autocmd FileType python 2match OverLength /\%>120v.\+/
 
 " Press F4 to toggle highlighting on/off, and show current value.
 :noremap <F4> :set hlsearch! hlsearch?<CR>
