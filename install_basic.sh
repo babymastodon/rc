@@ -4,6 +4,7 @@
 ln -sf $PWD/vimrc ~/.vimrc
 ln -sf $PWD/tmux.conf ~/.tmux.conf
 ln -sf $PWD/bashrc_extra ~/.bashrc_extra
+ln -sf $PWD/gitignore_global ~/.gitignore_global
 
 
 # source .bashrc_extra from .bashrc
@@ -28,3 +29,4 @@ fi
 # set git defaults
 git config --global core.editor vim
 git config --global push.default simple
+git config --global core.excludesfile ~/.gitignore_global

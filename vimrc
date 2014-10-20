@@ -138,6 +138,10 @@ let g:syntastic_python_checkers = ['flake8']
 let g:syntastic_coffeescript_checkers = ['coffeelint']
 let g:syntastic_coffee_coffeelint_args = '~/repos/website/website/coffeelint.json'
 let g:syntastic_html_tidy_ignore_errors=[" proprietary attribute \"ng-", "trimming empty"]
+let g:syntastic_mode_map = {
+      \ "mode": "active",
+      \ "active_filetypes": [],
+      \ "passive_filetypes": ["javac", "java"] }
 
 " pandoc auto formatting
 let g:pandoc_use_hard_wraps = 1
