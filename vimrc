@@ -39,14 +39,16 @@ silent! set clipboard^=unnamedplus
 set clipboard^=unnamed
 
 " open file under cursor in vertical split
-map <C-f> :vertical wincmd F<CR>
+noremap <C-f> :vertical wincmd F<CR>
 
 " pressing F2 enters paste mode
 set pastetoggle=<F2>
 
 " map F1 to escape
-map <F1> <Esc>
-imap <F1> <Esc>
+noremap <F1> <ESC>
+
+" map <F3> to syntasticcheck
+noremap <F3> :w<CR>:SyntasticCheck<CR>
 
 " Insert Ascii Text Headers
 command! -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
@@ -91,6 +93,10 @@ set splitright
 :nnoremap <C-t>     :tab split<CR>
 :inoremap <C-t>     <Esc>:tab split<CR>
 
+" parens jump to next syntastic error
+:nnoremap ( :lprev<CR>
+:nnoremap ) :lnext<CR>
+
 " autoload tag files
 :set tags=./tags;
 " jump backwards in the ctag stack
@@ -104,6 +110,9 @@ set splitright
 
 " fancy status line
 :set statusline=%<%F\ %h%m%r%y%=%-14.(%l,%c%V%)\ %P
+
+" search and hilight word under cursor
+nnoremap * :keepjumps normal! mi*`i<CR>
 
 " enter joins selected lines in visual mode
 vnoremap <C-m> :join<CR>
@@ -135,6 +144,7 @@ let g:ycm_collect_identifiers_from_tags_files = 1
 
 " syntastic checkers
 let g:syntastic_python_checkers = ['flake8']
+let g:syntastic_go_checkers = ['go', 'gofmt']
 let g:syntastic_coffeescript_checkers = ['coffeelint']
 let g:syntastic_coffee_coffeelint_args = '~/repos/website/website/coffeelint.json'
 let g:syntastic_html_tidy_ignore_errors=[" proprietary attribute \"ng-", "trimming empty"]
@@ -142,6 +152,7 @@ let g:syntastic_mode_map = {
       \ "mode": "active",
       \ "active_filetypes": [],
       \ "passive_filetypes": ["javac", "java"] }
+let g:syntastic_always_populate_loc_list = 1
 
 " pandoc auto formatting
 let g:pandoc_use_hard_wraps = 1

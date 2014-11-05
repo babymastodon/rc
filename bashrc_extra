@@ -25,6 +25,7 @@ fi
 # aliases for tmux
 alias newmoo="tmux new -s moo"
 alias moo="tmux attach -dt moo"
+alias fixmoo='killall -s SIGUSR1 tmux'
 
 # enable bash completion
 if [ -f /etc/bash_completion ] && ! shopt -oq posix; then

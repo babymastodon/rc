@@ -19,6 +19,10 @@ source ~/.bashrc
 mkdir -p ~/bin
 
 
+# install config files into etc
+mkdir -p ~/etc
+
+
 # install vim plugins
 if [ ! -d ~/.vim/bundle/vundle ]
 then
