@@ -74,7 +74,7 @@ noremap <C-j> 15<C-e>
 noremap <C-k> 15<C-y>
 
 " Map open directory to ctrl-d
-nnoremap <C-d> :Explore<CR>
+nnoremap <C-d> :e .<CR>
 
 " Splits open on the right
 set splitright
@@ -195,7 +195,7 @@ set ttimeoutlen=100
 
 " Rename tabs to show tab number.
 " (Based on http://stackoverflow.com/questions/5927952/whats-implementation-of-vims-default-tabline-function)
-if false
+if exists("+showtabline")
     function! MyTabLine()
         let s = ''
         let wn = ''
