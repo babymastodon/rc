@@ -22,7 +22,7 @@ au BufNewFile,BufRead *.cpp set syntax=cpp11
 au BufRead,BufNewFile *.go set filetype=go
 au BufRead,BufNewFile *.go setlocal noexpandtab
 au BufNewFile,BufRead *.md set filetype=pandoc
-au BufNewFile,BufRead *.coffee set filetype=coffeescript
+au BufNewFile,BufRead *.coffee set filetype=coffee
 
 " all folds open by default
 au BufRead * normal zR
@@ -145,8 +145,7 @@ let g:ycm_collect_identifiers_from_tags_files = 1
 " syntastic checkers
 let g:syntastic_python_checkers = ['flake8']
 let g:syntastic_go_checkers = ['go', 'gofmt']
-let g:syntastic_coffeescript_checkers = ['coffeelint']
-let g:syntastic_coffee_coffeelint_args = '~/repos/website/website/coffeelint.json'
+let g:syntastic_coffee_checkers = ['coffeelint', 'coffee']
 let g:syntastic_html_tidy_ignore_errors=[" proprietary attribute \"ng-", "trimming empty"]
 let g:syntastic_mode_map = {
       \ "mode": "active",

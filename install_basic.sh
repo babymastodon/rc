@@ -5,6 +5,8 @@ ln -sf $PWD/vimrc ~/.vimrc
 ln -sf $PWD/tmux.conf ~/.tmux.conf
 ln -sf $PWD/bashrc_extra ~/.bashrc_extra
 ln -sf $PWD/gitignore_global ~/.gitignore_global
+mkdir -p ~/.vim/syntax/
+ln -sf $PWD/coffee.vim ~/.vim/syntax/coffee.vim
 
 
 # source .bashrc_extra from .bashrc
