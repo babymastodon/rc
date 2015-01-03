@@ -26,6 +26,7 @@ au BufNewFile,BufRead *.coffee set filetype=coffee
 
 " default fold level to syntax
 set foldmethod=syntax
+set foldlevelstart=10
 
 " all folds open by default
 autocmd BufWinEnter * let &foldlevel = max(map(range(1, line('$')), 'foldlevel(v:val)'))
