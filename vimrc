@@ -24,8 +24,11 @@ au BufRead,BufNewFile *.go setlocal noexpandtab
 au BufNewFile,BufRead *.md set filetype=pandoc
 au BufNewFile,BufRead *.coffee set filetype=coffee
 
+" default fold level to syntax
+set foldmethod=syntax
+
 " all folds open by default
-au BufRead * normal zR
+autocmd BufWinEnter * let &foldlevel = max(map(range(1, line('$')), 'foldlevel(v:val)'))
 
 " show netrw previews in vertically split window
 let g:netrw_preview = 1
@@ -93,9 +96,15 @@ set splitright
 :nnoremap <C-t>     :tab split<CR>
 :inoremap <C-t>     <Esc>:tab split<CR>
 
-" parens jump to next syntastic error
-:nnoremap ( :lprev<CR>
-:nnoremap ) :lnext<CR>
+" go to first syntastic error
+:nnoremap ( :lfirst<CR>
+
+" change fold level
+:nnoremap ) zr
+:nnoremap ( zm
+:nnoremap = zO
+:nnoremap - zc
+
 
 " autoload tag files
 :set tags=./tags;
@@ -152,6 +161,9 @@ let g:syntastic_mode_map = {
       \ "active_filetypes": [],
       \ "passive_filetypes": ["javac", "java"] }
 let g:syntastic_always_populate_loc_list = 1
+let g:syntastic_javascript_checkers = ['jshint']
+let g:syntastic_always_populate_loc_list=1
+let g:syntastic_auto_loc_list = 0
 
 " pandoc auto formatting
 let g:pandoc_use_hard_wraps = 1
@@ -255,6 +267,7 @@ Bundle 'Valloric/YouCompleteMe'
 Bundle 'scrooloose/syntastic'
 Bundle 'hynek/vim-python-pep8-indent'
 Bundle 'tpope/vim-fugitive'
+Bundle "pangloss/vim-javascript"
 
 filetype plugin on
 filetype indent on
