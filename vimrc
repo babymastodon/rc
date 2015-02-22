@@ -177,6 +177,7 @@ hi pandocNewLine ctermbg=231 ctermfg=Black
 let g:pandoc#modules#disabled = ["folding"]
 
 let g:go_fmt_experimental = 1
+let g:go_fmt_fail_silently = 1
 let g:go_doc_keywordprg_enabled = 0
 let g:go_bin_path = expand("~/bin")
 
