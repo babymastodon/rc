@@ -98,7 +98,7 @@ set splitright
 :inoremap <C-t>     <Esc>:tab split<CR>
 
 " go to first syntastic error
-:nnoremap ( :lfirst<CR>
+:nnoremap ; :lfirst<CR>
 
 " change fold level
 :nnoremap ) zr
@@ -154,7 +154,6 @@ let g:ycm_collect_identifiers_from_tags_files = 1
 
 " syntastic checkers
 let g:syntastic_python_checkers = ['flake8']
-let g:syntastic_go_checkers = ['go', 'gofmt']
 let g:syntastic_coffee_checkers = ['coffeelint', 'coffee']
 let g:syntastic_html_tidy_ignore_errors=[" proprietary attribute \"ng-", "trimming empty"]
 let g:syntastic_mode_map = {
@@ -173,6 +172,8 @@ let g:tex_conceal = "adgm"
 hi Conceal ctermbg=231 ctermfg=Black
 hi pandocNewLine ctermbg=231 ctermfg=Black
 let g:pandoc#modules#disabled = ["folding"]
+
+let g:go_fmt_autosave = 0
 
 " enable cscope support
 set cscopetag
@@ -269,6 +270,8 @@ Bundle 'scrooloose/syntastic'
 Bundle 'hynek/vim-python-pep8-indent'
 Bundle 'tpope/vim-fugitive'
 Bundle "pangloss/vim-javascript"
+Bundle 'solarnz/thrift.vim'
+Bundle 'fatih/vim-go'
 
 filetype plugin on
 filetype indent on
