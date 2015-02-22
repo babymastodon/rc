@@ -106,6 +106,9 @@ set splitright
 :nnoremap = zO
 :nnoremap - zc
 
+" tagbar
+nnoremap <F9> :TagbarToggle<CR>
+
 
 " autoload tag files
 :set tags=./tags;
@@ -173,7 +176,9 @@ hi Conceal ctermbg=231 ctermfg=Black
 hi pandocNewLine ctermbg=231 ctermfg=Black
 let g:pandoc#modules#disabled = ["folding"]
 
-let g:go_fmt_autosave = 0
+let g:go_fmt_experimental = 1
+let g:go_doc_keywordprg_enabled = 0
+let g:go_bin_path = expand("~/bin")
 
 " enable cscope support
 set cscopetag
@@ -272,6 +277,7 @@ Bundle 'tpope/vim-fugitive'
 Bundle "pangloss/vim-javascript"
 Bundle 'solarnz/thrift.vim'
 Bundle 'fatih/vim-go'
+Bundle 'majutsushi/tagbar'
 
 filetype plugin on
 filetype indent on
