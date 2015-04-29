@@ -180,6 +180,7 @@ let g:go_fmt_experimental = 1
 let g:go_fmt_fail_silently = 1
 let g:go_doc_keywordprg_enabled = 0
 let g:go_bin_path = expand("~/bin")
+let g:go_oracle_include_tests = 1
 
 " enable cscope support
 set cscopetag
@@ -279,6 +280,7 @@ Bundle "pangloss/vim-javascript"
 Bundle 'solarnz/thrift.vim'
 Bundle 'fatih/vim-go'
 Bundle 'majutsushi/tagbar'
+Bundle 'yegappan/greplace'
 
 filetype plugin on
 filetype indent on
