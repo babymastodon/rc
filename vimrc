@@ -22,10 +22,14 @@ au BufNewFile,BufRead *.cpp set syntax=cpp11
 au BufRead,BufNewFile *.go set filetype=go
 au BufRead,BufNewFile *.go setlocal noexpandtab
 au BufNewFile,BufRead *.md set filetype=pandoc
-au BufNewFile,BufRead *.coffee set filetype=coffeescript
+au BufNewFile,BufRead *.coffee set filetype=coffee
+
+" default fold level to syntax
+set foldmethod=syntax
+set foldlevelstart=10
 
 " all folds open by default
-au BufRead * normal zR
+autocmd BufWinEnter * let &foldlevel = max(map(range(1, line('$')), 'foldlevel(v:val)'))
 
 " show netrw previews in vertically split window
 let g:netrw_preview = 1
@@ -34,14 +38,16 @@ let g:netrw_preview = 1
 :nnoremap Q <Nop>
 
 " open file under cursor in vertical split
-map <C-f> :vertical wincmd F<CR>
+noremap <C-f> :vertical wincmd F<CR>
 
 " pressing F2 enters paste mode
 set pastetoggle=<F2>
 
 " map F1 to escape
-map <F1> <Esc>
-imap <F1> <Esc>
+noremap <F1> <ESC>
+
+" map <F3> to syntasticcheck
+noremap <F3> :w<CR>:SyntasticCheck<CR>
 
 " Insert Ascii Text Headers
 command! -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
@@ -86,6 +92,19 @@ set splitright
 :nnoremap <C-t>     :tab split<CR>
 :inoremap <C-t>     <Esc>:tab split<CR>
 
+" go to first syntastic error
+:nnoremap ; :lfirst<CR>
+
+" change fold level
+:nnoremap ) zr
+:nnoremap ( zm
+:nnoremap = zO
+:nnoremap - zc
+
+" tagbar
+nnoremap <F9> :TagbarToggle<CR>
+
+
 " autoload tag files
 :set tags=./tags;
 " jump backwards in the ctag stack
@@ -99,6 +118,9 @@ set splitright
 
 " fancy status line
 :set statusline=%<%F\ %h%m%r%y%=%-14.(%l,%c%V%)\ %P
+
+" search and hilight word under cursor
+nnoremap * :keepjumps normal! mi*`i<CR>
 
 " enter joins selected lines in visual mode
 vnoremap <C-m> :join<CR>
@@ -130,9 +152,16 @@ let g:ycm_collect_identifiers_from_tags_files = 1
 
 " syntastic checkers
 let g:syntastic_python_checkers = ['flake8']
-let g:syntastic_coffeescript_checkers = ['coffeelint']
-let g:syntastic_coffee_coffeelint_args = '~/repos/website/website/coffeelint.json'
+let g:syntastic_coffee_checkers = ['coffeelint', 'coffee']
 let g:syntastic_html_tidy_ignore_errors=[" proprietary attribute \"ng-", "trimming empty"]
+let g:syntastic_mode_map = {
+      \ "mode": "active",
+      \ "active_filetypes": [],
+      \ "passive_filetypes": ["javac", "java"] }
+let g:syntastic_always_populate_loc_list = 1
+let g:syntastic_javascript_checkers = ['jshint']
+let g:syntastic_always_populate_loc_list=1
+let g:syntastic_auto_loc_list = 0
 
 " pandoc auto formatting
 let g:pandoc_use_hard_wraps = 1
@@ -141,6 +170,12 @@ let g:tex_conceal = "adgm"
 hi Conceal ctermbg=231 ctermfg=Black
 hi pandocNewLine ctermbg=231 ctermfg=Black
 let g:pandoc#modules#disabled = ["folding"]
+
+let g:go_fmt_experimental = 1
+let g:go_fmt_fail_silently = 1
+let g:go_doc_keywordprg_enabled = 0
+let g:go_bin_path = expand("~/bin")
+let g:go_oracle_include_tests = 1
 
 " enable cscope support
 set cscopetag
@@ -173,6 +208,53 @@ set ttimeout
 set ttimeoutlen=100
 
 
+" Rename tabs to show tab number.
+" (Based on http://stackoverflow.com/questions/5927952/whats-implementation-of-vims-default-tabline-function)
+if exists("+showtabline")
+    function! MyTabLine()
+        let s = ''
+        let wn = ''
+        let t = tabpagenr()
+        let i = 1
+        while i <= tabpagenr('$')
+            let buflist = tabpagebuflist(i)
+            let winnr = tabpagewinnr(i)
+            let s .= '%' . i . 'T'
+            let s .= (i == t ? '%1*' : '%2*')
+            let s .= ' '
+            let wn = tabpagewinnr(i,'$')
+
+            let s .= '%#TabNum#'
+            let s .= i
+            " let s .= '%*'
+            let s .= (i == t ? '%#TabLineSel#' : '%#TabLine#')
+            let bufnr = buflist[winnr - 1]
+            let file = bufname(bufnr)
+            let buftype = getbufvar(bufnr, 'buftype')
+            if buftype == 'nofile'
+                if file =~ '\/.'
+                    let file = substitute(file, '.*\/\ze.', '', '')
+                endif
+            else
+                let file = fnamemodify(file, ':p:t')
+            endif
+            if file == ''
+                let file = '[No Name]'
+            endif
+            let s .= ' ' . file . ' '
+            let i = i + 1
+        endwhile
+        let s .= '%T%#TabLineFill#%='
+        let s .= (tabpagenr('$') > 1 ? '%999XX' : 'X')
+        return s
+    endfunction
+    set stal=2
+    set tabline=%!MyTabLine()
+    set showtabline=1
+    highlight link TabNum Special
+endif
+
+
 " Vundle packages
 set nocompatible
 filetype off
@@ -189,6 +271,11 @@ Bundle 'Valloric/YouCompleteMe'
 Bundle 'scrooloose/syntastic'
 Bundle 'hynek/vim-python-pep8-indent'
 Bundle 'tpope/vim-fugitive'
+Bundle "pangloss/vim-javascript"
+Bundle 'solarnz/thrift.vim'
+Bundle 'fatih/vim-go'
+Bundle 'majutsushi/tagbar'
+Bundle 'yegappan/greplace'
 
 filetype plugin on
 filetype indent on

@@ -4,12 +4,8 @@
 bash $PWD/install_basic.sh
 
 
-# install scripts into the bin
-ln -sf $PWD/trackpoint.sh ~/bin/
-
-
-# enable italic fonts in the terminal
-bash ./enable_italics.sh
+ln -sf $PWD Xmodmap ~/.xmodmaprc
+ln -sf $PWD Xmodmap ~/.Xmodmap
 
 
 # set git defaults

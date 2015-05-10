@@ -23,8 +23,11 @@ if [ ! -z "$SSH_AUTH_SOCK" -a "$SSH_AUTH_SOCK" != "$HOME/.ssh/agent_sock" ] ; th
 fi
 
 # aliases for tmux
-alias newmoo="tmux new -s moo"
-alias moo="tmux attach -dt moo"
+export TMUXTMP=~/.tmuxtmp
+mkdir -p $TMUXTMP
+alias newmoo="TMPDIR=$TMUXTMP tmux new -s moo"
+alias moo="TMPDIR=$TMUXTMP tmux attach -dt moo"
+alias fixmoo='TMPDIR=$TMUXTMP killall -s SIGUSR1 tmux'
 
 # enable bash completion
 if [ -f /etc/bash_completion ] && ! shopt -oq posix; then
