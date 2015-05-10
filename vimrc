@@ -33,11 +33,6 @@ let g:netrw_preview = 1
 " Disable Ex Mode
 :nnoremap Q <Nop>
 
-" use the system clipboard as the default yank location
-" (need to install vim from source)
-silent! set clipboard^=unnamedplus
-set clipboard^=unnamed
-
 " open file under cursor in vertical split
 map <C-f> :vertical wincmd F<CR>
 
