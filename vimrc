@@ -25,8 +25,8 @@ au BufNewFile,BufRead *.md set filetype=pandoc
 au BufNewFile,BufRead *.coffee set filetype=coffee
 
 " default fold level to syntax
-set foldmethod=syntax
-set foldlevelstart=10
+" set foldmethod=syntax
+" set foldlevelstart=10
 
 " all folds open by default
 autocmd BufWinEnter * let &foldlevel = max(map(range(1, line('$')), 'foldlevel(v:val)'))
@@ -154,10 +154,7 @@ let g:ycm_collect_identifiers_from_tags_files = 1
 let g:syntastic_python_checkers = ['flake8']
 let g:syntastic_coffee_checkers = ['coffeelint', 'coffee']
 let g:syntastic_html_tidy_ignore_errors=[" proprietary attribute \"ng-", "trimming empty"]
-let g:syntastic_mode_map = {
-      \ "mode": "active",
-      \ "active_filetypes": [],
-      \ "passive_filetypes": ["javac", "java"] }
+let g:syntastic_mode_map = { "mode": "active", "active_filetypes": [], "passive_filetypes": ["javac", "java"] }
 let g:syntastic_always_populate_loc_list = 1
 let g:syntastic_javascript_checkers = ['jshint']
 let g:syntastic_always_populate_loc_list=1
