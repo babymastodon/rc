@@ -273,6 +273,7 @@ Bundle 'solarnz/thrift.vim'
 Bundle 'fatih/vim-go'
 Bundle 'majutsushi/tagbar'
 Bundle 'yegappan/greplace'
+Bundle 'rodjek/vim-puppet'
 
 filetype plugin on
 filetype indent on
