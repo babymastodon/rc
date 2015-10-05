@@ -151,7 +151,7 @@ let g:ycm_confirm_extra_conf = 0
 let g:ycm_collect_identifiers_from_tags_files = 1
 
 " syntastic checkers
-let g:syntastic_python_checkers = ['flake8']
+let g:syntastic_python_checkers = ['python']
 let g:syntastic_coffee_checkers = ['coffeelint', 'coffee']
 let g:syntastic_html_tidy_ignore_errors=[" proprietary attribute \"ng-", "trimming empty"]
 let g:syntastic_mode_map = { "mode": "active", "active_filetypes": [], "passive_filetypes": ["javac", "java"] }
@@ -274,6 +274,7 @@ Bundle 'fatih/vim-go'
 Bundle 'majutsushi/tagbar'
 Bundle 'yegappan/greplace'
 Bundle 'rodjek/vim-puppet'
+Bundle 'Valloric/ListToggle'
 
 filetype plugin on
 filetype indent on
