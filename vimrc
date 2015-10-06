@@ -95,23 +95,28 @@ set splitright
 " go to first syntastic error
 :nnoremap ; :lfirst<CR>
 
-" change fold level
-:nnoremap ) zr
-:nnoremap ( zm
-:nnoremap = zO
-:nnoremap - zc
-
 " tagbar
 nnoremap <F9> :TagbarToggle<CR>
 
+" quickfix and loclist
+let g:lt_location_list_toggle_map = '<leader>l'
+let g:lt_quickfix_list_toggle_map = '<leader>q'
+let g:lt_height = 10
+noremap = :cprev<CR>
+noremap - :cnext<CR>
+
+" resize
+nnoremap + :exe "resize " . (winheight(0) * 3/2)<CR>
+nnoremap _ :exe "resize " . (winheight(0) * 2/3)<CR>
 
 " autoload tag files
 :set tags=./tags;
 " jump backwards in the ctag stack
 :nnoremap <C-p> <C-t>
 " next/previous tag match
-:nnoremap + :tnext<CR>
-:nnoremap _ :tprevious<CR>
+" NOTE: replaced with quicklist navigation
+" :nnoremap + :tnext<CR>
+" :nnoremap _ :tprevious<CR>
 
 " disable preview split on autocomplete
 :set completeopt-=preview
@@ -175,9 +180,10 @@ let g:go_bin_path = expand("~/bin")
 let g:go_oracle_include_tests = 1
 
 " enable cscope support
-set cscopetag
+set nocscopetag
 set csto=1
 set cscopeverbose
+set cscopequickfix=s-,c-,d-,i-,t-,e-
 nnoremap <C-\>s :cs find s <C-R>=expand("<cword>")<CR><CR>
 nnoremap <C-\>g :cs find g <C-R>=expand("<cword>")<CR><CR>
 nnoremap <C-\>c :cs find c <C-R>=expand("<cword>")<CR><CR>
@@ -251,6 +257,13 @@ if exists("+showtabline")
     highlight link TabNum Special
 endif
 
+let g:clang_format#style_options = {
+    \ "BinPackArguments" : "false",
+    \ "BinPackParameters" : "false",
+    \ "CommentPragmas" : ".*\\$",
+    \ "Language" : "Cpp",
+    \ "Standard" : "C++11"}
+au BufWrite *.{cc,cpp,h} :ClangFormat
 
 " Vundle packages
 set nocompatible
@@ -258,7 +271,6 @@ filetype off
 syntax on
 set rtp+=~/.vim/bundle/vundle/
 call vundle#rc()
-
 
 Bundle 'gmarik/vundle'
 Bundle 'vim-pandoc/vim-pandoc'
@@ -275,6 +287,7 @@ Bundle 'majutsushi/tagbar'
 Bundle 'yegappan/greplace'
 Bundle 'rodjek/vim-puppet'
 Bundle 'Valloric/ListToggle'
+Bundle 'rhysd/vim-clang-format'
 
 filetype plugin on
 filetype indent on
