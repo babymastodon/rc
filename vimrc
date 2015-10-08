@@ -109,6 +109,10 @@ noremap - :cnext<CR>
 nnoremap + :exe "resize " . (winheight(0) * 3/2)<CR>
 nnoremap _ :exe "resize " . (winheight(0) * 2/3)<CR>
 
+" go to next tag match
+noremap ) :tn<CR>
+noremap ( :tp<CR>
+
 " autoload tag files
 :set tags=./tags;
 " jump backwards in the ctag stack
