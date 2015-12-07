@@ -141,6 +141,9 @@ autocmd FileType python 2match OverLength /\%>120v.\+/
 " Press F4 to toggle highlighting on/off, and show current value.
 :noremap <F4> :set hlsearch! hlsearch?<CR>
 
+" Press F5 to switch between header and source
+map <F5> :e %:p:s,.h$,.X123X,:s,.cpp$,.h,:s,.X123X$,.cpp,<CR>
+
 " highlight trailing whitespace
 highlight ExtraWhitespace ctermbg=green guibg=green
 match ExtraWhitespace /\s\+$/
@@ -292,6 +295,7 @@ Bundle 'yegappan/greplace'
 Bundle 'rodjek/vim-puppet'
 Bundle 'Valloric/ListToggle'
 Bundle 'rhysd/vim-clang-format'
+Bundle 'vhdirk/vim-cmake'
 
 filetype plugin on
 filetype indent on
