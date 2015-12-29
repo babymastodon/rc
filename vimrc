@@ -292,6 +292,7 @@ Bundle 'yegappan/greplace'
 Bundle 'rodjek/vim-puppet'
 Bundle 'Valloric/ListToggle'
 Bundle 'rhysd/vim-clang-format'
+Bundle 'chrisbra/csv.vim'
 
 filetype plugin on
 filetype indent on
