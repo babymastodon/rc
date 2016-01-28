@@ -141,8 +141,8 @@ autocmd FileType python 2match OverLength /\%>120v.\+/
 " Press F4 to toggle highlighting on/off, and show current value.
 :noremap <F4> :set hlsearch! hlsearch?<CR>
 
-" Press F5 to switch between header and source
-map <F5> :e %:p:s,.h$,.X123X,:s,.cpp$,.h,:s,.X123X$,.cpp,<CR>
+" Press & to switch between header and source
+map & :e %:p:s,.h$,.X123X,:s,.cpp$,.h,:s,.X123X$,.cpp,<CR>
 
 " highlight trailing whitespace
 highlight ExtraWhitespace ctermbg=green guibg=green
@@ -161,6 +161,8 @@ let g:ycm_global_ycm_extra_conf = '~/.ycm_extra_conf.py'
 let g:ycm_confirm_extra_conf = 0
 " get identifiers from tag files
 let g:ycm_collect_identifiers_from_tags_files = 1
+" use ycm's goto def, instead of vim's default
+nnoremap gd :YcmCompleter GoTo
 
 " syntastic checkers
 let g:syntastic_python_checkers = ['python']
@@ -284,8 +286,8 @@ hi CSVColumnOdd  term=bold ctermbg=Grey ctermfg=Black
 set nocompatible
 filetype off
 syntax on
-set rtp+=~/.vim/bundle/vundle/
-call vundle#rc()
+set rtp+=~/.vim/bundle/Vundle.vim
+call vundle#begin()
 
 Bundle 'gmarik/vundle'
 Bundle 'vim-pandoc/vim-pandoc'
@@ -307,5 +309,6 @@ Bundle 'chrisbra/csv.vim'
 Bundle 'vhdirk/vim-cmake'
 Bundle 'ctrlpvim/ctrlp.vim'
 
+call vundle#end()
 filetype plugin on
 filetype indent on
