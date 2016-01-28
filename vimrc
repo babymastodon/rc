@@ -185,6 +185,10 @@ let g:go_fmt_fail_silently = 1
 let g:go_doc_keywordprg_enabled = 0
 let g:go_bin_path = expand("~/bin")
 let g:go_oracle_include_tests = 1
+let g:go_fmt_command = "goimports"
+
+let g:ctrlp_map = '<C-n>'
+let g:ctrlp_extensions = ['tag', 'dir']
 
 " enable cscope support
 set nocscopetag
@@ -301,6 +305,7 @@ Bundle 'Valloric/ListToggle'
 Bundle 'rhysd/vim-clang-format'
 Bundle 'chrisbra/csv.vim'
 Bundle 'vhdirk/vim-cmake'
+Bundle 'ctrlpvim/ctrlp.vim'
 
 filetype plugin on
 filetype indent on
