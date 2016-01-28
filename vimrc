@@ -162,7 +162,7 @@ let g:ycm_confirm_extra_conf = 0
 " get identifiers from tag files
 let g:ycm_collect_identifiers_from_tags_files = 1
 " use ycm's goto def, instead of vim's default
-nnoremap gd :YcmCompleter GoTo
+nnoremap gd :YcmCompleter GoTo<CR>
 
 " syntastic checkers
 let g:syntastic_python_checkers = ['python']
