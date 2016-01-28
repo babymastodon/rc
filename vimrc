@@ -38,7 +38,7 @@ let g:netrw_preview = 1
 :nnoremap Q <Nop>
 
 " open file under cursor in vertical split
-noremap <C-f> :vertical wincmd F<CR>
+noremap gf :vertical wincmd F<CR>
 
 " pressing F2 enters paste mode
 set pastetoggle=<F2>
@@ -102,8 +102,8 @@ nnoremap <F9> :TagbarToggle<CR>
 let g:lt_location_list_toggle_map = '<leader>l'
 let g:lt_quickfix_list_toggle_map = '<leader>q'
 let g:lt_height = 10
-noremap = :cprev<CR>
-noremap - :cnext<CR>
+noremap - :cprev<CR>
+noremap = :cnext<CR>
 
 " resize
 nnoremap + :exe "resize " . (winheight(0) * 3/2)<CR>
@@ -139,7 +139,8 @@ highlight OverLength ctermbg=green ctermfg=white
 autocmd FileType python 2match OverLength /\%>120v.\+/
 
 " Press F4 to toggle highlighting on/off, and show current value.
-:noremap <F4> :set hlsearch! hlsearch?<CR>
+noremap <F4> :set hlsearch! hlsearch?<CR>
+set hlsearch
 
 " Press & to switch between header and source
 map & :e %:p:s,.h$,.X123X,:s,.cpp$,.h,:s,.X123X$,.cpp,<CR>
@@ -226,6 +227,13 @@ set ttimeoutlen=100
 
 " find and replace all occurances of the word under the cursor
 nnoremap gs :%s/\<<C-r><C-w>\>//g<Left><Left>
+
+" ctrp plugin
+let g:ctrlp_map = '<C-f>'
+
+" grep shortcuts
+command! -nargs=+ Gr execute 'silent Ggrep!' <q-args> | silent! botright cwindow 15 | cc | redraw! | let @/=<q-args> | set hls
+nnoremap gr :Gr <C-R>=expand("<cword>")<CR><CR>
 
 " Rename tabs to show tab number.
 " (Based on http://stackoverflow.com/questions/5927952/whats-implementation-of-vims-default-tabline-function)
