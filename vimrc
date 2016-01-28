@@ -163,6 +163,7 @@ let g:ycm_confirm_extra_conf = 0
 let g:ycm_collect_identifiers_from_tags_files = 1
 " use ycm's goto def, instead of vim's default
 nnoremap gd :YcmCompleter GoTo<CR>
+nnoremap gl :YcmCompleter FixIt<CR>
 
 " syntastic checkers
 let g:syntastic_python_checkers = ['python']
@@ -223,6 +224,8 @@ set timeoutlen=4000
 set ttimeout
 set ttimeoutlen=100
 
+" find and replace all occurances of the word under the cursor
+nnoremap gs :%s/\<<C-r><C-w>\>//g<Left><Left>
 
 " Rename tabs to show tab number.
 " (Based on http://stackoverflow.com/questions/5927952/whats-implementation-of-vims-default-tabline-function)
