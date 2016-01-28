@@ -273,6 +273,10 @@ let g:clang_format#style_options = {
     \ "Standard" : "C++11"}
 au BufWrite *.{cc,cpp,h} :ClangFormat
 
+" CSV files
+hi CSVColumnEven term=bold ctermbg=Black ctermfg=White
+hi CSVColumnOdd  term=bold ctermbg=Grey ctermfg=Black
+
 " Vundle packages
 set nocompatible
 filetype off
@@ -296,6 +300,7 @@ Bundle 'yegappan/greplace'
 Bundle 'rodjek/vim-puppet'
 Bundle 'Valloric/ListToggle'
 Bundle 'rhysd/vim-clang-format'
+Bundle 'chrisbra/csv.vim'
 Bundle 'vhdirk/vim-cmake'
 
 call vundle#end()
