@@ -141,8 +141,8 @@ autocmd FileType python 2match OverLength /\%>120v.\+/
 " Press F4 to toggle highlighting on/off, and show current value.
 :noremap <F4> :set hlsearch! hlsearch?<CR>
 
-" Press F5 to switch between header and source
-map <F5> :e %:p:s,.h$,.X123X,:s,.cpp$,.h,:s,.X123X$,.cpp,<CR>
+" Press & to switch between header and source
+map & :e %:p:s,.h$,.X123X,:s,.cpp$,.h,:s,.X123X$,.cpp,<CR>
 
 " highlight trailing whitespace
 highlight ExtraWhitespace ctermbg=green guibg=green
@@ -185,6 +185,7 @@ let g:go_fmt_fail_silently = 1
 let g:go_doc_keywordprg_enabled = 0
 let g:go_bin_path = expand("~/bin")
 let g:go_oracle_include_tests = 1
+let g:go_fmt_command = "goimports"
 
 " enable cscope support
 set nocscopetag
@@ -276,8 +277,8 @@ au BufWrite *.{cc,cpp,h} :ClangFormat
 set nocompatible
 filetype off
 syntax on
-set rtp+=~/.vim/bundle/vundle/
-call vundle#rc()
+set rtp+=~/.vim/bundle/Vundle.vim
+call vundle#begin()
 
 Bundle 'gmarik/vundle'
 Bundle 'vim-pandoc/vim-pandoc'
@@ -297,5 +298,6 @@ Bundle 'Valloric/ListToggle'
 Bundle 'rhysd/vim-clang-format'
 Bundle 'vhdirk/vim-cmake'
 
+call vundle#end()
 filetype plugin on
 filetype indent on
