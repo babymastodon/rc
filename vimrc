@@ -193,6 +193,8 @@ let g:go_fmt_command = "goimports"
 
 let g:ctrlp_map = '<C-n>'
 let g:ctrlp_extensions = ['tag', 'dir']
+let g:ctrlp_max_files=0
+let g:ctrlp_max_depth=40
 
 " enable cscope support
 set nocscopetag
