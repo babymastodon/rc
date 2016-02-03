@@ -38,3 +38,6 @@ fi
 if [ -f ~/.git-completion.bash ]; then
   . ~/.git-completion.bash
 fi
+
+# disable scroll lock
+stty -ixon
