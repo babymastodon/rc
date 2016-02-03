@@ -23,6 +23,10 @@ au BufRead,BufNewFile *.go set filetype=go
 au BufRead,BufNewFile *.go setlocal noexpandtab
 au BufNewFile,BufRead *.md set filetype=pandoc
 au BufNewFile,BufRead *.coffee set filetype=coffee
+au BufNewFile,BufRead *.ql set filetype=sql
+au BufNewFile,BufRead *.templ set filetype=perl
+au BufNewFile,BufRead *.dash set filetype=perl
+au BufNewFile,BufRead *.alert set filetype=perl
 
 " default fold level to syntax
 " set foldmethod=syntax
