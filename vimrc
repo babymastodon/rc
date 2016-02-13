@@ -146,8 +146,11 @@ autocmd FileType python 2match OverLength /\%>120v.\+/
 noremap <F4> :set hlsearch! hlsearch?<CR>
 set hlsearch
 
-" Press & to switch between header and source
-map & :e %:p:s,.h$,.X123X,:s,.cpp$,.h,:s,.X123X$,.cpp,<CR>
+" Press & to switch between two related files
+au FileType cpp nnoremap & :e %:p:s,.h$,.X123X,:s,.cpp$,.h,:s,.X123X$,.cpp,<CR>
+au FileType html nnoremap & :e %<.js<CR>
+au FileType javascript nnoremap & :e %<.html<CR>
+au FileType go nnoremap & :e %:p:s,\([^_][^t][^e][^s][^t]\).go$,\1.X123X,:s,_test.go$,.go,:s,.X123X$,_test.go,<CR>
 
 " highlight trailing whitespace
 highlight ExtraWhitespace ctermbg=green guibg=green
