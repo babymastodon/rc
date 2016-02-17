@@ -238,6 +238,9 @@ set ttimeoutlen=100
 " find and replace all occurances of the word under the cursor
 nnoremap gs :%s/\<<C-r><C-w>\>//g<Left><Left>
 
+" sort the selection
+xnoremap s '<,'>sort<CR>
+
 " ctrp plugin
 let g:ctrlp_map = '<C-f>'
 
