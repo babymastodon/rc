@@ -23,6 +23,10 @@ au BufRead,BufNewFile *.go set filetype=go
 au BufRead,BufNewFile *.go setlocal noexpandtab
 au BufNewFile,BufRead *.md set filetype=pandoc
 au BufNewFile,BufRead *.coffee set filetype=coffee
+au BufNewFile,BufRead *.ql set filetype=sql
+au BufNewFile,BufRead *.templ set filetype=perl
+au BufNewFile,BufRead *.dash set filetype=perl
+au BufNewFile,BufRead *.alert set filetype=perl
 
 " default fold level to syntax
 " set foldmethod=syntax
@@ -142,8 +146,11 @@ autocmd FileType python 2match OverLength /\%>120v.\+/
 noremap <F4> :set hlsearch! hlsearch?<CR>
 set hlsearch
 
-" Press & to switch between header and source
-map & :e %:p:s,.h$,.X123X,:s,.cpp$,.h,:s,.X123X$,.cpp,<CR>
+" Press & to switch between two related files
+au FileType cpp nnoremap & :e %:p:s,.h$,.X123X,:s,.cpp$,.h,:s,.X123X$,.cpp,<CR>
+au FileType html nnoremap & :e %<.js<CR>
+au FileType javascript nnoremap & :e %<.html<CR>
+au FileType go nnoremap & :e %:p:s,\([^_][^t][^e][^s][^t]\).go$,\1.X123X,:s,_test.go$,.go,:s,.X123X$,_test.go,<CR>
 
 " highlight trailing whitespace
 highlight ExtraWhitespace ctermbg=green guibg=green
@@ -193,6 +200,8 @@ let g:go_fmt_command = "goimports"
 
 let g:ctrlp_map = '<C-n>'
 let g:ctrlp_extensions = ['tag', 'dir']
+let g:ctrlp_max_files=0
+let g:ctrlp_max_depth=40
 
 " enable cscope support
 set nocscopetag
@@ -290,7 +299,7 @@ let g:clang_format#style_options = {
 au BufWrite *.{cc,cpp,h} :ClangFormat
 
 " Toggle checkboxes
-fu! checkbox#ToggleCB()
+fu! ToggleCB()
 	let line = getline('.')
 
 	if(match(line, "\\[ \\]") != -1)
