@@ -289,6 +289,23 @@ let g:clang_format#style_options = {
     \ "Standard" : "C++11"}
 au BufWrite *.{cc,cpp,h} :ClangFormat
 
+" Toggle checkboxes
+fu! checkbox#ToggleCB()
+	let line = getline('.')
+
+	if(match(line, "\\[ \\]") != -1)
+		let line = substitute(line, "\\[ \\]", "[x]", "")
+	elseif(match(line, "\\[x\\]") != -1)
+		let line = substitute(line, "\\[x\\]", "[ ]", "")
+	endif
+
+	call setline('.', line)
+endf
+
+command! ToggleCB call checkbox#ToggleCB()
+
+nnoremap <silent> gk :ToggleCB<cr>
+
 " CSV files
 hi CSVColumnEven term=bold ctermbg=Black ctermfg=White
 hi CSVColumnOdd  term=bold ctermbg=Grey ctermfg=Black
