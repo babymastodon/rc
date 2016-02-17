@@ -239,7 +239,7 @@ set ttimeoutlen=100
 nnoremap gs :%s/\<<C-r><C-w>\>//g<Left><Left>
 
 " sort the selection
-xnoremap s '<,'>sort<CR>
+xnoremap s :'<,'>sort<CR>
 
 " ctrp plugin
 let g:ctrlp_map = '<C-f>'
