@@ -28,6 +28,7 @@ mkdir -p $TMUXTMP
 alias newmoo="TMPDIR=$TMUXTMP tmux new -s moo"
 alias moo="TMPDIR=$TMUXTMP tmux attach -dt moo"
 alias fixmoo='TMPDIR=$TMUXTMP killall -s SIGUSR1 tmux'
+alias vimdiff='vim -d'
 
 # enable bash completion
 if [ -f /etc/bash_completion ] && ! shopt -oq posix; then
