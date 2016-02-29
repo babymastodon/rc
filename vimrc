@@ -203,6 +203,7 @@ let g:ctrlp_extensions = ['tag', 'dir']
 let g:ctrlp_max_files=0
 let g:ctrlp_max_depth=40
 let g:ctrlp_regexp = 1
+let g:ctrlp_switch_buffer=0
 
 " enable cscope support
 set nocscopetag
@@ -237,6 +238,9 @@ set ttimeoutlen=100
 
 " find and replace all occurances of the word under the cursor
 nnoremap gs :%s/\<<C-r><C-w>\>//g<Left><Left>
+
+" sort the selection
+xnoremap s :'<,'>sort<CR>
 
 " ctrp plugin
 let g:ctrlp_map = '<C-f>'
@@ -298,6 +302,23 @@ let g:clang_format#style_options = {
     \ "Language" : "Cpp",
     \ "Standard" : "C++11"}
 au BufWrite *.{cc,cpp,h} :ClangFormat
+
+" Toggle checkboxes
+fu! ToggleCB()
+	let line = getline('.')
+
+	if(match(line, "\\[ \\]") != -1)
+		let line = substitute(line, "\\[ \\]", "[x]", "")
+	elseif(match(line, "\\[x\\]") != -1)
+		let line = substitute(line, "\\[x\\]", "[ ]", "")
+	endif
+
+	call setline('.', line)
+endf
+
+command! ToggleCB call checkbox#ToggleCB()
+
+nnoremap <silent> gk :ToggleCB<cr>
 
 " CSV files
 hi CSVColumnEven term=bold ctermbg=Black ctermfg=White
