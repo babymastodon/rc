@@ -204,6 +204,13 @@ let g:ctrlp_max_files=0
 let g:ctrlp_max_depth=40
 let g:ctrlp_regexp = 1
 let g:ctrlp_switch_buffer=0
+let g:ctrlp_user_command = {
+  \ 'types': {
+    \ 1: ['.git', 'cd %s && git ls-files'],
+    \ 2: ['.hg', 'hg --cwd %s locate -I .'],
+    \ },
+  \ 'fallback': 'find %s -type f'
+  \ }
 
 " enable cscope support
 set nocscopetag
@@ -320,6 +327,9 @@ command! ToggleCB call checkbox#ToggleCB()
 
 nnoremap <silent> gk :ToggleCB<cr>
 
+" eclim autocomplete
+let g:EclimCompletionMethod = 'omnifunc'
+
 " CSV files
 hi CSVColumnEven term=bold ctermbg=Black ctermfg=White
 hi CSVColumnOdd  term=bold ctermbg=Grey ctermfg=Black
@@ -350,6 +360,7 @@ Bundle 'rhysd/vim-clang-format'
 Bundle 'chrisbra/csv.vim'
 Bundle 'vhdirk/vim-cmake'
 Bundle 'ctrlpvim/ctrlp.vim'
+Bundle 'powerman/vim-plugin-AnsiEsc'
 
 call vundle#end()
 filetype plugin on
