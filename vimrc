@@ -24,7 +24,7 @@ au BufRead,BufNewFile *.go setlocal noexpandtab
 au BufNewFile,BufRead *.md set filetype=pandoc
 au BufNewFile,BufRead *.coffee set filetype=coffee
 au BufNewFile,BufRead *.ql set filetype=sql
-au BufNewFile,BufRead *.templ set filetype=perl
+au BufNewFile,BufRead *.tmpl set filetype=perl
 au BufNewFile,BufRead *.dash set filetype=perl
 au BufNewFile,BufRead *.alert set filetype=perl
 
@@ -101,6 +101,9 @@ set splitright
 
 " tagbar
 nnoremap <F9> :TagbarToggle<CR>
+
+" format json
+nnoremap gj :%!python -m json.tool<CR>
 
 " quickfix and loclist
 let g:lt_location_list_toggle_map = '<leader>l'
