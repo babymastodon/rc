@@ -1,0 +1,4 @@
+source ~/.vimrc
+nnoremap gr :action Find <>
+nnoremap * *<CR>
+nnoremap gd gD<CR>

@@ -2,6 +2,7 @@
 
 # link config files
 ln -sf $PWD/vimrc ~/.vimrc
+ln -sf $PWD/ideavimrc ~/.ideavimrc
 ln -sf $PWD/tmux.conf ~/.tmux.conf
 ln -sf $PWD/bashrc_extra ~/.bashrc_extra
 ln -sf $PWD/gitignore_global ~/.gitignore_global
