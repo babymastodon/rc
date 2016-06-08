@@ -1,4 +1,4 @@
 source ~/.vimrc
-nnoremap gr :action Find <>
+nnoremap gr :action EditorSelectWord<CR> :action FindInPath<CR>
 nnoremap * *<CR>
 nnoremap gd gD<CR>
