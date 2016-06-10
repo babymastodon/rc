@@ -47,9 +47,6 @@ noremap gf :vertical wincmd F<CR>
 " pressing F2 enters paste mode
 set pastetoggle=<F2>
 
-" map F1 to escape
-noremap <F1> <ESC>
-
 " map <F3> to syntasticcheck
 noremap <F3> :w<CR>:SyntasticCheck<CR>
 
