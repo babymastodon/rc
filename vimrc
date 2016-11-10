@@ -197,6 +197,7 @@ let g:go_doc_keywordprg_enabled = 0
 let g:go_bin_path = expand("~/bin")
 let g:go_oracle_include_tests = 1
 let g:go_fmt_command = "goimports"
+let g:go_def_mode = "godef"
 
 let g:ctrlp_map = '<C-n>'
 let g:ctrlp_extensions = ['tag', 'dir']
