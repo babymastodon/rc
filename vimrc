@@ -176,8 +176,9 @@ nnoremap gl :YcmCompleter FixIt<CR>
 " syntastic checkers
 let g:syntastic_python_checkers = ['python']
 let g:syntastic_coffee_checkers = ['coffeelint', 'coffee']
+let g:syntastic_go_checkers = ['go']
 let g:syntastic_html_tidy_ignore_errors=[" proprietary attribute \"ng-", "trimming empty"]
-let g:syntastic_mode_map = { "mode": "active", "active_filetypes": [], "passive_filetypes": ["javac", "java"] }
+let g:syntastic_mode_map = { "mode": "active", "active_filetypes": ["go"], "passive_filetypes": ["javac", "java"] }
 let g:syntastic_always_populate_loc_list = 1
 let g:syntastic_javascript_checkers = ['jshint']
 let g:syntastic_always_populate_loc_list=1
@@ -198,6 +199,7 @@ let g:go_bin_path = expand("~/bin")
 let g:go_oracle_include_tests = 1
 let g:go_fmt_command = "goimports"
 let g:go_def_mode = "godef"
+let g:go_def_mapping_enabled=0
 
 let g:ctrlp_map = '<C-n>'
 let g:ctrlp_extensions = ['tag', 'dir']
