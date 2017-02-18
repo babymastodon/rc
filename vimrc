@@ -207,13 +207,7 @@ let g:ctrlp_max_files=0
 let g:ctrlp_max_depth=40
 let g:ctrlp_regexp = 1
 let g:ctrlp_switch_buffer=0
-let g:ctrlp_user_command = {
-  \ 'types': {
-    \ 1: ['.git', 'cd %s && git ls-files'],
-    \ 2: ['.hg', 'hg --cwd %s locate -I .'],
-    \ },
-  \ 'fallback': 'find %s -type f'
-  \ }
+let g:ctrlp_user_command = { 'types': { 1: ['.git', 'cd %s && git ls-files'], 2: ['.hg', 'hg --cwd %s locate -I .'], }, 'fallback': 'find %s -type f' }
 
 " enable cscope support
 set nocscopetag
@@ -305,12 +299,7 @@ if exists("+showtabline")
     highlight link TabNum Special
 endif
 
-let g:clang_format#style_options = {
-    \ "BinPackArguments" : "false",
-    \ "BinPackParameters" : "false",
-    \ "CommentPragmas" : ".*\\$",
-    \ "Language" : "Cpp",
-    \ "Standard" : "C++11"}
+let g:clang_format#style_options = { "BinPackArguments" : "false", "BinPackParameters" : "false", "CommentPragmas" : ".*\\$", "Language" : "Cpp", "Standard" : "C++11"}
 au BufWrite *.{cc,cpp,h} :ClangFormat
 
 " Toggle checkboxes
