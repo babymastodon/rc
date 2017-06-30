@@ -28,6 +28,9 @@ au BufNewFile,BufRead *.tmpl set filetype=perl
 au BufNewFile,BufRead *.dash set filetype=perl
 au BufNewFile,BufRead *.alert set filetype=perl
 
+" enable vimrc line extensions
+set nocompatible
+
 " default fold level to syntax
 " set foldmethod=syntax
 " set foldlevelstart=10
@@ -98,6 +101,7 @@ set splitright
 
 " tagbar
 nnoremap <F9> :TagbarToggle<CR>
+let g:tagbar_width = 80
 let g:tagbar_type_go = {
   \ 'ctagstype' : 'go',
   \ 'kinds'     : [
@@ -354,7 +358,6 @@ hi CSVColumnEven term=bold ctermbg=Black ctermfg=White
 hi CSVColumnOdd  term=bold ctermbg=Grey ctermfg=Black
 
 " Vundle packages
-set nocompatible
 filetype off
 syntax on
 set rtp+=~/.vim/bundle/Vundle.vim
