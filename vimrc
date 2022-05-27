@@ -22,7 +22,6 @@ au BufNewFile,BufRead *.cpp set syntax=cpp11
 au BufRead,BufNewFile *.go set filetype=go
 au BufRead,BufNewFile *.go setlocal noexpandtab
 au BufNewFile,BufRead *.md set filetype=pandoc
-au BufNewFile,BufRead *.coffee set filetype=coffee
 au BufNewFile,BufRead *.ql set filetype=sql
 au BufNewFile,BufRead *.tmpl set filetype=perl
 au BufNewFile,BufRead *.dash set filetype=perl
@@ -206,7 +205,6 @@ nnoremap gl :YcmCompleter FixIt<CR>
 
 " syntastic checkers
 let g:syntastic_python_checkers = ['python']
-let g:syntastic_coffee_checkers = ['coffeelint', 'coffee']
 let g:syntastic_go_checkers = ['go']
 let g:syntastic_html_tidy_ignore_errors=[" proprietary attribute \"ng-", "trimming empty"]
 let g:syntastic_mode_map = { "mode": "active", "active_filetypes": ["go"], "passive_filetypes": ["javac", "java"] }
@@ -350,9 +348,6 @@ command! ToggleCB call checkbox#ToggleCB()
 
 nnoremap <silent> gk :ToggleCB<cr>
 
-" eclim autocomplete
-let g:EclimCompletionMethod = 'omnifunc'
-
 " CSV files
 hi CSVColumnEven term=bold ctermbg=Black ctermfg=White
 hi CSVColumnOdd  term=bold ctermbg=Grey ctermfg=Black
@@ -372,7 +367,6 @@ Bundle 'scrooloose/syntastic'
 Bundle 'hynek/vim-python-pep8-indent'
 Bundle 'tpope/vim-fugitive'
 Bundle "pangloss/vim-javascript"
-Bundle 'solarnz/thrift.vim'
 Bundle 'fatih/vim-go'
 Bundle 'majutsushi/tagbar'
 Bundle 'yegappan/greplace'
