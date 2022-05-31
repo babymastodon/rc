@@ -21,7 +21,6 @@ au FileType mcs51a setl sw=3 sts=3 et
 au BufNewFile,BufRead *.cpp set syntax=cpp11
 au BufRead,BufNewFile *.go set filetype=go
 au BufRead,BufNewFile *.go setlocal noexpandtab
-au BufNewFile,BufRead *.md set filetype=pandoc
 au BufNewFile,BufRead *.ql set filetype=sql
 au BufNewFile,BufRead *.tmpl set filetype=perl
 au BufNewFile,BufRead *.dash set filetype=perl
@@ -213,13 +212,6 @@ let g:syntastic_javascript_checkers = ['jshint']
 let g:syntastic_always_populate_loc_list=1
 let g:syntastic_auto_loc_list = 0
 
-" pandoc auto formatting
-let g:pandoc_use_hard_wraps = 1
-let g:pandoc_use_conceal = 1
-let g:tex_conceal = "adgm"
-hi Conceal ctermbg=231 ctermfg=Black
-hi pandocNewLine ctermbg=231 ctermfg=Black
-let g:pandoc#modules#disabled = ["folding"]
 
 let g:go_fmt_experimental = 1
 let g:go_fmt_fail_silently = 1
@@ -359,7 +351,6 @@ set rtp+=~/.vim/bundle/Vundle.vim
 call vundle#begin()
 
 Bundle 'gmarik/vundle'
-Bundle 'vim-pandoc/vim-pandoc'
 Bundle 'jnwhiteh/vim-golang'
 Bundle 'vim-scripts/Cpp11-Syntax-Support'
 Bundle 'Valloric/YouCompleteMe'
