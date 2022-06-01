@@ -48,8 +48,8 @@ noremap gf :vertical wincmd F<CR>
 " pressing F2 enters paste mode
 set pastetoggle=<F2>
 
-" map <F3> to syntasticcheck
-noremap <F3> :w<CR>:SyntasticCheck<CR>
+" map <F3> to YCMHover to show type information
+noremap <F3> <plug>(YCMHover)
 
 " Insert Ascii Text Headers
 command! -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
@@ -136,14 +136,14 @@ nnoremap gj :%!python -m json.tool<CR>
 
 " python with virtualenv support
 " Virtualenv needs to be active when opening vim
-py3 << EOF
-import os
-import sys
-if 'VIRTUAL_ENV' in os.environ:
-  project_base_dir = os.environ['VIRTUAL_ENV']
-  activate_this = os.path.join(project_base_dir, 'bin/activate_this.py')
-  exec(open(activate_this).read(), {'__file__': activate_this})
-EOF
+" py3 << EOF
+" import os
+" import sys
+" if 'VIRTUAL_ENV' in os.environ:
+"   project_base_dir = os.environ['VIRTUAL_ENV']
+"   activate_this = os.path.join(project_base_dir, 'bin/activate_this.py')
+"   exec(open(activate_this).read(), {'__file__': activate_this})
+" EOF
 
 " enable python highlighting
 let python_highlight_all=1
