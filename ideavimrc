@@ -5,3 +5,4 @@ nnoremap gd gD<CR>
 nnoremap ; :action GotoNextError<CR>
 nnoremap W :action ReformatCode<CR> :action SaveDocument<CR>
 nnoremap gs :action RenameElement<CR> :action RenameElement<CR>
+nnoremap <C-f> :action GotoFile<CR>
