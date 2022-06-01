@@ -80,6 +80,9 @@ nnoremap <C-d> :e .<CR>
 " Splits open on the right
 set splitright
 
+" Files should be UTF-8 by default
+set encoding=utf-8
+
 " moar commands
 :command! WQ wq
 :command! Wq wq
@@ -130,6 +133,20 @@ let g:tagbar_type_go = {
 
 " format json
 nnoremap gj :%!python -m json.tool<CR>
+
+" python with virtualenv support
+" Virtualenv needs to be active when opening vim
+py3 << EOF
+import os
+import sys
+if 'VIRTUAL_ENV' in os.environ:
+  project_base_dir = os.environ['VIRTUAL_ENV']
+  activate_this = os.path.join(project_base_dir, 'bin/activate_this.py')
+  exec(open(activate_this).read(), {'__file__': activate_this})
+EOF
+
+" enable python highlighting
+let python_highlight_all=1
 
 " quickfix and loclist
 let g:lt_location_list_toggle_map = '<leader>l'
@@ -204,6 +221,7 @@ nnoremap gl :YcmCompleter FixIt<CR>
 
 " syntastic checkers
 let g:syntastic_python_checkers = ['python']
+let g:syntastic_python_python_exec = 'python3'
 let g:syntastic_go_checkers = ['go']
 let g:syntastic_html_tidy_ignore_errors=[" proprietary attribute \"ng-", "trimming empty"]
 let g:syntastic_mode_map = { "mode": "active", "active_filetypes": ["go"], "passive_filetypes": ["javac", "java"] }
@@ -353,6 +371,7 @@ call vundle#begin()
 Bundle 'gmarik/vundle'
 Bundle 'jnwhiteh/vim-golang'
 Bundle 'vim-scripts/Cpp11-Syntax-Support'
+Bundle 'nvie/vim-flake8'
 Bundle 'Valloric/YouCompleteMe'
 Bundle 'scrooloose/syntastic'
 Bundle 'hynek/vim-python-pep8-indent'
