@@ -50,6 +50,7 @@ set pastetoggle=<F2>
 
 " map <F3> to YCMHover to show type information
 noremap <F3> <plug>(YCMHover)
+let g:ycm_auto_hover = ''
 
 " Insert Ascii Text Headers
 command! -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
