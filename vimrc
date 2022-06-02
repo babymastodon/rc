@@ -98,9 +98,6 @@ set encoding=utf-8
 :nnoremap <C-t>     :tab split<CR>
 :inoremap <C-t>     <Esc>:tab split<CR>
 
-" go to first syntastic error
-:nnoremap ; :lfirst<CR>
-
 " tagbar
 nnoremap <F9> :TagbarToggle<CR>
 let g:tagbar_width = 80
@@ -156,9 +153,14 @@ let g:lt_height = 10
 noremap - :cprev<CR>
 noremap = :cnext<CR>
 
+" go to first linter error, and iterate through the errors
+:nnoremap ; :lfirst<CR>
+:nnoremap + :lnext<CR>
+:nnoremap _ :lprev<CR>
+
 " resize
-nnoremap + :exe "resize " . (winheight(0) * 3/2)<CR>
-nnoremap _ :exe "resize " . (winheight(0) * 2/3)<CR>
+" nnoremap + :exe "resize " . (winheight(0) * 3/2)<CR>
+" nnoremap _ :exe "resize " . (winheight(0) * 2/3)<CR>
 
 " go to next tag match
 noremap ) :tn<CR>
@@ -220,17 +222,9 @@ let g:ycm_collect_identifiers_from_tags_files = 1
 nnoremap gd :YcmCompleter GoTo<CR>
 nnoremap gl :YcmCompleter FixIt<CR>
 
-" syntastic checkers
-let g:syntastic_python_checkers = ['python']
-let g:syntastic_python_python_exec = 'python3'
-let g:syntastic_go_checkers = ['go']
-let g:syntastic_html_tidy_ignore_errors=[" proprietary attribute \"ng-", "trimming empty"]
-let g:syntastic_mode_map = { "mode": "active", "active_filetypes": ["go"], "passive_filetypes": ["javac", "java"] }
-let g:syntastic_always_populate_loc_list = 1
-let g:syntastic_javascript_checkers = ['jshint']
-let g:syntastic_always_populate_loc_list=1
-let g:syntastic_auto_loc_list = 0
-
+" ale linters
+let b:ale_linters = ['flake8', 'pylint', 'mypy']
+let b:ale_fixers = ['autopep8', 'yapf']
 
 let g:go_fmt_experimental = 1
 let g:go_fmt_fail_silently = 1
@@ -373,8 +367,6 @@ Bundle 'gmarik/vundle'
 Bundle 'jnwhiteh/vim-golang'
 Bundle 'vim-scripts/Cpp11-Syntax-Support'
 Bundle 'nvie/vim-flake8'
-Bundle 'Valloric/YouCompleteMe'
-Bundle 'scrooloose/syntastic'
 Bundle 'hynek/vim-python-pep8-indent'
 Bundle 'tpope/vim-fugitive'
 Bundle "pangloss/vim-javascript"
@@ -388,6 +380,8 @@ Bundle 'chrisbra/csv.vim'
 Bundle 'vhdirk/vim-cmake'
 Bundle 'ctrlpvim/ctrlp.vim'
 Bundle 'powerman/vim-plugin-AnsiEsc'
+Bundle 'dense-analysis/ale'
+Bundle 'Valloric/YouCompleteMe'
 
 call vundle#end()
 filetype plugin on
