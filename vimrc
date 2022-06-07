@@ -380,6 +380,7 @@ hi CSVColumnOdd  term=bold ctermbg=Grey ctermfg=Black
 " Python document generation
 " To install: ~/.vim/bundle/vim-pydocstring/lib/install.sh ~/.vim/bundle/vim-pydocstring/lib/install.sh
 let g:pydocstring_formatter = 'google'
+let g:pydocstring_enable_mapping = '0'
 nnoremap <F10> :Pydocstring<CR>
 
 " Vundle packages
