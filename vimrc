@@ -377,6 +377,11 @@ nnoremap <silent> gk :ToggleCB<cr>
 hi CSVColumnEven term=bold ctermbg=Black ctermfg=White
 hi CSVColumnOdd  term=bold ctermbg=Grey ctermfg=Black
 
+" Python document generation
+" To install: ~/.vim/bundle/vim-pydocstring/lib/install.sh ~/.vim/bundle/vim-pydocstring/lib/install.sh
+let g:pydocstring_formatter = 'google'
+nnoremap <F10> :Pydocstring<CR>
+
 " Vundle packages
 filetype off
 syntax on
@@ -402,6 +407,7 @@ Bundle 'ctrlpvim/ctrlp.vim'
 Bundle 'powerman/vim-plugin-AnsiEsc'
 Bundle 'dense-analysis/ale'
 Bundle 'Valloric/YouCompleteMe'
+Bundle 'heavenshell/vim-pydocstring'
 
 call vundle#end()
 filetype plugin on
