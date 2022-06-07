@@ -10,6 +10,8 @@ mkdir -p ~/.vim/syntax/
 ln -sf $PWD/coffee.vim ~/.vim/syntax/coffee.vim
 mkdir -p ~/.vim/indent/
 ln -sf $PWD/coffee.indent.vim ~/.vim/indent/coffee.vim
+mkdir -p ~/.vim/colors/
+ln -sf $PWD/colors/summerfruit256.vim ~/.vim/colors/summerfruit256.vim
 
 
 # source .bashrc_extra from .bashrc

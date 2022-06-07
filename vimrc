@@ -9,6 +9,9 @@ set bs=2
 set tabstop=2
 set shiftwidth=2
 
+" color scheme
+color summerfruit256
+
 " smartindent only good for C
 set nosmartindent
 set autoindent
@@ -218,13 +221,30 @@ let g:ycm_global_ycm_extra_conf = '~/.ycm_extra_conf.py'
 let g:ycm_confirm_extra_conf = 0
 " get identifiers from tag files
 let g:ycm_collect_identifiers_from_tags_files = 1
+let ycm_auto_trigger = 1
 " use ycm's goto def, instead of vim's default
 nnoremap gd :YcmCompleter GoTo<CR>
 nnoremap gl :YcmCompleter FixIt<CR>
 
 " ale linters
-let b:ale_linters = ['flake8', 'pylint', 'mypy']
-let b:ale_fixers = ['autopep8', 'yapf']
+let g:ale_linters = {
+\  'python': ['flake8', 'pyright']
+\}
+let g:ale_fixers = {
+\  'python': [
+\    'autopep8',
+\    'autoflake',
+\    'isort',
+\    'remove_trailing_lines',
+\    'trim_whitespace',
+\    'yapf'
+\  ]
+\}
+let g:ale_python_autopep8_options = '--ignore F811,W503,W504,E731'
+let g:ale_python_autoflake_options= '--ignore-init-module-imports --remove-all-unused-imports'
+let g:ale_fix_on_save = 1
+nnoremap ' :ALEImport<CR>
+nnoremap " :ALEFix<CR>
 
 let g:go_fmt_experimental = 1
 let g:go_fmt_fail_silently = 1
