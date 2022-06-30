@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# common instructions
+bash $PWD/install_basic.sh
+
 ln -sf $PWD/bashrc_mac ~/.bashrc_mac
 
 # source .bashrc_mac from .bashrc
