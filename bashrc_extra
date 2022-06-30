@@ -32,7 +32,8 @@ alias vimdiff='vim -d'
 alias ck='git checkout'
 alias cm='git commit'
 alias pl='git pull'
-alias ph='git push'
+alias ph='git push --force-with-lease'
+alias br='git log --graph --oneline --decorate --all'
 alias activate='source .venv/bin/activate'
 
 # enable bash completion

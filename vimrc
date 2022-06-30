@@ -48,6 +48,9 @@ let g:netrw_preview = 1
 " open file under cursor in vertical split
 noremap gf :vertical wincmd F<CR>
 
+" enable spellcheck
+set spell spelllang=en_us
+
 " pressing F2 enters paste mode
 set pastetoggle=<F2>
 
@@ -240,8 +243,8 @@ let g:ale_fixers = {
 \    'yapf'
 \  ]
 \}
-let g:ale_python_autopep8_options = '--ignore F811,W503,W504,E731'
-let g:ale_python_autoflake_options= '--ignore-init-module-imports --remove-all-unused-imports'
+let g:ale_python_autopep8_options = '--ignore F811,W503,W504,E731,E125'
+let g:ale_python_autoflake_options= '--ignore-init-module-imports --remove-all-unused-imports --keep-useless-pass'
 let g:ale_fix_on_save = 1
 nnoremap ' :ALEImport<CR>
 nnoremap " :ALEFix<CR>
@@ -398,7 +401,6 @@ Bundle 'tpope/vim-fugitive'
 Bundle "pangloss/vim-javascript"
 Bundle 'fatih/vim-go'
 Bundle 'majutsushi/tagbar'
-Bundle 'yegappan/greplace'
 Bundle 'rodjek/vim-puppet'
 Bundle 'Valloric/ListToggle'
 Bundle 'rhysd/vim-clang-format'
