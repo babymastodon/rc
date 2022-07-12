@@ -34,7 +34,7 @@ alias cm='git commit'
 alias pl='git pull'
 alias ph='git push --force-with-lease'
 alias br='git log --graph --oneline --decorate --all'
-alias activate='source .venv/bin/activate'
+alias activate='source venv/bin/activate'
 
 # enable bash completion
 if [ -f /etc/bash_completion ] && ! shopt -oq posix; then
