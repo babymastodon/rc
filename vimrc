@@ -244,7 +244,7 @@ let g:ale_fixers = {
 \  ]
 \}
 let g:ale_python_autopep8_options = '--ignore F811,W503,W504,E731,E125'
-let g:ale_python_autoflake_options= '--ignore-init-module-imports --remove-all-unused-imports --keep-useless-pass'
+let g:ale_python_autoflake_options= '--ignore-init-module-imports --remove-all-unused-imports'
 let g:ale_fix_on_save = 1
 nnoremap ' :ALEImport<CR>
 nnoremap " :ALEFix<CR>
