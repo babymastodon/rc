@@ -35,6 +35,7 @@ alias pl='git pull'
 alias ph='git push --force-with-lease'
 alias br='git log --graph --oneline --decorate --all'
 alias src='source ~/.bashrc'
+alias rc='cd ~/code/rc'
 alias activate='source venv/bin/activate'
 
 # enable bash completion
