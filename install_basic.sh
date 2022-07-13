@@ -37,6 +37,12 @@ then
   git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim
 fi
 
+# install git completion
+if [ ! -f ~/.git-completion.bash ]
+then
+  curl https://raw.githubusercontent.com/git/git/master/contrib/completion/git-completion.bash > ~/.git-completion.bash
+fi
+
 # set git defaults
 git config --global core.editor vim
 git config --global push.default simple
