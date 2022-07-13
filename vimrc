@@ -392,6 +392,11 @@ syntax on
 set rtp+=~/.vim/bundle/Vundle.vim
 call vundle#begin()
 
+" Git shortcuts
+" :Gdiff should show side-by-side
+set diffopt=vertical
+nnoremap df :Gdiff master<CR>
+
 Bundle 'gmarik/vundle'
 Bundle 'jnwhiteh/vim-golang'
 Bundle 'vim-scripts/Cpp11-Syntax-Support'
