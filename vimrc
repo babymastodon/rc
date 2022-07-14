@@ -208,7 +208,7 @@ au FileType javascript nnoremap & :e %<.html<CR>
 au FileType go nnoremap & :e %:p:s,\([^_][^t][^e][^s][^t]\).go$,\1.X123X,:s,_test.go$,.go,:s,.X123X$,_test.go,<CR>
 
 " highlight trailing whitespace
-highlight ExtraWhitespace ctermbg=green guibg=green
+highlight ExtraWhitespace ctermbg=green ctermbg=green
 match ExtraWhitespace /\s\+$/
 autocmd BufWinEnter * match ExtraWhitespace /\s\+$/
 autocmd InsertEnter * match ExtraWhitespace /\s\+\%#\@<!$/
@@ -396,6 +396,10 @@ call vundle#begin()
 " :Gdiff should show side-by-side
 set diffopt=vertical
 nnoremap df :Gdiff master<CR>
+hi DiffAdd cterm=NONE ctermfg=NONE ctermbg=194
+hi DiffChange cterm=NONE ctermfg=NONE ctermbg=231
+hi DiffText cterm=NONE ctermfg=NONE ctermbg=189
+hi DiffDelete cterm=NONE ctermfg=NONE ctermbg=224
 
 Bundle 'gmarik/vundle'
 Bundle 'jnwhiteh/vim-golang'
