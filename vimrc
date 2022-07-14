@@ -395,7 +395,7 @@ call vundle#begin()
 " Git shortcuts
 " :Gdiff should show side-by-side
 set diffopt=vertical
-nnoremap df :Gdiff master<CR>
+:command! Diff Gdiff master
 hi DiffAdd cterm=NONE ctermfg=NONE ctermbg=194
 hi DiffChange cterm=NONE ctermfg=NONE ctermbg=231
 hi DiffText cterm=NONE ctermfg=NONE ctermbg=189
