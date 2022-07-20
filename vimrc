@@ -39,6 +39,9 @@ set nocompatible
 " all folds open by default
 autocmd BufWinEnter * let &foldlevel = max(map(range(1, line('$')), 'foldlevel(v:val)'))
 
+" enable mouse
+set mouse=a
+
 " show netrw previews in vertically split window
 let g:netrw_preview = 1
 
