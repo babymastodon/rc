@@ -423,6 +423,7 @@ Bundle 'powerman/vim-plugin-AnsiEsc'
 Bundle 'dense-analysis/ale'
 Bundle 'Valloric/YouCompleteMe'
 Bundle 'heavenshell/vim-pydocstring'
+Bundle 'rhysd/conflict-marker.vim'
 
 call vundle#end()
 filetype plugin on
