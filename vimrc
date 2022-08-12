@@ -404,6 +404,10 @@ hi DiffChange cterm=NONE ctermfg=NONE ctermbg=231
 hi DiffText cterm=NONE ctermfg=NONE ctermbg=189
 hi DiffDelete cterm=NONE ctermfg=NONE ctermbg=224
 
+" :Rc should open vimrc
+:command! Rc :edit! ~/.vimrc
+:command! Src :source ~/.vimrc
+
 Bundle 'gmarik/vundle'
 Bundle 'jnwhiteh/vim-golang'
 Bundle 'vim-scripts/Cpp11-Syntax-Support'
