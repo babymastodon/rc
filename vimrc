@@ -200,8 +200,8 @@ vnoremap <C-m> :join<CR>
 highlight OverLength ctermbg=green ctermfg=white
 autocmd FileType python 2match OverLength /\%>120v.\+/
 
-" Press F4 to toggle highlighting on/off, and show current value.
-noremap <F4> :set hlsearch! hlsearch?<CR>
+" Press F5 to toggle highlighting on/off, and show current value.
+noremap <F5> :set hlsearch! hlsearch?<CR>
 set hlsearch
 
 " Press & to switch between two related files
@@ -251,6 +251,7 @@ let g:ale_python_autoflake_options= '--ignore-init-module-imports --remove-all-u
 let g:ale_fix_on_save = 1
 nnoremap ' :ALEImport<CR>
 nnoremap " :ALEFix<CR>
+nnoremap <F4> :ALEStopAllLSPs<CR>
 
 let g:go_fmt_experimental = 1
 let g:go_fmt_fail_silently = 1
