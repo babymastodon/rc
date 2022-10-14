@@ -429,6 +429,8 @@ Bundle 'dense-analysis/ale'
 Bundle 'Valloric/YouCompleteMe'
 Bundle 'heavenshell/vim-pydocstring'
 Bundle 'rhysd/conflict-marker.vim'
+Bundle 'pedrohdz/vim-yaml-folds'
+Bundle 'chrisbra/csv.vim'
 
 call vundle#end()
 filetype plugin on
