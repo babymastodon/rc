@@ -383,18 +383,15 @@ nnoremap <silent> gk :ToggleCB<cr>
 " CSV files
 hi CSVColumnEven term=bold ctermbg=Black ctermfg=White
 hi CSVColumnOdd  term=bold ctermbg=Grey ctermfg=Black
+" let g:csv_autocmd_arrange	   = 1
+" let g:csv_autocmd_arrange_size = 1024*1024
+let g:csv_highlight_column = 'y'
 
 " Python document generation
 " To install: ~/.vim/bundle/vim-pydocstring/lib/install.sh ~/.vim/bundle/vim-pydocstring/lib/install.sh
 let g:pydocstring_formatter = 'google'
 let g:pydocstring_enable_mapping = '0'
 nnoremap <F10> :Pydocstring<CR>
-
-" Vundle packages
-filetype off
-syntax on
-set rtp+=~/.vim/bundle/Vundle.vim
-call vundle#begin()
 
 " Git shortcuts
 " :Gdiff should show side-by-side
@@ -408,6 +405,11 @@ hi DiffDelete cterm=NONE ctermfg=NONE ctermbg=224
 " :Rc should open vimrc
 :command! Rc :edit! ~/.vimrc
 :command! Src :source ~/.vimrc
+
+" Vundle packages
+filetype off
+set rtp+=~/.vim/bundle/Vundle.vim
+call vundle#begin()
 
 Bundle 'gmarik/vundle'
 Bundle 'jnwhiteh/vim-golang'
@@ -434,3 +436,4 @@ Bundle 'pedrohdz/vim-yaml-folds'
 call vundle#end()
 filetype plugin on
 filetype indent on
+syn on
