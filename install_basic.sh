@@ -45,5 +45,5 @@ fi
 
 # set git defaults
 git config --global core.editor vim
-git config --global push.default simple
 git config --global core.excludesfile ~/.gitignore_global
+git config --global push.default current
