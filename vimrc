@@ -251,7 +251,7 @@ let g:ale_python_autoflake_options= '--ignore-init-module-imports --remove-all-u
 let g:ale_fix_on_save = 1
 nnoremap ' :ALEImport<CR>
 nnoremap " :ALEFix<CR>
-nnoremap <F4> :ALEStopAllLSPs<CR>
+nnoremap <F4> :ALEStopAllLSPs<CR>:YcmRestartServer<CR>
 
 let g:go_fmt_experimental = 1
 let g:go_fmt_fail_silently = 1
