@@ -28,10 +28,13 @@ if [ -d "$HOME/.cargo/bin" ] ; then
     export PATH="$HOME/.cargo/bin:$PATH"
 fi
 
-# store the ssh auth sock in the home folder for access from tmux
+# store the ssh auth sock in the home folder for access from tmux and mosh
 if [ ! -z "$SSH_AUTH_SOCK" -a "$SSH_AUTH_SOCK" != "$HOME/.ssh/agent_sock" ] ; then
   unlink "$HOME/.ssh/agent_sock" 2>/dev/null
   ln -s "$SSH_AUTH_SOCK" "$HOME/.ssh/agent_sock"
+  export SSH_AUTH_SOCK="$HOME/.ssh/agent_sock"
+fi
+if [ -z "$SSH_AUTH_SOCK" ] ; then
   export SSH_AUTH_SOCK="$HOME/.ssh/agent_sock"
 fi
 
