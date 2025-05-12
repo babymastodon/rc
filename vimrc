@@ -10,7 +10,9 @@ set tabstop=2
 set shiftwidth=2
 
 " color scheme
-color summerfruit256
+" set t_Co=256
+set background=dark
+color gruvbox
 
 " smartindent only good for C
 set nosmartindent
