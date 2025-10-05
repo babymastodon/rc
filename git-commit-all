@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 # git-commit-all: robust, concise auto-commit with emoji + smart category
-# Shows only basenames in the "top 3 files" list.
-# Usage: git-commit-all [optional note]
-set -uo pipefail  # no -e; handle rc's explicitly
+# - Auto-adds modified/deleted tracked files (git add -u)
+# - One-line: "<emoji> <type> — <top3 basenames> (+adds/-dels, YYYY-MM-DD HH:MM) [ (N files) ]"
+# - Category from TOP-3 files using per-line volumes + add/remove ratio
+# - HARD OVERRIDES:
+#     * If any top-3 is deleted  -> 🔥 remove
+#     * If any top-3 is renamed  -> 🔁 rename
+#     * If any top-3 is added    -> classify by extension (docs/tests/config/deps/version) else ✨ add
+# - Soft categories: rewrite, docs, version bump, tests, config, deps, cleanup, add/remove/rename, refactor, feat, prune, bugfix, oneliner, edit
+
+set -uo pipefail  # not using -e; explicit rc checks
 
 note="${*:-}"
 DEBUG=${GCA_DEBUG:-0}
@@ -12,10 +19,9 @@ die(){ echo "git-commit-all: $*" >&2; exit 1; }
 in_repo(){ git rev-parse --show-toplevel >/dev/null 2>&1; }
 is_ws_only_cached(){ git diff --cached -w --quiet; return $?; }
 join_commas(){ awk 'BEGIN{ORS=""}{if(NR>1)printf(", ");printf("%s",$0)}END{print ""}'; }
-basename_only(){ # safe basename even with trailing slash
-  local p="$1"; p="${p%/}"; printf "%s\n" "${p##*/}";
-}
+basename_only(){ local p="$1"; p="${p%/}"; printf "%s\n" "${p##*/}"; }
 
+# ---------- setup ----------
 in_repo || die "not a git repo"
 git add -u >/dev/null 2>&1 || true
 
@@ -36,29 +42,25 @@ DATE=$(date +"%Y-%m-%d %H:%M")
 TOP3_LINES=$(
   printf "%s\n" "$NUMSTAT" \
   | awk '{
-      a=$1; d=$2;
-      if(a=="-"||a=="") a=0;
-      if(d=="-"||d=="") d=0;
+      a=$1; d=$2; if(a=="-"||a=="") a=0; if(d=="-"||d=="") d=0;
       path=$3; for(i=4;i<=NF;i++){path=path OFS $i}
       if(path!=""){ print a+d "\t" a "\t" d "\t" path }
     }' \
   | sort -nr | head -3
 )
 
-# Build T3_PATHS (full) and T3_BASES (filenames only)
+# Build top-3 arrays (full + basename)
 declare -a T3_PATHS=() T3_BASES=()
 while IFS=$'\t' read -r _ch _a _d path || [[ -n "${path:-}" ]]; do
-  [[ -n "${path:-}" ]] || continue
+  [[ -z "${path:-}" ]] && continue
   T3_PATHS+=("$path")
   T3_BASES+=("$(basename_only "$path")")
 done < <(printf "%s\n" "$TOP3_LINES")
 
-# Fallback if empty (e.g., odd numstat)
-if [[ ${#T3_BASES[@]} -eq 0 ]]; then
-  while IFS= read -r path; do
-    [[ -z "$path" ]] && continue
-    T3_PATHS+=("$path")
-    T3_BASES+=("$(basename_only "$path")")
+if [[ ${#T3_PATHS[@]} -eq 0 ]]; then
+  while IFS= read -r p; do
+    [[ -z "$p" ]] && continue
+    T3_PATHS+=("$p"); T3_BASES+=("$(basename_only "$p")")
   done < <(printf "%s\n" "$NUMSTAT" | awk '{p=$3; for(i=4;i<=NF;i++){p=p OFS $i} if(p!="") print p}' | head -3)
 fi
 
@@ -75,7 +77,7 @@ while IFS=$'\t' read -r s p1 p2 || [[ -n "${s:-}" ]]; do
   fi
 done < <(printf "%s\n" "$NAME_STATUS")
 
-# Patterns
+# ---------- patterns ----------
 docs_file_pat='(^|/)docs?(/|$)|\.(md|rst|adoc|mdx|txt)$'
 tests_file_pat='(^|/)(test|tests|__tests__|spec)(/|$)|\.(test|spec)\.[^/]+$'
 config_file_pat='\.(json|ya?ml|toml|ini|conf|config)$|(^|/)\.(editorconfig|eslintrc(\.json)?|prettier(rc|\.config\.js)?|stylelintrc(\.json)?)$|(^|/)Makefile$|(^|/)Dockerfile$|(^|/)docker-compose\.ya?ml$|(^|/)pyproject\.toml$|(^|/)setup\.(cfg|py)$|(^|/)tsconfig\.json$'
@@ -100,11 +102,11 @@ is_version_line(){
   return 1
 }
 
-# Per-line category volumes (top-3 only)
+# ---------- per-line volumes for top-3 ----------
 declare -A vol_add vol_del
 for k in docs tests config deps version code; do vol_add[$k]=0; vol_del[$k]=0; done
-current=""
 
+current=""
 while IFS= read -r line || [[ -n "$line" ]]; do
   if [[ "$line" =~ ^diff\ --git\ a/(.*)\ b/(.*) ]]; then
     current="${BASH_REMATCH[2]}"
@@ -144,33 +146,79 @@ t3_total=$((t3_add + t3_del))
 if [[ $t3_add -eq 0 && $t3_del -eq 0 ]]; then ratio_t3="1.00"
 else ratio_t3=$(awk -v a="$t3_add" -v d="$t3_del" 'BEGIN{printf "%.2f",(a+1)/(d+1)}'); fi
 
+# ---------- status emphasis for top-3 (HARD OVERRIDES) ----------
 cnt_A=0; cnt_D=0; cnt_R=0
+declare -a T3_STATUS=()
 for p in "${T3_PATHS[@]:-}"; do
-  st="${STATUS_MAP[$p]:-M}"
+  st="${STATUS_MAP[$p]:-M}"; T3_STATUS+=("$st")
   case "$st" in A) ((cnt_A++));; D) ((cnt_D++));; R) ((cnt_R++));; esac
 done
 
-ws=false; is_ws_only_cached && ws=true
-share(){ local c="$1"; echo $(( vol_add[$c] + vol_del[$c] )); }
-docs_n=$(share docs); tests_n=$(share tests); config_n=$(share config)
-deps_n=$(share deps); version_n=$(share version); code_n=$(share code)
+# ---------- build a classification helper for new files ----------
+class_for_added() {
+  local path="$1"
+  if   [[ "$path" =~ $deps_file_pat ]]; then echo "deps|📦"
+  elif [[ "$path" =~ $tests_file_pat ]]; then echo "tests|✅"
+  elif [[ "$path" =~ $docs_file_pat ]]; then  echo "docs|📚"
+  elif [[ "$path" =~ $config_file_pat ]]; then echo "config|⚙️"
+  elif [[ "$path" =~ $version_files_pat ]]; then echo "version bump|🔖"
+  else echo "add|✨"
+  fi
+}
 
+# ---------- choose category ----------
 type="edit"; emoji="📝"
-if $ws; then type="cleanup"; emoji="🧹"
-elif (( cnt_R >= 2 )); then type="rename"; emoji="🔁"
-elif (( cnt_D >= 2 )) && (( t3_add + t3_del <= 50 )); then type="remove"; emoji="🔥"
-elif (( cnt_A >= 2 )) && (( t3_add >= 10 )); then type="add"; emoji="➕"
-elif (( deps_n > 0 )) && (( deps_n >= tests_n + docs_n + config_n + code_n )); then type="deps"; emoji="📦"
-elif (( config_n > 0 )) && (( config_n >= docs_n )) && (( config_n >= tests_n )) && (( config_n >= deps_n )) && (( config_n >= code_n/2 )); then type="config"; emoji="⚙️"
-elif (( version_n >= 3 )) && (( deps_n + config_n + docs_n + tests_n <= version_n*2 )); then type="version bump"; emoji="🔖"
-elif (( tests_n > 0 )) && (( tests_n >= docs_n )) && (( tests_n >= config_n )) && (( tests_n >= deps_n )) && (( tests_n >= code_n/2 )); then type="tests"; emoji="✅"
-elif (( docs_n > 0 )) && (( docs_n >= tests_n )) && (( docs_n >= config_n )) && (( docs_n >= deps_n )) && (( docs_n >= code_n/2 )); then type="docs"; emoji="📚"
-elif (( t3_total <= 3 )); then type="oneliner"; emoji="⚡"
-elif (( t3_total <= 20 )) && (( ${#T3_PATHS[@]} <= 3 )); then type="bugfix"; emoji="🐛"
-elif awk -v r="$ratio_t3" 'BEGIN{exit !(r>=3.0)}'; then type="feat"; emoji="✨"
-elif awk -v r="$ratio_t3" 'BEGIN{exit !(r<=0.33)}'; then type="prune"; emoji="🔥"
-elif awk -v r="$ratio_t3" 'BEGIN{exit !(r>=0.7 && r<=1.3)}' && (( t3_total > 1200 )); then type="rewrite"; emoji="🧨"
-elif awk -v r="$ratio_t3" 'BEGIN{exit !(r>=0.7 && r<=1.3)}' && (( t3_total > 300 )); then type="refactor"; emoji="♻️"
+
+# HARD OVERRIDES FIRST (as requested)
+if (( cnt_D >= 1 )); then
+  type="remove"; emoji="🔥"
+elif (( cnt_R >= 1 )); then
+  type="rename"; emoji="🔁"
+elif (( cnt_A >= 1 )); then
+  # If any of the top-3 is added, classify each added file; pick the most "specific" (non-generic) if present.
+  add_choice="add|✨"
+  for i in "${!T3_PATHS[@]}"; do
+    if [[ "${T3_STATUS[$i]}" == "A" ]]; then
+      add_choice=$(class_for_added "${T3_PATHS[$i]}")
+      # Prefer any of: deps/config/tests/docs/version bump over generic add
+      IFS="|" read -r ctype cemoji <<< "$add_choice"
+      if [[ "$ctype" != "add" ]]; then type="$ctype"; emoji="$cemoji"; break; fi
+    fi
+  done
+  if [[ "$type" == "edit" ]]; then IFS="|" read -r type emoji <<< "$add_choice"; fi
+
+else
+  # SOFT logic (unchanged): cleanup → deps/config/version/tests/docs → small → ratio → rewrite/refactor → prune/feat → edit
+  ws=false; is_ws_only_cached && ws=true
+  share(){ local c="$1"; echo $(( vol_add[$c] + vol_del[$c] )); }
+  docs_n=$(share docs); tests_n=$(share tests); config_n=$(share config)
+  deps_n=$(share deps); version_n=$(share version); code_n=$(share code)
+
+  if $ws; then
+    type="cleanup"; emoji="🧹"
+  elif (( deps_n > 0 )) && (( deps_n >= tests_n + docs_n + config_n + code_n )); then
+    type="deps"; emoji="📦"
+  elif (( config_n > 0 )) && (( config_n >= docs_n )) && (( config_n >= tests_n )) && (( config_n >= deps_n )) && (( config_n >= code_n/2 )); then
+    type="config"; emoji="⚙️"
+  elif (( version_n >= 3 )) && (( deps_n + config_n + docs_n + tests_n <= version_n*2 )); then
+    type="version bump"; emoji="🔖"
+  elif (( tests_n > 0 )) && (( tests_n >= docs_n )) && (( tests_n >= config_n )) && (( tests_n >= deps_n )) && (( tests_n >= code_n/2 )); then
+    type="tests"; emoji="✅"
+  elif (( docs_n > 0 )) && (( docs_n >= tests_n )) && (( docs_n >= config_n )) && (( docs_n >= deps_n )) && (( docs_n >= code_n/2 )); then
+    type="docs"; emoji="📚"
+  elif (( t3_total <= 3 )); then
+    type="oneliner"; emoji="⚡"
+  elif (( t3_total <= 20 )) && (( ${#T3_PATHS[@]} <= 3 )); then
+    type="bugfix"; emoji="🐛"
+  elif awk -v r="$ratio_t3" 'BEGIN{exit !(r>=3.0)}'; then
+    type="feat"; emoji="✨"
+  elif awk -v r="$ratio_t3" 'BEGIN{exit !(r<=0.33)}'; then
+    type="prune"; emoji="🔥"
+  elif awk -v r="$ratio_t3" 'BEGIN{exit !(r>=0.7 && r<=1.3)}' && (( t3_total > 1200 )); then
+    type="rewrite"; emoji="🧨"
+  elif awk -v r="$ratio_t3" 'BEGIN{exit !(r>=0.7 && r<=1.3)}' && (( t3_total > 300 )); then
+    type="refactor"; emoji="♻️"
+  fi
 fi
 
 [[ -n "$note" ]] && type="$type — $note"
@@ -181,7 +229,6 @@ msg="${emoji} ${type} — ${TOP3_FILES}${suffix}"
 
 if [[ "$DEBUG" = "1" ]]; then
   echo "[gca] files=${TOTAL_FILES} adds=${TOTAL_ADDS} dels=${TOTAL_DELS} t3_add=${t3_add} t3_del=${t3_del} ratio=${ratio_t3}" >&2
-  echo "[gca] vols docs=${docs_n} tests=${tests_n} config=${config_n} deps=${deps_n} version=${version_n} code=${code_n}" >&2
   echo "[gca] status A=${cnt_A} D=${cnt_D} R=${cnt_R}" >&2
   echo "[gca] msg=${msg}" >&2
 fi
