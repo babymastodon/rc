@@ -1,35 +1,47 @@
 #!/usr/bin/env bash
 # git-commit-all: concise auto-commit; auto-adds modified/deleted files.
-# - Stages modified/deleted tracked files via `git add -u`
-# - One-line message with emoji + type, top-3 files, (+adds/-dels, YYYY-MM-DD HH:MM), and "(N files)" if >3
-# - Category decided from TOP-3 files using line-level volumes and add/remove ratio
-# - Categories: rewrite, docs, version bump, tests, config, deps, cleanup, plus add/remove/rename, refactor, feat, prune, bugfix, oneliner, edit
-# Usage: git-commit-all [optional note]
+# One-line message: <emoji> <type> — <top3> (+adds/-dels, YYYY-MM-DD HH:MM) [(N files)]
+# Category = weighted by TOP-3 files' line categories (docs/tests/config/deps/version/code)
+# Includes: rewrite, docs, version bump, tests, config, deps, cleanup, plus add/remove/rename, refactor, feat, prune, bugfix, oneliner, edit
 
 set -euo pipefail
+
 note="${*:-}"
 
-# --- helpers ---------------------------------------------------------------
-in_repo() { git rev-parse --show-toplevel >/dev/null 2>&1; }
-is_ws_only_cached() { git diff --cached -w --quiet; } # ignore whitespace in staged
-join_commas(){ awk 'BEGIN{ORS=""}{if(NR>1)printf(", ");printf("%s",$0)}END{print ""}'; }
+# ---- helpers (safe under set -e) ------------------------------------------
 die(){ echo "git-commit-all: $*" >&2; exit 1; }
 
+in_repo() {
+  set +e; git rev-parse --show-toplevel >/dev/null 2>&1; local rc=$?; set -e; return $rc
+}
+
+is_ws_only_cached() {
+  # true if staged diff is whitespace-only
+  set +e; git diff --cached -w --quiet; local rc=$?; set -e; return $rc
+}
+
+join_commas(){ awk 'BEGIN{ORS=""}{if(NR>1)printf(", ");printf("%s",$0)}END{print ""}'; }
+
+# ---- preconditions ---------------------------------------------------------
 in_repo || die "not a git repo"
 
 # Auto-add modified/deleted tracked files so unstaged mods are included
 git add -u
 
-# If nothing staged after auto-add, bail
-if git diff --cached --quiet; then
+# If nothing staged after auto-add, bail with a message
+set +e
+git diff --cached --quiet
+has_staged=$?
+set -e
+if [[ $has_staged -eq 0 ]]; then
   echo "Nothing to commit. (Untracked files need 'git add')" >&2
   exit 0
 fi
 
-# Use the staged diff (**source of truth**) for analysis
+# ---- gather staged diff ----------------------------------------------------
 NAME_STATUS=$(git diff --cached --name-status -M -C)
 NUMSTAT=$(git diff --cached --numstat -M -C)
-PATCH=$(git diff --cached)  # unified diff of staged changes
+PATCH=$(git diff --cached)
 
 # Totals & timestamp
 TOTAL_ADDS=$(echo "$NUMSTAT" | awk '{a=$1; if(a=="-") a=0; s+=a} END{print s+0}')
@@ -41,13 +53,14 @@ DATE=$(date +"%Y-%m-%d %H:%M")
 TOP3_LINES=$(echo "$NUMSTAT" \
   | awk '{a=$1; if(a=="-") a=0; d=$2; if(d=="-") d=0; $1=$2=""; sub(/^[ \t]+/,""); print a+d "\t" a "\t" d "\t" $0 }' \
   | sort -nr | head -3)
+
 TOP3_FILES=$(echo "$TOP3_LINES" | cut -f4- | join_commas)
 if [[ -z "$TOP3_FILES" ]]; then
   readarray -t ALLFILES < <(echo "$NUMSTAT" | awk 'NF>=3{print $3}')
   TOP3_FILES=$(printf "%s\n" "${ALLFILES[@]}" | head -3 | join_commas)
 fi
 
-# Map file -> status (A/M/D/R/C) for top-3
+# Map file -> status (A/M/D/R/C) for top-3 (to detect add/remove/rename)
 declare -A STATUS_MAP
 while IFS=$'\t' read -r s p1 p2; do
   [[ -z "${s:-}" ]] && continue
@@ -57,14 +70,13 @@ while IFS=$'\t' read -r s p1 p2; do
   fi
 done < <(printf "%s\n" "$NAME_STATUS")
 
-# --- category patterns ------------------------------------------------------
+# ---- category patterns -----------------------------------------------------
 docs_file_pat='(^|/)docs?(/|$)|\.(md|rst|adoc|mdx|txt)$'
 tests_file_pat='(^|/)(test|tests|__tests__|spec)(/|$)|\.(test|spec)\.[^/]+$'
 config_file_pat='\.(json|ya?ml|toml|ini|conf|config)$|(^|/)\.(editorconfig|eslintrc(\.json)?|prettier(rc|\.config\.js)?|stylelintrc(\.json)?)$|(^|/)Makefile$|(^|/)Dockerfile$|(^|/)docker-compose\.ya?ml$|(^|/)pyproject\.toml$|(^|/)setup\.(cfg|py)$|(^|/)tsconfig\.json$'
 deps_file_pat='(^|/)package(-lock)?\.json$|(^|/)yarn\.lock$|(^|/)pnpm-lock\.yaml$|(^|/)poetry\.lock$|(^|/)Pipfile(\.lock)?$|(^|/)Gemfile(\.lock)?$|(^|/)Cargo\.(lock|toml)$|(^|/)go\.(mod|sum)$|(^|/)composer\.(json|lock)$|(^|/)Podfile(\.lock)?$|(^|/)pom\.xml$|(^|/)build\.gradle(\.kts)?$'
 version_files_pat='(^|/)CHANGELOG\.md$|(^|/)CHANGES\.md$|(^|/)VERSION$|(^|/)(package\.json|pyproject\.toml|Cargo\.toml)'
 
-# Line-level doc/version detection
 is_docline() {
   local line="$1" path="$2"
   if [[ "$path" =~ $docs_file_pat ]]; then return 0; fi
@@ -79,7 +91,7 @@ is_docline() {
 is_version_line() {
   local line="$1"
   [[ "$line" =~ version[[:space:]]*[:=][[:space:]]*\"?[0-9]+\.[0-9]+(\.[0-9]+)? ]] && return 0
-  [[ "$line" =~ ^\+[[:space:]]*\-?[0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$ ]] && return 0
+  [[ "$line" =~ ^[[:space:]]*\-?[0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$ ]] && return 0
   return 1
 }
 
@@ -108,8 +120,7 @@ while IFS= read -r line; do
     elif [[ "$current" =~ $tests_file_pat ]]; then              ((vol_add[tests]+=1))
     elif [[ "$current" =~ $config_file_pat ]]; then             ((vol_add[config]+=1))
     elif is_docline "$content" "$current"; then                 ((vol_add[docs]+=1))
-    elif [[ "$current" =~ $version_files_pat ]] && ! is_version_line "$content"; then ((vol_add[code]+=1))
-    elif [[ "$current" =~ $version_files_pat ]] && is_version_line "$content"; then   ((vol_add[version]+=1))
+    elif [[ "$current" =~ $version_files_pat ]] && is_version_line "$content"; then ((vol_add[version]+=1))
     else                                                        ((vol_add[code]+=1))
     fi
   elif [[ "$line" =~ ^\- ]]; then
@@ -118,14 +129,13 @@ while IFS= read -r line; do
     elif [[ "$current" =~ $tests_file_pat ]]; then              ((vol_del[tests]+=1))
     elif [[ "$current" =~ $config_file_pat ]]; then             ((vol_del[config]+=1))
     elif is_docline "$content" "$current"; then                 ((vol_del[docs]+=1))
-    elif [[ "$current" =~ $version_files_pat ]] && ! is_version_line "$content"; then ((vol_del[code]+=1))
-    elif [[ "$current" =~ $version_files_pat ]] && is_version_line "$content"; then   ((vol_del[version]+=1))
+    elif [[ "$current" =~ $version_files_pat ]] && is_version_line "$content"; then ((vol_del[version]+=1))
     else                                                        ((vol_del[code]+=1))
     fi
   fi
 done <<< "$PATCH"
 
-# Aggregate top-3 stats
+# Aggregate top-3 stats + ratios
 t3_add=0; t3_del=0
 for k in docs tests config deps version code; do
   ((t3_add += vol_add[$k])); ((t3_del += vol_del[$k]))
@@ -140,7 +150,7 @@ for p in "${T3_PATHS[@]}"; do
   case "$st" in A) ((cnt_A++));; D) ((cnt_D++));; R) ((cnt_R++));; esac
 done
 
-# whitespace-only check on staged diff
+# whitespace-only on staged diff?
 ws=false; is_ws_only_cached && ws=true
 
 # category sizes
@@ -148,7 +158,7 @@ share(){ local c="$1"; echo $(( vol_add[$c] + vol_del[$c] )); }
 docs_n=$(share docs); tests_n=$(share tests); config_n=$(share config)
 deps_n=$(share deps); version_n=$(share version); code_n=$(share code)
 
-# --- decide category --------------------------------------------------------
+# ---- decide category -------------------------------------------------------
 type="edit"; emoji="📝"
 
 if $ws; then
@@ -185,11 +195,11 @@ fi
 
 [[ -n "$note" ]] && type="$type — $note"
 
-# Compose message and commit
 suffix=" (+${TOTAL_ADDS}/-${TOTAL_DELS}, ${DATE})"
 (( TOTAL_FILES > 3 )) && suffix="${suffix} (${TOTAL_FILES} files)"
 msg="${emoji} ${type} — ${TOP3_FILES}${suffix}"
 
-# `-a` is fine/redundant after add -u, but keeps intent explicit
-git commit -a -m "$msg"
+# ---- commit & print message ------------------------------------------------
+git commit -a -m "$msg" >/dev/null
+echo "$msg"
 

@@ -46,7 +46,7 @@ alias moo="TMPDIR=$TMUXTMP tmux attach -dt moo"
 alias fixmoo='TMPDIR=$TMUXTMP killall -s SIGUSR1 tmux'
 alias vimdiff='vim -d'
 alias ck='git checkout'
-alias cm='git commit -am "progress $(TZ=America/Los_Angeles date)"'
+alias cm='git-commit-all'
 alias gp='git cherry-pick'
 alias gl='git log'
 alias st='git status && git diff --stat'
