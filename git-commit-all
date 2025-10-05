@@ -1,125 +1,204 @@
 #!/usr/bin/env bash
-# git-commit-all: commit all tracked changes with a concise, emoji message.
-# Decision is based on the TOP 3 files by churn (adds+dels).
+# git-commit-all: concise auto-commit with emoji + category decided from top-3 files' line-level categories.
 # Usage: git-commit-all [optional note]
 
 set -euo pipefail
 note="${*:-}"
 
-# --- helpers ---
+# --- helpers ---------------------------------------------------------------
 in_repo() { git rev-parse --show-toplevel >/dev/null 2>&1; }
-is_ws_only() { git diff -w --quiet; }   # working tree vs index, ignores whitespace
-join_commas() { awk 'BEGIN{ORS=""}{if(NR>1)printf(", ");printf("%s",$0)}END{printf("\n")}'; }
+is_ws_only() { git diff -w --quiet; } # whitespace-only overall edit?
+join_commas(){ awk 'BEGIN{ORS=""}{if(NR>1)printf(", ");printf("%s",$0)}END{print ""}'; }
+die(){ echo "git-commit-all: $*" >&2; exit 1; }
 
-in_repo || { echo "Not a git repo" >&2; exit 1; }
-# Nothing to commit with -a?
+in_repo || die "not a git repo"
 if git diff --quiet; then
-  echo "Nothing to commit. (Untracked files require 'git add')" >&2
+  echo "Nothing to commit. (Untracked files need 'git add')" >&2
   exit 0
 fi
 
-# Diffs (worktree ↔ index); -M -C to detect renames/copies
+# Get working-tree diff (this is what -a will commit)
 NAME_STATUS=$(git diff --name-status -M -C)
 NUMSTAT=$(git diff --numstat -M -C)
-PATCH=$(git diff)
+PATCH=$(git diff)  # unified diff including hunks
 
-# Totals
-TOTAL_ADDS=$(echo "$NUMSTAT" | awk '{a=$1;a=(a=="-")?0:a;s+=a}END{print s+0}')
-TOTAL_DELS=$(echo "$NUMSTAT" | awk '{d=$2;d=(d=="-")?0:d;s+=d}END{print s+0}')
-TOTAL_CHURN=$(( TOTAL_ADDS + TOTAL_DELS ))
+# Totals & timestamp
+TOTAL_ADDS=$(echo "$NUMSTAT" | awk '{a=$1; if(a=="-") a=0; s+=a} END{print s+0}')
+TOTAL_DELS=$(echo "$NUMSTAT" | awk '{d=$2; if(d=="-") d=0; s+=d} END{print s+0}')
+TOTAL_FILES=$(echo "$NUMSTAT" | awk 'NF>=3{n++} END{print n+0}')
 DATE=$(date +"%Y-%m-%d %H:%M")
 
-# Build per-file stats and pick TOP 3 by churn
-# Fields: churn \t adds \t dels \t path
+# Top-3 files by churn
 TOP3_LINES=$(echo "$NUMSTAT" \
   | awk '{a=$1; if(a=="-") a=0; d=$2; if(d=="-") d=0; $1=$2=""; sub(/^[ \t]+/,""); print a+d "\t" a "\t" d "\t" $0 }' \
   | sort -nr | head -3)
-
-# Extract lists for message
 TOP3_FILES=$(echo "$TOP3_LINES" | cut -f4- | join_commas)
-# Fallback if somehow empty
 if [[ -z "$TOP3_FILES" ]]; then
   readarray -t ALLFILES < <(echo "$NUMSTAT" | awk 'NF>=3{print $3}')
   TOP3_FILES=$(printf "%s\n" "${ALLFILES[@]}" | head -3 | join_commas)
 fi
 
-# Count total files for optional suffix
-TOTAL_FILES=$(echo "$NUMSTAT" | awk 'NF>=3{n++}END{print n+0}')
-
-# Map file -> status for top3 (A/M/D/R/C)
-# For renames, NAME_STATUS has 3 columns: Rxx \t old \t new ; treat "new" path as the file
+# Map file -> status (A/M/D/R/C) to recognize adds/removes/renames in top-3
 declare -A STATUS_MAP
 while IFS=$'\t' read -r s p1 p2; do
   [[ -z "${s:-}" ]] && continue
-  if [[ "$s" =~ ^R ]]; then
-    STATUS_MAP["$p2"]="R"
-  elif [[ "$s" =~ ^C ]]; then
-    STATUS_MAP["$p2"]="C"
-  else
-    STATUS_MAP["$p1"]="${s:0:1}"
+  if [[ "$s" =~ ^R ]]; then STATUS_MAP["$p2"]="R"
+  elif [[ "$s" =~ ^C ]]; then STATUS_MAP["$p2"]="C"
+  else STATUS_MAP["$p1"]="${s:0:1}"
   fi
 done < <(printf "%s\n" "$NAME_STATUS")
 
-# Tally statuses and local churn inside TOP 3
-T3_ADDS=0; T3_DELS=0; CNT_A=0; CNT_D=0; CNT_R=0; CNT_M=0
-while IFS=$'\t' read -r churn adds dels path; do
-  [[ -z "${path:-}" ]] && continue
-  T3_ADDS=$((T3_ADDS + adds))
-  T3_DELS=$((T3_DELS + dels))
-  st="${STATUS_MAP[$path]:-M}"   # assume M if unknown
-  case "$st" in
-    A) CNT_A=$((CNT_A+1));;
-    D) CNT_D=$((CNT_D+1));;
-    R) CNT_R=$((CNT_R+1));;
-    *) CNT_M=$((CNT_M+1));;
-  esac
-done < <(printf "%s\n" "$TOP3_LINES")
+# --- category patterns ------------------------------------------------------
+docs_file_pat='(^|/)docs?(/|$)|\.(md|rst|adoc|mdx|txt)$'
+tests_file_pat='(^|/)(test|tests|__tests__|spec)(/|$)|\.(test|spec)\.[^/]+$'
+config_file_pat='\.(json|ya?ml|toml|ini|conf|config)$|(^|/)\.(editorconfig|eslintrc(\.json)?|prettier(rc|\.config\.js)?|stylelintrc(\.json)?)$|(^|/)Makefile$|(^|/)Dockerfile$|(^|/)docker-compose\.ya?ml$|(^|/)pyproject\.toml$|(^|/)setup\.(cfg|py)$|(^|/)tsconfig\.json$'
+deps_file_pat='(^|/)package(-lock)?\.json$|(^|/)yarn\.lock$|(^|/)pnpm-lock\.yaml$|(^|/)poetry\.lock$|(^|/)Pipfile(\.lock)?$|(^|/)Gemfile(\.lock)?$|(^|/)Cargo\.(lock|toml)$|(^|/)go\.(mod|sum)$|(^|/)composer\.(json|lock)$|(^|/)Podfile(\.lock)?$|(^|/)pom\.xml$|(^|/)build\.gradle(\.kts)?$'
+version_files_pat='(^|/)CHANGELOG\.md$|(^|/)CHANGES\.md$|(^|/)VERSION$|(^|/)(package\.json|pyproject\.toml|Cargo\.toml)'
 
-# Ratios (stabilized)
-RATIO_ALL=$(awk -v a="$TOTAL_ADDS" -v d="$TOTAL_DELS" 'BEGIN{printf "%.2f",(a+1)/(d+1)}')
-RATIO_T3=$(awk -v a="$T3_ADDS" -v d="$T3_DELS" 'BEGIN{printf "%.2f",(a+1)/(d+1)}')
+# Line-level heuristics (comment/docstring markers)
+# python """ or '''; JS/TS /** */ and // ; general # // ; markdown headings
+is_docline() {
+  local line="$1" path="$2"
+  if [[ "$path" =~ $docs_file_pat ]]; then return 0; fi
+  [[ "$line" =~ ^[[:space:]]*# ]] && return 0
+  [[ "$line" =~ ^[[:space:]]*// ]] && return 0
+  [[ "$line" =~ ^[[:space:]]*/\* ]] && return 0
+  [[ "$line" =~ ^[[:space:]]*\* ]] && return 0
+  [[ "$line" =~ \"\"\"|\'\'\' ]] && return 0
+  [[ "$line" =~ ^[[:space:]]*// ]] && return 0
+  [[ "$line" =~ ^[[:space:]]*[-\*\+]?[[:space:]]#[[:space:]] ]] && return 0 # md h1-like in lists
+  [[ "$line" =~ ^[[:space:]]*# ]] && return 0
+  [[ "$line" =~ ^[[:space:]]*#{1,6}[[:space:]] ]] && return 0   # markdown headings
+  return 1
+}
+is_version_line() {
+  local line="$1"
+  [[ "$line" =~ version[[:space:]]*[:=][[:space:]]*\"?[0-9]+\.[0-9]+(\.[0-9]+)? ]] && return 0
+  [[ "$line" =~ ^\+[[:space:]]*\-?[0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$ ]] && return 0 # changelog semver
+  return 1
+}
 
-# Content cues (allowed)
-PERF_HINT=false
-echo "$PATCH" | grep -E -i -q '(^|\b)(perf|optimi[sz]|hot path|O\()' && PERF_HINT=true
-WS_ONLY=false; is_ws_only && WS_ONLY=true
+# Extract the three paths we’ll analyze deeply
+readarray -t T3_PATHS < <(echo "$TOP3_LINES" | cut -f4-)
 
-# --- Decide category (STRICTLY from TOP 3, with small global guards) ---
-# Order: whitespace → rename → add/remove → tiny → bugfix → ratio (feat/prune/refactor) → perf → edit
+# --- per-line categorization over TOP-3 files -------------------------------
+# We'll parse the unified diff and, for each top-3 file, sum volumes for:
+# docs, tests, config, deps, version, code (default)
+declare -A vol_add vol_del
+for k in docs tests config deps version code; do vol_add[$k]=0; vol_del[$k]=0; done
+
+current=""
+while IFS= read -r line; do
+  if [[ "$line" =~ ^diff\ --git\ a/(.*)\ b/(.*) ]]; then
+    current="${BASH_REMATCH[2]}"
+    # only track if in top-3
+    match=false
+    for p in "${T3_PATHS[@]}"; do [[ "$p" == "$current" ]] && match=true && break; done
+    $match || current=""
+    continue
+  fi
+  [[ -z "$current" ]] && continue
+  # skip file header markers
+  [[ "$line" =~ ^(\+\+\+|\-\-\-) ]] && continue
+  # added line
+  if [[ "$line" =~ ^\+ ]] ; then
+    content="${line:1}"
+    # classify by file first
+    if [[ "$current" =~ $deps_file_pat ]]; then               ((vol_add[deps]+=1))
+    elif [[ "$current" =~ $tests_file_pat ]]; then            ((vol_add[tests]+=1))
+    elif [[ "$current" =~ $config_file_pat ]]; then           ((vol_add[config]+=1))
+    elif is_docline "$content" "$current"; then               ((vol_add[docs]+=1))
+    elif [[ "$current" =~ $version_files_pat ]] && is_version_line "$content"; then ((vol_add[version]+=1))
+    else                                                      ((vol_add[code]+=1))
+    fi
+  # deleted line
+  elif [[ "$line" =~ ^\- ]]; then
+    content="${line:1}"
+    if [[ "$current" =~ $deps_file_pat ]]; then               ((vol_del[deps]+=1))
+    elif [[ "$current" =~ $tests_file_pat ]]; then            ((vol_del[tests]+=1))
+    elif [[ "$current" =~ $config_file_pat ]]; then           ((vol_del[config]+=1))
+    elif is_docline "$content" "$current"; then               ((vol_del[docs]+=1))
+    elif [[ "$current" =~ $version_files_pat ]] && is_version_line "$content"; then ((vol_del[version]+=1))
+    else                                                      ((vol_del[code]+=1))
+    fi
+  fi
+done <<< "$PATCH"
+
+# Aggregate top-3 stats
+t3_add=0; t3_del=0
+for k in docs tests config deps version code; do
+  ((t3_add += vol_add[$k])); ((t3_del += vol_del[$k]))
+done
+t3_total=$((t3_add + t3_del))
+ratio_t3=$(awk -v a="$t3_add" -v d="$t3_del" 'BEGIN{printf "%.2f",(a+1)/(d+1)}')
+
+# quick top-3 status counts for rename/add/remove emphasis
+cnt_A=0; cnt_D=0; cnt_R=0
+for p in "${T3_PATHS[@]}"; do
+  st="${STATUS_MAP[$p]:-M}"
+  case "$st" in A) ((cnt_A++));; D) ((cnt_D++));; R) ((cnt_R++));; esac
+done
+
+# whitespace-only?
+ws=false; is_ws_only && ws=true
+
+# --- decide category (weight by top-3 category volumes & ratio) -------------
+# Category share helpers
+share(){ # $1=cat
+  local c="$1"; local n=$(( vol_add[$c] + vol_del[$c] ))
+  echo "$n"
+}
+
+docs_n=$(share docs)
+tests_n=$(share tests)
+config_n=$(share config)
+deps_n=$(share deps)
+version_n=$(share version)
+code_n=$(share code)
+
+# choose
 type="edit"; emoji="📝"
 
-if $WS_ONLY; then
+if $ws; then
   type="cleanup"; emoji="🧹"
-elif (( CNT_R >= 2 )) || { (( CNT_R >= 1 )) && (( CNT_A + CNT_D == 0 )); }; then
+elif (( cnt_R >= 2 )); then
   type="rename"; emoji="🔁"
-elif (( CNT_D >= 2 )); then
+elif (( cnt_D >= 2 )) && (( t3_add + t3_del <= 50 )); then
   type="remove"; emoji="🔥"
-elif (( CNT_A >= 2 )); then
+elif (( cnt_A >= 2 )) && (( t3_add >= 10 )); then
   type="add"; emoji="➕"
-elif (( T3_ADDS + T3_DELS <= 3 )); then
+elif (( deps_n > 0 )) && (( deps_n >= tests_n + docs_n + config_n + code_n )); then
+  type="deps"; emoji="📦"
+elif (( config_n > 0 )) && (( config_n >= docs_n )) && (( config_n >= tests_n )) && (( config_n >= deps_n )) && (( config_n >= code_n/2 )); then
+  type="config"; emoji="⚙️"
+elif (( version_n >= 3 )) && (( deps_n + config_n + docs_n + tests_n <= version_n*2 )); then
+  type="version bump"; emoji="🔖"
+elif (( tests_n > 0 )) && (( tests_n >= docs_n )) && (( tests_n >= config_n )) && (( tests_n >= deps_n )) && (( tests_n >= code_n/2 )); then
+  type="tests"; emoji="✅"
+elif (( docs_n > 0 )) && (( docs_n >= tests_n )) && (( docs_n >= config_n )) && (( docs_n >= deps_n )) && (( docs_n >= code_n/2 )); then
+  type="docs"; emoji="📚"
+# structural / scale-based:
+elif (( t3_total <= 3 )); then
   type="oneliner"; emoji="⚡"
-elif (( $(echo "$T3_ADDS+$T3_DELS" | bc 2>/dev/null || echo $((T3_ADDS+T3_DELS))) <= 20 )) && (( CNT_M + CNT_A + CNT_D <= 3 )); then
+elif (( t3_total <= 20 )) && (( ${#T3_PATHS[@]} <= 3 )); then
   type="bugfix"; emoji="🐛"
-elif awk -v r="$RATIO_T3" 'BEGIN{exit !(r>=3.0)}'; then
+elif awk -v r="$ratio_t3" 'BEGIN{exit !(r>=3.0)}'; then
   type="feat"; emoji="✨"
-elif awk -v r="$RATIO_T3" 'BEGIN{exit !(r<=0.33)}'; then
+elif awk -v r="$ratio_t3" 'BEGIN{exit !(r<=0.33)}'; then
   type="prune"; emoji="🔥"
-elif awk -v r="$RATIO_T3" 'BEGIN{exit !(r>=0.7 && r<=1.3)}' && (( T3_ADDS + T3_DELS > 300 )); then
+elif awk -v r="$ratio_t3" 'BEGIN{exit !(r>=0.7 && r<=1.3)}' && (( t3_total > 1200 )); then
+  type="rewrite"; emoji="🧨"
+elif awk -v r="$ratio_t3" 'BEGIN{exit !(r>=0.7 && r<=1.3)}' && (( t3_total > 300 )); then
   type="refactor"; emoji="♻️"
-elif $PERF_HINT; then
-  type="perf"; emoji="🚀"
-else
-  type="edit"; emoji="📝"
 fi
 
-# Append optional note compactly
+# optional note
 [[ -n "$note" ]] && type="$type — $note"
 
-# Compose message
+# message + commit
 suffix=" (+${TOTAL_ADDS}/-${TOTAL_DELS}, ${DATE})"
 (( TOTAL_FILES > 3 )) && suffix="${suffix} (${TOTAL_FILES} files)"
 msg="${emoji} ${type} — ${TOP3_FILES}${suffix}"
 
-# Commit all tracked changes
 git commit -a -m "$msg"
 
