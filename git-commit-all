@@ -1,39 +1,22 @@
 #!/usr/bin/env bash
 # git-commit-all: robust, concise auto-commit with emoji + smart category
-# - Auto-adds modified/deleted tracked files (git add -u)
-# - One-line message: "<emoji> <type> — <top3> (+adds/-dels, YYYY-MM-DD HH:MM) [ (N files) ]"
-# - Category decided from TOP-3 files using per-line volumes + add/remove ratio
-# - Handles: rewrite, docs, version bump, tests, config, deps, cleanup,
-#   plus add/remove/rename, refactor, feat, prune, bugfix, oneliner, edit
-# - Designed to be resilient when only deletions are staged, or when diffs are empty/binary
-#
-# Usage:
-#   git-commit-all [optional note]
-# Debug:
-#   GCA_DEBUG=1 git-commit-all    # prints internal stats
-
-set -uo pipefail  # (no -e; we handle rc’s explicitly)
+# Shows only basenames in the "top 3 files" list.
+# Usage: git-commit-all [optional note]
+set -uo pipefail  # no -e; handle rc's explicitly
 
 note="${*:-}"
 DEBUG=${GCA_DEBUG:-0}
-
-log_debug() { if [[ "$DEBUG" = "1" ]]; then echo "[gca] $*" >&2; fi }
-
+log_debug(){ [[ "$DEBUG" = "1" ]] && echo "[gca] $*" >&2; }
 die(){ echo "git-commit-all: $*" >&2; exit 1; }
 
-in_repo() { git rev-parse --show-toplevel >/dev/null 2>&1; }
-
-is_ws_only_cached() {
-  git diff --cached -w --quiet
-  return $?
+in_repo(){ git rev-parse --show-toplevel >/dev/null 2>&1; }
+is_ws_only_cached(){ git diff --cached -w --quiet; return $?; }
+join_commas(){ awk 'BEGIN{ORS=""}{if(NR>1)printf(", ");printf("%s",$0)}END{print ""}'; }
+basename_only(){ # safe basename even with trailing slash
+  local p="$1"; p="${p%/}"; printf "%s\n" "${p##*/}";
 }
 
-join_commas(){ awk 'BEGIN{ORS=""}{if(NR>1)printf(", ");printf("%s",$0)}END{print ""}'; }
-
-# ---------- preconditions ----------
 in_repo || die "not a git repo"
-
-# Always include modified/deleted tracked files
 git add -u >/dev/null 2>&1 || true
 
 if git diff --cached --quiet; then
@@ -41,18 +24,15 @@ if git diff --cached --quiet; then
   exit 0
 fi
 
-# ---------- gather staged diff ----------
 NAME_STATUS="$(git diff --cached --name-status -M -C 2>/dev/null || true)"
 NUMSTAT="$(git diff --cached --numstat -M -C 2>/dev/null || true)"
 PATCH="$(git diff --cached 2>/dev/null || true)"
 
-# Totals (be binary-safe: '-' -> 0)
 TOTAL_ADDS=$(printf "%s\n" "$NUMSTAT" | awk '{a=$1; if(a=="-"||a=="") a=0; s+=a} END{print s+0}')
 TOTAL_DELS=$(printf "%s\n" "$NUMSTAT" | awk '{d=$2; if(d=="-"||d=="") d=0; s+=d} END{print s+0}')
 TOTAL_FILES=$(printf "%s\n" "$NUMSTAT" | awk 'NF>=3{n++} END{print n+0}')
 DATE=$(date +"%Y-%m-%d %H:%M")
 
-# Top-3 by churn; reconstruct path from fields 3..NF to keep spaces/tabs intact
 TOP3_LINES=$(
   printf "%s\n" "$NUMSTAT" \
   | awk '{
@@ -65,41 +45,46 @@ TOP3_LINES=$(
   | sort -nr | head -3
 )
 
-TOP3_FILES=$(printf "%s\n" "$TOP3_LINES" | cut -f4- | join_commas)
-if [[ -z "${TOP3_FILES:-}" ]]; then
-  TOP3_FILES=$(
-    printf "%s\n" "$NUMSTAT" \
-    | awk '{path=$3; for(i=4;i<=NF;i++){path=path OFS $i} if(path!="") print path}' \
-    | head -3 | join_commas
-  )
+# Build T3_PATHS (full) and T3_BASES (filenames only)
+declare -a T3_PATHS=() T3_BASES=()
+while IFS=$'\t' read -r _ch _a _d path || [[ -n "${path:-}" ]]; do
+  [[ -n "${path:-}" ]] || continue
+  T3_PATHS+=("$path")
+  T3_BASES+=("$(basename_only "$path")")
+done < <(printf "%s\n" "$TOP3_LINES")
+
+# Fallback if empty (e.g., odd numstat)
+if [[ ${#T3_BASES[@]} -eq 0 ]]; then
+  while IFS= read -r path; do
+    [[ -z "$path" ]] && continue
+    T3_PATHS+=("$path")
+    T3_BASES+=("$(basename_only "$path")")
+  done < <(printf "%s\n" "$NUMSTAT" | awk '{p=$3; for(i=4;i<=NF;i++){p=p OFS $i} if(p!="") print p}' | head -3)
 fi
+
+TOP3_FILES=$(printf "%s\n" "${T3_BASES[@]}" | join_commas)
 [[ -z "${TOP3_FILES:-}" ]] && TOP3_FILES="<no-paths>"
 
-# Map file -> status (A/M/D/R/C) for emphasis in top-3
+# Map file -> status (A/M/D/R/C)
 declare -A STATUS_MAP
-# NAME_STATUS lines are tab-separated; handle R/C old->new forms
-# Use while+process-substitution and tolerate empty lines
 while IFS=$'\t' read -r s p1 p2 || [[ -n "${s:-}" ]]; do
   [[ -z "${s:-}" ]] && continue
-  if [[ "$s" =~ ^R ]]; then
-    STATUS_MAP["$p2"]="R"
-  elif [[ "$s" =~ ^C ]]; then
-    STATUS_MAP["$p2"]="C"
-  else
-    STATUS_MAP["$p1"]="${s:0:1}"
+  if [[ "$s" =~ ^R ]]; then STATUS_MAP["$p2"]="R"
+  elif [[ "$s" =~ ^C ]]; then STATUS_MAP["$p2"]="C"
+  else STATUS_MAP["$p1"]="${s:0:1}"
   fi
 done < <(printf "%s\n" "$NAME_STATUS")
 
-# ---------- patterns ----------
+# Patterns
 docs_file_pat='(^|/)docs?(/|$)|\.(md|rst|adoc|mdx|txt)$'
 tests_file_pat='(^|/)(test|tests|__tests__|spec)(/|$)|\.(test|spec)\.[^/]+$'
 config_file_pat='\.(json|ya?ml|toml|ini|conf|config)$|(^|/)\.(editorconfig|eslintrc(\.json)?|prettier(rc|\.config\.js)?|stylelintrc(\.json)?)$|(^|/)Makefile$|(^|/)Dockerfile$|(^|/)docker-compose\.ya?ml$|(^|/)pyproject\.toml$|(^|/)setup\.(cfg|py)$|(^|/)tsconfig\.json$'
 deps_file_pat='(^|/)package(-lock)?\.json$|(^|/)yarn\.lock$|(^|/)pnpm-lock\.yaml$|(^|/)poetry\.lock$|(^|/)Pipfile(\.lock)?$|(^|/)Gemfile(\.lock)?$|(^|/)Cargo\.(lock|toml)$|(^|/)go\.(mod|sum)$|(^|/)composer\.(json|lock)$|(^|/)Podfile(\.lock)?$|(^|/)pom\.xml$|(^|/)build\.gradle(\.kts)?$'
 version_files_pat='(^|/)CHANGELOG\.md$|(^|/)CHANGES\.md$|(^|/)VERSION$|(^|/)(package\.json|pyproject\.toml|Cargo\.toml)'
 
-is_docline() {
+is_docline(){
   local line="$1" path="$2"
-  if [[ "$path" =~ $docs_file_pat ]]; then return 0; fi
+  [[ "$path" =~ $docs_file_pat ]] && return 0
   [[ "$line" =~ ^[[:space:]]*# ]] && return 0
   [[ "$line" =~ ^[[:space:]]*// ]] && return 0
   [[ "$line" =~ ^[[:space:]]*/\* ]] && return 0
@@ -108,30 +93,22 @@ is_docline() {
   [[ "$line" =~ ^[[:space:]]*#{1,6}[[:space:]] ]] && return 0
   return 1
 }
-is_version_line() {
+is_version_line(){
   local line="$1"
   [[ "$line" =~ version[[:space:]]*[:=][[:space:]]*\"?[0-9]+\.[0-9]+(\.[0-9]+)? ]] && return 0
   [[ "$line" =~ ^[[:space:]]*\-?[0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$ ]] && return 0
   return 1
 }
 
-# Extract top-3 paths
-declare -a T3_PATHS=()
-while IFS=$'\t' read -r _ch _a _d path || [[ -n "${path:-}" ]]; do
-  [[ -n "${path:-}" ]] && T3_PATHS+=("$path")
-done < <(printf "%s\n" "$TOP3_LINES")
-
-# Per-line category volumes for TOP-3 (init keys to avoid -u issues)
+# Per-line category volumes (top-3 only)
 declare -A vol_add vol_del
 for k in docs tests config deps version code; do vol_add[$k]=0; vol_del[$k]=0; done
-
 current=""
-# Parse unified diff; only count hunks for the top-3 files
+
 while IFS= read -r line || [[ -n "$line" ]]; do
   if [[ "$line" =~ ^diff\ --git\ a/(.*)\ b/(.*) ]]; then
     current="${BASH_REMATCH[2]}"
-    keep=0
-    for p in "${T3_PATHS[@]:-}"; do [[ "$p" == "$current" ]] && keep=1 && break; done
+    keep=0; for p in "${T3_PATHS[@]:-}"; do [[ "$p" == "$current" ]] && keep=1 && break; done
     (( keep == 1 )) || current=""
     continue
   fi
@@ -159,66 +136,41 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   fi
 done <<< "$PATCH"
 
-# Aggregate top-3 stats + ratios
 t3_add=0; t3_del=0
 for k in docs tests config deps version code; do
   ((t3_add += vol_add[$k])); ((t3_del += vol_del[$k]))
 done
 t3_total=$((t3_add + t3_del))
-# Avoid awk dependency explosions when both zero
-if [[ $t3_add -eq 0 && $t3_del -eq 0 ]]; then
-  ratio_t3="1.00"
-else
-  ratio_t3=$(awk -v a="$t3_add" -v d="$t3_del" 'BEGIN{printf "%.2f",(a+1)/(d+1)}')
-fi
+if [[ $t3_add -eq 0 && $t3_del -eq 0 ]]; then ratio_t3="1.00"
+else ratio_t3=$(awk -v a="$t3_add" -v d="$t3_del" 'BEGIN{printf "%.2f",(a+1)/(d+1)}'); fi
 
-# Emphasize status in top-3
 cnt_A=0; cnt_D=0; cnt_R=0
 for p in "${T3_PATHS[@]:-}"; do
   st="${STATUS_MAP[$p]:-M}"
   case "$st" in A) ((cnt_A++));; D) ((cnt_D++));; R) ((cnt_R++));; esac
 done
 
-# whitespace-only on staged diff?
 ws=false; is_ws_only_cached && ws=true
-
 share(){ local c="$1"; echo $(( vol_add[$c] + vol_del[$c] )); }
 docs_n=$(share docs); tests_n=$(share tests); config_n=$(share config)
 deps_n=$(share deps); version_n=$(share version); code_n=$(share code)
 
-# ---------- decide category ----------
 type="edit"; emoji="📝"
-
-if $ws; then
-  type="cleanup"; emoji="🧹"
-elif (( cnt_R >= 2 )); then
-  type="rename"; emoji="🔁"
-elif (( cnt_D >= 2 )) && (( t3_add + t3_del <= 50 )); then
-  type="remove"; emoji="🔥"
-elif (( cnt_A >= 2 )) && (( t3_add >= 10 )); then
-  type="add"; emoji="➕"
-elif (( deps_n > 0 )) && (( deps_n >= tests_n + docs_n + config_n + code_n )); then
-  type="deps"; emoji="📦"
-elif (( config_n > 0 )) && (( config_n >= docs_n )) && (( config_n >= tests_n )) && (( config_n >= deps_n )) && (( config_n >= code_n/2 )); then
-  type="config"; emoji="⚙️"
-elif (( version_n >= 3 )) && (( deps_n + config_n + docs_n + tests_n <= version_n*2 )); then
-  type="version bump"; emoji="🔖"
-elif (( tests_n > 0 )) && (( tests_n >= docs_n )) && (( tests_n >= config_n )) && (( tests_n >= deps_n )) && (( tests_n >= code_n/2 )); then
-  type="tests"; emoji="✅"
-elif (( docs_n > 0 )) && (( docs_n >= tests_n )) && (( docs_n >= config_n )) && (( docs_n >= deps_n )) && (( docs_n >= code_n/2 )); then
-  type="docs"; emoji="📚"
-elif (( t3_total <= 3 )); then
-  type="oneliner"; emoji="⚡"
-elif (( t3_total <= 20 )) && (( ${#T3_PATHS[@]} <= 3 )); then
-  type="bugfix"; emoji="🐛"
-elif awk -v r="$ratio_t3" 'BEGIN{exit !(r>=3.0)}'; then
-  type="feat"; emoji="✨"
-elif awk -v r="$ratio_t3" 'BEGIN{exit !(r<=0.33)}'; then
-  type="prune"; emoji="🔥"
-elif awk -v r="$ratio_t3" 'BEGIN{exit !(r>=0.7 && r<=1.3)}' && (( t3_total > 1200 )); then
-  type="rewrite"; emoji="🧨"
-elif awk -v r="$ratio_t3" 'BEGIN{exit !(r>=0.7 && r<=1.3)}' && (( t3_total > 300 )); then
-  type="refactor"; emoji="♻️"
+if $ws; then type="cleanup"; emoji="🧹"
+elif (( cnt_R >= 2 )); then type="rename"; emoji="🔁"
+elif (( cnt_D >= 2 )) && (( t3_add + t3_del <= 50 )); then type="remove"; emoji="🔥"
+elif (( cnt_A >= 2 )) && (( t3_add >= 10 )); then type="add"; emoji="➕"
+elif (( deps_n > 0 )) && (( deps_n >= tests_n + docs_n + config_n + code_n )); then type="deps"; emoji="📦"
+elif (( config_n > 0 )) && (( config_n >= docs_n )) && (( config_n >= tests_n )) && (( config_n >= deps_n )) && (( config_n >= code_n/2 )); then type="config"; emoji="⚙️"
+elif (( version_n >= 3 )) && (( deps_n + config_n + docs_n + tests_n <= version_n*2 )); then type="version bump"; emoji="🔖"
+elif (( tests_n > 0 )) && (( tests_n >= docs_n )) && (( tests_n >= config_n )) && (( tests_n >= deps_n )) && (( tests_n >= code_n/2 )); then type="tests"; emoji="✅"
+elif (( docs_n > 0 )) && (( docs_n >= tests_n )) && (( docs_n >= config_n )) && (( docs_n >= deps_n )) && (( docs_n >= code_n/2 )); then type="docs"; emoji="📚"
+elif (( t3_total <= 3 )); then type="oneliner"; emoji="⚡"
+elif (( t3_total <= 20 )) && (( ${#T3_PATHS[@]} <= 3 )); then type="bugfix"; emoji="🐛"
+elif awk -v r="$ratio_t3" 'BEGIN{exit !(r>=3.0)}'; then type="feat"; emoji="✨"
+elif awk -v r="$ratio_t3" 'BEGIN{exit !(r<=0.33)}'; then type="prune"; emoji="🔥"
+elif awk -v r="$ratio_t3" 'BEGIN{exit !(r>=0.7 && r<=1.3)}' && (( t3_total > 1200 )); then type="rewrite"; emoji="🧨"
+elif awk -v r="$ratio_t3" 'BEGIN{exit !(r>=0.7 && r<=1.3)}' && (( t3_total > 300 )); then type="refactor"; emoji="♻️"
 fi
 
 [[ -n "$note" ]] && type="$type — $note"
@@ -234,7 +186,6 @@ if [[ "$DEBUG" = "1" ]]; then
   echo "[gca] msg=${msg}" >&2
 fi
 
-# ---------- commit (and always print message) ----------
 if ! git commit -a -m "$msg" >/dev/null 2>&1; then
   echo "git-commit-all: git commit failed. Message was:" >&2
   echo "$msg" >&2
