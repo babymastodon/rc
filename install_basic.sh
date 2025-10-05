@@ -25,6 +25,7 @@ source ~/.bashrc
 
 # install scripts into the bin
 mkdir -p ~/bin
+ln -sf $PWD/git-commit-all ~/bin/git-commit-all
 
 
 # install config files into etc
