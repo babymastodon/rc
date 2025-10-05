@@ -3,7 +3,7 @@
 Move all normal application windows to your **primary monitor** with a single hotkey.  
 Handy after docking/undocking or display sleep when GNOME scatters windows.
 
-- **Hotkey:** `Super + Shift + B` (configurable)
+- **Hotkey:** `Super + B` (configurable)
 - **Scope:** moves *normal, visible* app windows (skips minimized/hidden/transient/system)
 - **Target:** GNOME Shell **49** (Wayland and Xorg)
 
@@ -49,7 +49,7 @@ gnome-extensions list | grep bring-to-primary
 
 ## Use
 
-Press **`Super + Shift + B`**.
+Press **`Super + B`**.
 A notification shows how many windows were moved.
 
 Change the hotkey:

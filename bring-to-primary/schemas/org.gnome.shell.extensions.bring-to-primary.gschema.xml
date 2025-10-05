@@ -4,7 +4,7 @@
           path="/org/gnome/shell/extensions/bring-to-primary/">
     <!-- Array-of-strings so you can set multiple accelerator combos if you like -->
     <key name="hotkey" type="as">
-      <default>['&lt;Super&gt;&lt;Shift&gt;B']</default>
+      <default>['&lt;Super&gt;B']</default>
       <summary>Hotkey to move all windows to the primary monitor</summary>
       <description>Pressing this hotkey moves all normal windows to the primary monitor.</description>
     </key>
