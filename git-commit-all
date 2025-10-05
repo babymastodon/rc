@@ -1,180 +1,125 @@
 #!/usr/bin/env bash
-# git-commit-all: auto-generate a smart commit message and run `git commit -a`.
-#
-# Usage:
-#   git-commit-all [optional extra note...]
-#
-# Notes:
-# - Uses `git commit -a` (tracks modified/deleted files; untracked files still
-#   require `git add` first).
-# - The message lists top 3 files by churn and "(total N files)" if N>3.
-# - Heuristics consider add/remove ratio, churn, file count, renames, and file types.
+# git-commit-all: commit all tracked changes with a concise, emoji message.
+# Decision is based on the TOP 3 files by churn (adds+dels).
+# Usage: git-commit-all [optional note]
 
 set -euo pipefail
 note="${*:-}"
 
-die() { echo "git-commit-all: $*" >&2; exit 1; }
+# --- helpers ---
 in_repo() { git rev-parse --show-toplevel >/dev/null 2>&1; }
+is_ws_only() { git diff -w --quiet; }   # working tree vs index, ignores whitespace
+join_commas() { awk 'BEGIN{ORS=""}{if(NR>1)printf(", ");printf("%s",$0)}END{printf("\n")}'; }
 
-# Check whitespace-only by ignoring whitespace diffs (working tree vs index).
-is_whitespace_only() {
-  set +e
-  git diff -w --quiet
-  local rc=$?
-  set -e
-  return $rc
-}
-
-join_with_commas() {
-  awk 'BEGIN{ORS=""}{ if(NR>1) printf(", "); printf("%s",$0) } END{printf("\n")}'
-}
-
-count_grep() { grep -E -i -c -- "${1}" || true; }
-
-in_repo || die "not inside a Git repository"
-
-# Anything to commit with -a?
-set +e
-git diff --quiet
-empty=$?
-set -e
-if [[ $empty -eq 0 ]]; then
-  echo "Nothing to commit. (Tip: add new files with 'git add <file>')" >&2
+in_repo || { echo "Not a git repo" >&2; exit 1; }
+# Nothing to commit with -a?
+if git diff --quiet; then
+  echo "Nothing to commit. (Untracked files require 'git add')" >&2
   exit 0
 fi
 
-# --- Collect current (pre-commit) facts about unstaged tracked changes -------
-# Compare working tree to index (this is what `-a` will stage automatically).
+# Diffs (worktree ↔ index); -M -C to detect renames/copies
 NAME_STATUS=$(git diff --name-status -M -C)
 NUMSTAT=$(git diff --numstat -M -C)
 PATCH=$(git diff)
 
-# File lists
-readarray -t CHANGED_FILES < <(echo "$NUMSTAT" | awk 'NF>=3 {print $3}')
-
-TOTAL_FILES=$(echo "$NUMSTAT" | awk 'NF>=3{n++} END{print n+0}')
-TOTAL_ADDS=$(echo "$NUMSTAT" | awk '{a=$1; if(a=="-") a=0; s+=a} END{print s+0}')
-TOTAL_DELS=$(echo "$NUMSTAT" | awk '{d=$2; if(d=="-") d=0; s+=d} END{print s+0}')
+# Totals
+TOTAL_ADDS=$(echo "$NUMSTAT" | awk '{a=$1;a=(a=="-")?0:a;s+=a}END{print s+0}')
+TOTAL_DELS=$(echo "$NUMSTAT" | awk '{d=$2;d=(d=="-")?0:d;s+=d}END{print s+0}')
 TOTAL_CHURN=$(( TOTAL_ADDS + TOTAL_DELS ))
+DATE=$(date +"%Y-%m-%d %H:%M")
 
-# Add/remove ratio (stable)
-RATIO=$(awk -v a="$TOTAL_ADDS" -v d="$TOTAL_DELS" 'BEGIN{printf "%.3f", (a+1)/(d+1)}')
+# Build per-file stats and pick TOP 3 by churn
+# Fields: churn \t adds \t dels \t path
+TOP3_LINES=$(echo "$NUMSTAT" \
+  | awk '{a=$1; if(a=="-") a=0; d=$2; if(d=="-") d=0; $1=$2=""; sub(/^[ \t]+/,""); print a+d "\t" a "\t" d "\t" $0 }' \
+  | sort -nr | head -3)
 
-# Status counts
-ADDS=$(echo "$NAME_STATUS" | awk '$1 ~ /^A/ {c++} END{print c+0}')
-MODS=$(echo "$NAME_STATUS" | awk '$1 ~ /^M/ {c++} END{print c+0}')
-DELS=$(echo "$NAME_STATUS" | awk '$1 ~ /^D/ {c++} END{print c+0}')
-RENAMES=$(echo "$NAME_STATUS" | awk '$1 ~ /^R/ {c++} END{print c+0}')
-COPIES=$(echo "$NAME_STATUS" | awk '$1 ~ /^C/ {c++} END{print c+0}')
+# Extract lists for message
+TOP3_FILES=$(echo "$TOP3_LINES" | cut -f4- | join_commas)
+# Fallback if somehow empty
+if [[ -z "$TOP3_FILES" ]]; then
+  readarray -t ALLFILES < <(echo "$NUMSTAT" | awk 'NF>=3{print $3}')
+  TOP3_FILES=$(printf "%s\n" "${ALLFILES[@]}" | head -3 | join_commas)
+fi
 
-# Top 3 files by churn
-TOP3=$(echo "$NUMSTAT" \
-  | awk '{a=$1; if(a=="-") a=0; d=$2; if(d=="-") d=0; c=a+d; $1=$2=""; sub(/^[ \t]+/,""); print c "\t" $0}' \
-  | sort -nr \
-  | head -3 \
-  | cut -f2-)
-TOP3_JOINED=$(echo "$TOP3" | join_with_commas)
+# Count total files for optional suffix
+TOTAL_FILES=$(echo "$NUMSTAT" | awk 'NF>=3{n++}END{print n+0}')
 
-# Patterns
-docs_pat='(^|/)docs?(/|$)|\.(md|rst|adoc|mdx)$'
-tests_pat='(^|/)(test|tests|__tests__|spec)(/|$)|\.(test|spec)\.[^/]+$'
-cfg_pat='\.(json|ya?ml|toml|ini|conf|config)$|(^|/)\.(editorconfig|eslintrc(\.json)?|prettier(rc|\.config\.js)?|stylelintrc(\.json)?)$|(^|/)Makefile$|(^|/)Dockerfile$|(^|/)docker-compose\.ya?ml$|(^|/)pyproject\.toml$|(^|/)setup\.(cfg|py)$|(^|/)tsconfig\.json$'
-pkg_pat='(^|/)package\.json$|(^|/)requirements(-dev)?\.txt$|(^|/)pyproject\.toml$|(^|/)Pipfile$|(^|/)Gemfile$|(^|/)Cargo\.toml$|(^|/)go\.mod$|(^|/)pom\.xml$|(^|/)build\.gradle(\.kts)?$|(^|/)Chart\.yaml$'
-lock_pat='(^|/)package-lock\.json$|(^|/)yarn\.lock$|(^|/)pnpm-lock\.yaml$|(^|/)poetry\.lock$|(^|/)Pipfile\.lock$|(^|/)Gemfile\.lock$|(^|/)Cargo\.lock$|(^|/)go\.sum$|(^|/)composer\.lock$|(^|/)Podfile\.lock$'
-release_files_pat='(^|/)CHANGELOG\.md$|(^|/)CHANGES\.md$|(^|/)VERSION$|(^|/)version\.txt$|(^|/)Cargo\.toml$|(^|/)pyproject\.toml$|(^|/)package\.json$'
+# Map file -> status for top3 (A/M/D/R/C)
+# For renames, NAME_STATUS has 3 columns: Rxx \t old \t new ; treat "new" path as the file
+declare -A STATUS_MAP
+while IFS=$'\t' read -r s p1 p2; do
+  [[ -z "${s:-}" ]] && continue
+  if [[ "$s" =~ ^R ]]; then
+    STATUS_MAP["$p2"]="R"
+  elif [[ "$s" =~ ^C ]]; then
+    STATUS_MAP["$p2"]="C"
+  else
+    STATUS_MAP["$p1"]="${s:0:1}"
+  fi
+done < <(printf "%s\n" "$NAME_STATUS")
 
-FILES_JOINED=$(printf "%s\n" "${CHANGED_FILES[@]}")
+# Tally statuses and local churn inside TOP 3
+T3_ADDS=0; T3_DELS=0; CNT_A=0; CNT_D=0; CNT_R=0; CNT_M=0
+while IFS=$'\t' read -r churn adds dels path; do
+  [[ -z "${path:-}" ]] && continue
+  T3_ADDS=$((T3_ADDS + adds))
+  T3_DELS=$((T3_DELS + dels))
+  st="${STATUS_MAP[$path]:-M}"   # assume M if unknown
+  case "$st" in
+    A) CNT_A=$((CNT_A+1));;
+    D) CNT_D=$((CNT_D+1));;
+    R) CNT_R=$((CNT_R+1));;
+    *) CNT_M=$((CNT_M+1));;
+  esac
+done < <(printf "%s\n" "$TOP3_LINES")
 
-DOCS_COUNT=$(printf "%s\n" "$FILES_JOINED" | count_grep "$docs_pat")
-TESTS_COUNT=$(printf "%s\n" "$FILES_JOINED" | count_grep "$tests_pat")
-CFG_COUNT=$(printf "%s\n" "$FILES_JOINED" | count_grep "$cfg_pat")
-PKG_COUNT=$(printf "%s\n" "$FILES_JOINED" | count_grep "$pkg_pat")
-LOCK_COUNT=$(printf "%s\n" "$FILES_JOINED" | count_grep "$lock_pat")
+# Ratios (stabilized)
+RATIO_ALL=$(awk -v a="$TOTAL_ADDS" -v d="$TOTAL_DELS" 'BEGIN{printf "%.2f",(a+1)/(d+1)}')
+RATIO_T3=$(awk -v a="$T3_ADDS" -v d="$T3_DELS" 'BEGIN{printf "%.2f",(a+1)/(d+1)}')
 
-# Content cues
-SECURITY_FIX=false
-echo "$PATCH" | grep -E -i -q '(^|\b)(CVE-|security|vulnerab)' && SECURITY_FIX=true
-
+# Content cues (allowed)
 PERF_HINT=false
-echo "$PATCH" | grep -E -i -q '(^|\+).*O\(|(^|\b)perf|optimi[sz]e' && PERF_HINT=true
+echo "$PATCH" | grep -E -i -q '(^|\b)(perf|optimi[sz]|hot path|O\()' && PERF_HINT=true
+WS_ONLY=false; is_ws_only && WS_ONLY=true
 
-WHITESPACE_ONLY=false
-is_whitespace_only && WHITESPACE_ONLY=true
+# --- Decide category (STRICTLY from TOP 3, with small global guards) ---
+# Order: whitespace → rename → add/remove → tiny → bugfix → ratio (feat/prune/refactor) → perf → edit
+type="edit"; emoji="📝"
 
-version_line_changed=$(echo "$PATCH" | grep -E -i -c '^[\+\-].{0,30}"?version"?[": ]' || true)
-RELEASE_BUMP=false
-if [[ $DOCS_COUNT -eq 0 && $TESTS_COUNT -eq 0 ]]; then
-  if [[ $LOCK_COUNT -eq 0 ]] && [[ $PKG_COUNT -gt 0 ]] && [[ ${version_line_changed:-0} -gt 0 ]]; then
-    RELEASE_BUMP=true
-  fi
-  # classic changelog/version files
-  if printf "%s\n" "$FILES_JOINED" | grep -E -q "$release_files_pat"; then
-    RELEASE_BUMP=true
-  fi
-fi
-
-# Helpers
-only_files_match() {
-  local pat="$1"
-  local total=$(printf "%s\n" "$FILES_JOINED" | sed '/^$/d' | wc -l | tr -d ' ')
-  [[ "$total" -gt 0 ]] || return 1
-  local matched=$(printf "%s\n" "$FILES_JOINED" | grep -E -i -c -- "$pat" || true)
-  [[ "${matched:-0}" -eq "$total" ]]
-}
-
-# --- Decide category (priority order) ---------------------------------------
-type="edit"; desc="general edits"
-
-if $WHITESPACE_ONLY; then
-  type="cleanup"; desc="whitespace/formatting"
-elif (( LOCK_COUNT + PKG_COUNT > 0 )) && only_files_match "(${lock_pat})|(${pkg_pat})"; then
-  type="deps"; desc="update dependencies"
-elif $RELEASE_BUMP; then
-  type="release"; desc="version/changelog bump"
-elif $SECURITY_FIX; then
-  type="security"; desc="security fix"
-elif (( RENAMES > 0 )) && (( TOTAL_CHURN < 500 )) && (( TOTAL_FILES <= 20 )); then
-  type="rename"; desc="rename/move files"
-elif only_files_match "$docs_pat"; then
-  type="docs"; desc="update docs"
-elif only_files_match "$tests_pat"; then
-  type="tests"; desc="update tests"
-elif only_files_match "$cfg_pat"; then
-  type="config"; desc="config tweaks"
-elif (( TOTAL_CHURN <= 3 )); then
-  type="oneliner"; desc="one-liner change"
-elif (( TOTAL_FILES <= 3 )) && (( TOTAL_CHURN <= 20 )); then
-  type="fix"; desc="bug fix"
-# Ratio-driven decisions:
-elif awk -v r="$RATIO" 'BEGIN{exit !(r>=3.0)}'; then
-  type="feat"; desc="implement/expand feature"
-elif awk -v r="$RATIO" 'BEGIN{exit !(r<=0.333)}'; then
-  type="slimdown"; desc="remove dead code/prune"
-# Large balanced churn (near rewrite/refactor)
-elif { (( TOTAL_FILES >= 5 )) && (( TOTAL_CHURN >= 400 )) && awk -v r="$RATIO" 'BEGIN{exit !(r>=0.67 && r<=1.5)}'; }; then
-  type="refactor"; desc="major refactor"
+if $WS_ONLY; then
+  type="cleanup"; emoji="🧹"
+elif (( CNT_R >= 2 )) || { (( CNT_R >= 1 )) && (( CNT_A + CNT_D == 0 )); }; then
+  type="rename"; emoji="🔁"
+elif (( CNT_D >= 2 )); then
+  type="remove"; emoji="🔥"
+elif (( CNT_A >= 2 )); then
+  type="add"; emoji="➕"
+elif (( T3_ADDS + T3_DELS <= 3 )); then
+  type="oneliner"; emoji="⚡"
+elif (( $(echo "$T3_ADDS+$T3_DELS" | bc 2>/dev/null || echo $((T3_ADDS+T3_DELS))) <= 20 )) && (( CNT_M + CNT_A + CNT_D <= 3 )); then
+  type="bugfix"; emoji="🐛"
+elif awk -v r="$RATIO_T3" 'BEGIN{exit !(r>=3.0)}'; then
+  type="feat"; emoji="✨"
+elif awk -v r="$RATIO_T3" 'BEGIN{exit !(r<=0.33)}'; then
+  type="prune"; emoji="🔥"
+elif awk -v r="$RATIO_T3" 'BEGIN{exit !(r>=0.7 && r<=1.3)}' && (( T3_ADDS + T3_DELS > 300 )); then
+  type="refactor"; emoji="♻️"
 elif $PERF_HINT; then
-  type="perf"; desc="performance improvements"
+  type="perf"; emoji="🚀"
 else
-  type="edit"; desc="general edits"
+  type="edit"; emoji="📝"
 fi
 
-# --- Build commit message ----------------------------------------------------
-files_part="$TOP3_JOINED"
-[[ -z "$files_part" ]] && files_part=$(printf "%s\n" "${CHANGED_FILES[@]}" | head -3 | join_with_commas)
+# Append optional note compactly
+[[ -n "$note" ]] && type="$type — $note"
 
-suffix=""
-(( TOTAL_FILES > 3 )) && suffix=" (total ${TOTAL_FILES} files)"
+# Compose message
+suffix=" (+${TOTAL_ADDS}/-${TOTAL_DELS}, ${DATE})"
+(( TOTAL_FILES > 3 )) && suffix="${suffix} (${TOTAL_FILES} files)"
+msg="${emoji} ${type} — ${TOP3_FILES}${suffix}"
 
-extra=""
-[[ -n "$note" ]] && extra=" — $note"
-
-short="${type}: ${desc}"
-msg="$short — $files_part$suffix$extra"
-
-# Body: quick stats (adds/dels and ratio)
-body=$(printf "adds:%d dels:%d ratio:%s" "$TOTAL_ADDS" "$TOTAL_DELS" "$RATIO")
-
-# --- Commit (with -a as requested) -----------------------------------------
-git commit -a -m "$msg" -m "$body"
+# Commit all tracked changes
+git commit -a -m "$msg"
 
