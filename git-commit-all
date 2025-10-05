@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # git-commit-all: auto-generate a smart commit message and run `git commit -a`.
+#
 # Usage:
 #   git-commit-all [optional extra note...]
 #
