@@ -1,0 +1,220 @@
+#!/usr/bin/env bash
+# git-commit-all: stage updated files and auto-generate a smart commit message.
+# Usage:
+#   git-commit-all [optional extra message...]
+#
+# Generates messages like:
+#   "refactor(major): restructure modules — src/a.py, lib/b.ts, app/c.js (total 12 files)"
+#
+# Heuristics handled (priority order):
+#   cleanup, deps bump, release bump, docs, tests, rename/move, major refactor,
+#   add, remove, security fix, config tweak, bug fix, oneliner, edit (fallback)
+
+set -euo pipefail
+
+note="${*:-}"
+
+# --- Helpers ---------------------------------------------------------------
+
+die() { echo "git-commit-all: $*" >&2; exit 1; }
+
+in_repo() { git rev-parse --show-toplevel >/dev/null 2>&1; }
+
+# Return 0 if diff ignoring whitespace is empty (i.e., whitespace-only change).
+is_whitespace_only() {
+  set +e
+  git diff --cached -w --quiet
+  local rc=$?
+  set -e
+  return $rc
+}
+
+# Join lines with ", "
+join_with_commas() {
+  awk 'BEGIN{ORS=""}{ if(NR>1) printf(", "); printf("%s",$0) } END{printf("\n")}'
+}
+
+# Count lines matching regex (case-insensitive). Reads from stdin.
+count_grep() {
+  # usage: count_grep "pattern"
+  local pat="$1"
+  set +e
+  local out
+  out=$(grep -E -i -c -- "$pat" || true)
+  set -e
+  echo "${out:-0}"
+}
+
+# True if only these files are changed (all staged files match a pattern)
+only_files_match() {
+  # usage: only_files_match "regex"
+  local pat="$1"
+  local all
+  all=$(printf "%s\n" "${STAGED_FILES[@]}")
+  local total=$(printf "%s\n" "$all" | sed '/^$/d' | wc -l | tr -d ' ')
+  local matched=$(printf "%s\n" "$all" | grep -E -i -c -- "$pat" || true)
+  [[ "${matched:-0}" -eq "${total:-0}" && "${total:-0}" -gt 0 ]]
+}
+
+# Majority of files match pattern?
+majority_files_match() {
+  # usage: majority_files_match "regex"
+  local pat="$1"
+  local total=${#STAGED_FILES[@]}
+  [[ $total -gt 0 ]] || return 1
+  local matched=0
+  for f in "${STAGED_FILES[@]}"; do
+    if [[ "$f" =~ $pat ]]; then matched=$((matched+1)); fi
+  done
+  # majority if >= ceil(total/2)
+  local need=$(( (total+1)/2 ))
+  [[ $matched -ge $need ]]
+}
+
+# --- Preconditions ---------------------------------------------------------
+
+in_repo || die "not inside a Git repository"
+
+# Update the index with modified/deleted tracked files; keep whatever the user already staged.
+git add -u
+
+# Confirm there's something to commit (staged).
+set +e
+git diff --cached --quiet
+has_changes=$?
+set -e
+if [[ $has_changes -eq 0 ]]; then
+  echo "Nothing staged to commit. (Tip: add new files with 'git add <file>')" >&2
+  exit 0
+fi
+
+# --- Collect Diff Facts ----------------------------------------------------
+
+# Name-status with renames/copies detected
+NAME_STATUS=$(git diff --cached --name-status -M -C)
+
+# Per-file churn (insertions, deletions, path)
+NUMSTAT=$(git diff --cached --numstat -M -C)
+
+# Aggregate lists
+readarray -t STAGED_FILES < <(echo "$NUMSTAT" | awk 'NF>=3 {print $3}')
+
+TOTAL_FILES=$(echo "$NUMSTAT" | awk 'NF>=3{n++} END{print n+0}')
+TOTAL_ADDS=$(echo "$NUMSTAT" | awk '{a=$1; if(a=="-") a=0; s+=a} END{print s+0}')
+TOTAL_DELS=$(echo "$NUMSTAT" | awk '{d=$2; if(d=="-") d=0; s+=d} END{print s+0}')
+TOTAL_CHURN=$(( TOTAL_ADDS + TOTAL_DELS ))
+
+ADDS=$(echo "$NAME_STATUS" | awk '$1 ~ /^A/ {c++} END{print c+0}')
+MODS=$(echo "$NAME_STATUS" | awk '$1 ~ /^M/ {c++} END{print c+0}')
+DELS=$(echo "$NAME_STATUS" | awk '$1 ~ /^D/ {c++} END{print c+0}')
+RENAMES=$(echo "$NAME_STATUS" | awk '$1 ~ /^R/ {c++} END{print c+0}')
+COPIES=$(echo "$NAME_STATUS" | awk '$1 ~ /^C/ {c++} END{print c+0}')
+
+# Top 3 files by churn
+TOP3=$(echo "$NUMSTAT" \
+  | awk '{a=$1; if(a=="-") a=0; d=$2; if(d=="-") d=0; c=a+d; $1=$2=""; sub(/^[ \t]+/,""); print c "\t" $0}' \
+  | sort -nr \
+  | head -3 \
+  | cut -f2-)
+
+TOP3_JOINED=$(echo "$TOP3" | join_with_commas)
+
+# Category counters
+docs_pat='(^|/)docs?(/|$)|\.(md|rst|adoc|mdx)$'
+tests_pat='(^|/)(test|tests|__tests__|spec)(/|$)|\.(test|spec)\.[^/]+$'
+cfg_pat='\.(json|ya?ml|toml|ini|conf|config)$|(^|/)\.(editorconfig|eslintrc(\.json)?|prettier(rc|\.config\.js)?|stylelintrc(\.json)?)$|(^|/)Makefile$|(^|/)Dockerfile$|(^|/)docker-compose\.ya?ml$|(^|/)pyproject\.toml$|(^|/)setup\.(cfg|py)$|(^|/)package\.json$|(^|/)requirements(-dev)?\.txt$|(^|/)tsconfig\.json$'
+
+dep_lock_pat='(^|/)package-lock\.json$|(^|/)yarn\.lock$|(^|/)pnpm-lock\.yaml$|(^|/)poetry\.lock$|(^|/)Pipfile\.lock$|(^|/)Gemfile\.lock$|(^|/)Cargo\.lock$|(^|/)go\.sum$|(^|/)composer\.lock$|(^|/)Podfile\.lock$'
+dep_manifest_pat='(^|/)package\.json$|(^|/)requirements(-dev)?\.txt$|(^|/)pyproject\.toml$|(^|/)Pipfile$|(^|/)Gemfile$|(^|/)Cargo\.toml$|(^|/)go\.mod$|(^|/)pom\.xml$|(^|/)build\.gradle(\.kts)?$|(^|/)Chart\.yaml$'
+
+DOCS_COUNT=$(printf "%s\n" "${STAGED_FILES[@]}" | count_grep "$docs_pat")
+TESTS_COUNT=$(printf "%s\n" "${STAGED_FILES[@]}" | count_grep "$tests_pat")
+CFG_COUNT=$(printf "%s\n" "${STAGED_FILES[@]}" | count_grep "$cfg_pat")
+DEP_LOCK_COUNT=$(printf "%s\n" "${STAGED_FILES[@]}" | count_grep "$dep_lock_pat")
+DEP_MANIFEST_COUNT=$(printf "%s\n" "${STAGED_FILES[@]}" | count_grep "$dep_manifest_pat")
+
+# Patch content scans
+PATCH=$(git diff --cached)
+set +e
+echo "$PATCH" | grep -E -i -q '(^|\b)(CVE-|security|vulnerab)'
+SECURITY=$?
+set -e
+SECURITY_FIX=false
+[[ $SECURITY -eq 0 ]] && SECURITY_FIX=true
+
+# Whitespace-only?
+WHITESPACE_ONLY=false
+if is_whitespace_only; then WHITESPACE_ONLY=true; fi
+
+# Release bump heuristic: only version/changelog or manifests with "version" lines touched
+release_files_pat='(^|/)CHANGELOG\.md$|(^|/)CHANGES\.md$|(^|/)VERSION$|(^|/)version\.txt$|(^|/)Cargo\.toml$|(^|/)pyproject\.toml$|(^|/)package\.json$'
+set +e
+version_line_changed=$(echo "$PATCH" | grep -E -i -c '^[\+\-].{0,30}"?version"?[": ]' || true)
+set -e
+RELEASE_BUMP=false
+if only_files_match "$release_files_pat" || { only_files_match "$dep_manifest_pat" && [[ ${version_line_changed:-0} -gt 0 ]]; }; then
+  RELEASE_BUMP=true
+fi
+
+# --- Decide Type -----------------------------------------------------------
+
+type="edit"
+desc="general edits"
+
+if $WHITESPACE_ONLY; then
+  type="cleanup"; desc="whitespace/formatting"
+elif (( DEP_LOCK_COUNT + DEP_MANIFEST_COUNT > 0 )) && only_files_match "(${dep_lock_pat})|(${dep_manifest_pat})"; then
+  type="deps"; desc="bump dependencies"
+elif $RELEASE_BUMP; then
+  type="release"; desc="bump version/changelog"
+elif only_files_match "$docs_pat"; then
+  type="docs"; desc="update docs"
+elif only_files_match "$tests_pat"; then
+  type="tests"; desc="update tests"
+elif (( RENAMES > 0 )) && (( TOTAL_CHURN < 500 )) && (( TOTAL_FILES <= 20 )); then
+  type="rename"; desc="rename/move files"
+elif (( TOTAL_FILES >= 15 )) || (( RENAMES >= 3 )) || { (( TOTAL_CHURN >= 800 )) && (( TOTAL_FILES >= 5 )); }; then
+  type="refactor"; desc="major refactor"
+elif majority_files_match '^A\b'; then
+  type="add"; desc="add new files"
+elif majority_files_match '^D\b'; then
+  type="remove"; desc="remove files"
+elif $SECURITY_FIX; then
+  type="security"; desc="security fix"
+elif only_files_match "$cfg_pat"; then
+  type="config"; desc="config tweaks"
+elif (( TOTAL_FILES <= 3 )) && (( TOTAL_CHURN <= 20 )) && ! $WHITESPACE_ONLY; then
+  type="fix"; desc="bug fix"
+elif (( TOTAL_CHURN <= 3 )); then
+  type="oneliner"; desc="one-liner change"
+else
+  type="edit"; desc="general edits"
+fi
+
+# --- Build Message ---------------------------------------------------------
+
+short="$type: $desc"
+files_part="$TOP3_JOINED"
+if [[ -z "$files_part" ]]; then
+  # Fallback if numstat parsing failed (shouldn't happen)
+  files_part=$(printf "%s\n" "${STAGED_FILES[@]}" | head -3 | join_with_commas)
+fi
+
+suffix=""
+if (( TOTAL_FILES > 3 )); then
+  suffix=" (total ${TOTAL_FILES} files)"
+fi
+
+extra=""
+if [[ -n "$note" ]]; then
+  extra=" — $note"
+fi
+
+msg="$short — $files_part$suffix$extra"
+
+# Optional: include churn as body for context (kept short).
+body="±${TOTAL_ADDS}/${TOTAL_DELS}"
+
+# Commit!
+git commit -m "$msg" -m "$body"
+
