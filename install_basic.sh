@@ -13,6 +13,7 @@ ln -sf $PWD/coffee.indent.vim ~/.vim/indent/coffee.vim
 mkdir -p ~/.vim/colors/
 ln -sf $PWD/colors/summerfruit256.vim ~/.vim/colors/summerfruit256.vim
 ln -sf $PWD/colors/gruvbox.vim ~/.vim/colors/gruvbox.vim
+cp $PWD/btop.conf ~/.config/btop/btop.conf
 
 
 # source .bashrc_extra from .bashrc
