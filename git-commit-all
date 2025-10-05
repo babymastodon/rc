@@ -199,7 +199,7 @@ else
   elif (( deps_n > 0 )) && (( deps_n >= tests_n + docs_n + config_n + code_n )); then
     type="deps"; emoji="📦"
   elif (( config_n > 0 )) && (( config_n >= docs_n )) && (( config_n >= tests_n )) && (( config_n >= deps_n )) && (( config_n >= code_n/2 )); then
-    type="config"; emoji="⚙️"
+    type="config"; emoji="⚙️ "
   elif (( version_n >= 3 )) && (( deps_n + config_n + docs_n + tests_n <= version_n*2 )); then
     type="version bump"; emoji="🔖"
   elif (( tests_n > 0 )) && (( tests_n >= docs_n )) && (( tests_n >= config_n )) && (( tests_n >= deps_n )) && (( tests_n >= code_n/2 )); then
