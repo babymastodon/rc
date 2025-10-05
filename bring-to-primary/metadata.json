@@ -1,0 +1,9 @@
+{
+  "uuid": "bring-to-primary@local",
+  "name": "Bring All Windows to Primary",
+  "description": "Move all normal windows to the primary monitor via a hotkey",
+  "version": 3,
+  "shell-version": ["49"],
+  "settings-schema": "org.gnome.shell.extensions.bring-to-primary"
+}
+
