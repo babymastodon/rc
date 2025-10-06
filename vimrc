@@ -104,7 +104,7 @@ let g:netrw_preview = 1
 noremap gf :vertical wincmd F<CR>
 
 " enable spellcheck
-set spell spelllang=en_us
+" set spell spelllang=en_us
 
 " pressing F2 enters paste mode
 set pastetoggle=<F2>
