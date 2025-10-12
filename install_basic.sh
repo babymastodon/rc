@@ -6,10 +6,6 @@ ln -sf $PWD/ideavimrc ~/.ideavimrc
 ln -sf $PWD/tmux.conf ~/.tmux.conf
 ln -sf $PWD/bashrc_extra ~/.bashrc_extra
 ln -sf $PWD/gitignore_global ~/.gitignore_global
-mkdir -p ~/.vim/colors/
-for f in $PWD/colors/*.vim; do
-  ln -sf "$f" ~/.vim/colors/$(basename "$f")
-done
 mkdir -p ~/.config/btop
 cp $PWD/btop.conf ~/.config/btop/btop.conf
 mkdir -p ~/.config/ghostty
