@@ -6,15 +6,12 @@ ln -sf $PWD/ideavimrc ~/.ideavimrc
 ln -sf $PWD/tmux.conf ~/.tmux.conf
 ln -sf $PWD/bashrc_extra ~/.bashrc_extra
 ln -sf $PWD/gitignore_global ~/.gitignore_global
-mkdir -p ~/.vim/syntax/
-ln -sf $PWD/coffee.vim ~/.vim/syntax/coffee.vim
-mkdir -p ~/.vim/indent/
-ln -sf $PWD/coffee.indent.vim ~/.vim/indent/coffee.vim
 mkdir -p ~/.vim/colors/
 for f in $PWD/colors/*.vim; do
   ln -sf "$f" ~/.vim/colors/$(basename "$f")
 done
 cp $PWD/btop.conf ~/.config/btop/btop.conf
+ln -sf $PWD/ghostty.config ~/.config/ghostty/config
 
 
 # source .bashrc_extra from .bashrc
