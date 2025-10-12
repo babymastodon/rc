@@ -9,62 +9,6 @@ set bs=2
 set tabstop=2
 set shiftwidth=2
 
-" color scheme
-" set t_Co=256
-
-" ===== Manual theme toggle (F6) =====
-let s:theme_statefile = expand('~/.vim/theme_mode')
-
-function! s:ApplyTheme(mode) abort
-  if a:mode ==# 'light'
-    set background=light
-    try
-      " colorscheme adwaita
-      colorscheme summerfruit256
-    catch
-      colorscheme peachpuff
-    endtry
-  else
-    set background=dark
-    try
-      colorscheme adwaita_dark
-    catch
-      colorscheme default
-    endtry
-  endif
-endfunction
-
-function! s:ReadState() abort
-  if filereadable(s:theme_statefile)
-    let l:line = trim(get(readfile(s:theme_statefile), 0, ''))
-    if l:line =~? '^\(dark\|light\)$'
-      return l:line
-    endif
-  endif
-  return 'dark'  " default on first run
-endfunction
-
-function! s:WriteState(mode) abort
-  try | call writefile([a:mode], s:theme_statefile) | catch | endtry
-endfunction
-
-function! ToggleTheme() abort
-  let l:current = (&background ==# 'dark') ? 'dark' : 'light'
-  let l:new = (l:current ==# 'dark') ? 'light' : 'dark'
-  call s:ApplyTheme(l:new)
-  call s:WriteState(l:new)
-  echo 'Theme: ' . l:new
-endfunction
-command! ToggleTheme call ToggleTheme()
-
-" Apply the saved theme on startup
-call s:ApplyTheme(s:ReadState())
-
-" Map F6 to toggle between light/dark
-nnoremap <silent> <F6> :ToggleTheme<CR>
-" ===== end manual toggle =====
-
-
 " smartindent only good for C
 set nosmartindent
 set autoindent
