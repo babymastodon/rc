@@ -17,6 +17,14 @@ set autoindent
 au FileType python setl sw=4 sts=4 et
 au FileType mcs51a setl sw=3 sts=3 et
 
+" tab colors
+highlight TabLine      ctermfg=0  ctermbg=7
+highlight TabLineSel   ctermfg=0  ctermbg=2
+highlight TabLineFill  ctermfg=7  ctermbg=0
+highlight StatusLine   ctermfg=2  ctermbg=0
+highlight StatusLineNC ctermfg=7  ctermbg=0
+highlight VertSplit    ctermfg=7  ctermbg=15
+
 " custom file extensions
 au BufNewFile,BufRead *.cpp set syntax=cpp11
 au BufRead,BufNewFile *.go set filetype=go
