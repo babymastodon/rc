@@ -19,6 +19,7 @@ function! s:ApplyTheme(mode) abort
   if a:mode ==# 'light'
     set background=light
     try
+      " colorscheme adwaita
       colorscheme summerfruit256
     catch
       colorscheme peachpuff
@@ -26,7 +27,7 @@ function! s:ApplyTheme(mode) abort
   else
     set background=dark
     try
-      colorscheme gruvbox
+      colorscheme adwaita_dark
     catch
       colorscheme default
     endtry
