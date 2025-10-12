@@ -10,7 +10,9 @@ mkdir -p ~/.vim/colors/
 for f in $PWD/colors/*.vim; do
   ln -sf "$f" ~/.vim/colors/$(basename "$f")
 done
+mkdir -p ~/.config/btop
 cp $PWD/btop.conf ~/.config/btop/btop.conf
+mkdir -p ~/.config/ghostty
 ln -sf $PWD/ghostty.config ~/.config/ghostty/config
 
 
