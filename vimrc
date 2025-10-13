@@ -18,11 +18,11 @@ au FileType python setl sw=4 sts=4 et
 au FileType mcs51a setl sw=3 sts=3 et
 
 " tab colors
-highlight TabLine      cterm=NONE ctermfg=NONE  ctermbg=NONE
-highlight TabLineSel   cterm=NONE ctermfg=0     ctermbg=2
-highlight TabLineFill  cterm=NONE ctermfg=NONE  ctermbg=NONE
-highlight StatusLine   cterm=NONE ctermfg=0     ctermbg=2
-highlight StatusLineNC cterm=NONE ctermfg=NONE  ctermbg=NONE
+highlight TabLine      cterm=underline ctermfg=7  ctermbg=NONE
+highlight TabLineSel   cterm=underline ctermfg=0     ctermbg=2
+highlight TabLineFill  cterm=underline ctermfg=7  ctermbg=NONE
+highlight StatusLine   cterm=underline ctermfg=0     ctermbg=2
+highlight StatusLineNC cterm=underline ctermfg=7  ctermbg=NONE
 highlight VertSplit    cterm=NONE ctermfg=7     ctermbg=NONE
 set fillchars=vert:│
 
