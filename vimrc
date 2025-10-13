@@ -21,15 +21,6 @@ au FileType mcs51a setl sw=3 sts=3 et
 set notermguicolors     " disable truecolor
 set t_Co=16             " tell Vim we only have 16 colors
 
-" tab colors
-highlight TabLine      cterm=underline ctermfg=7  ctermbg=NONE
-highlight TabLineSel   cterm=underline ctermfg=0     ctermbg=2
-highlight TabLineFill  cterm=underline ctermfg=7  ctermbg=NONE
-highlight StatusLine   cterm=underline ctermfg=0     ctermbg=2
-highlight StatusLineNC cterm=underline ctermfg=7  ctermbg=NONE
-highlight VertSplit    cterm=NONE ctermfg=7     ctermbg=NONE
-set fillchars=vert:│
-
 " enable vimrc line extensions
 set nocompatible
 
@@ -439,3 +430,14 @@ call vundle#end()
 filetype plugin on
 filetype indent on
 syn on
+
+" custom colors
+colorscheme default
+highlight Comment                      ctermfg=8
+highlight TabLine      cterm=underline ctermfg=7  ctermbg=NONE
+highlight TabLineSel   cterm=underline ctermfg=0  ctermbg=2
+highlight TabLineFill  cterm=underline ctermfg=7  ctermbg=NONE
+highlight StatusLine   cterm=underline ctermfg=0  ctermbg=2
+highlight StatusLineNC cterm=underline ctermfg=7  ctermbg=NONE
+highlight VertSplit    cterm=NONE      ctermfg=7  ctermbg=NONE
+set fillchars=vert:│
