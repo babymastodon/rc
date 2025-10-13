@@ -26,18 +26,6 @@ highlight StatusLineNC cterm=underline ctermfg=7  ctermbg=NONE
 highlight VertSplit    cterm=NONE ctermfg=7     ctermbg=NONE
 set fillchars=vert:│
 
-" custom file extensions
-au BufNewFile,BufRead *.cpp set syntax=cpp11
-au BufRead,BufNewFile *.go set filetype=go
-au BufRead,BufNewFile *.go setlocal noexpandtab
-au BufNewFile,BufRead *.ql set filetype=sql
-au BufNewFile,BufRead *.tmpl set filetype=perl
-au BufNewFile,BufRead *.dash set filetype=perl
-au BufNewFile,BufRead *.alert set filetype=perl
-
-" enable 'vim-python/python-syntax'
-let g:python_highlight_all = 1
-
 " enable vimrc line extensions
 set nocompatible
 
@@ -441,7 +429,7 @@ Bundle 'ycm-core/YouCompleteMe'
 Bundle 'heavenshell/vim-pydocstring'
 Bundle 'rhysd/conflict-marker.vim'
 Bundle 'pedrohdz/vim-yaml-folds'
-Bundle 'vim-python/python-syntax'
+Bundle 'sheerun/vim-polyglot'
 
 call vundle#end()
 filetype plugin on
