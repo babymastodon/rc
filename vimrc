@@ -17,6 +17,10 @@ set autoindent
 au FileType python setl sw=4 sts=4 et
 au FileType mcs51a setl sw=3 sts=3 et
 
+" stick to the color pallette
+set notermguicolors     " disable truecolor
+set t_Co=16             " tell Vim we only have 16 colors
+
 " tab colors
 highlight TabLine      cterm=underline ctermfg=7  ctermbg=NONE
 highlight TabLineSel   cterm=underline ctermfg=0     ctermbg=2
