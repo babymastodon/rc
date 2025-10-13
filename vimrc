@@ -35,6 +35,9 @@ au BufNewFile,BufRead *.tmpl set filetype=perl
 au BufNewFile,BufRead *.dash set filetype=perl
 au BufNewFile,BufRead *.alert set filetype=perl
 
+" enable 'vim-python/python-syntax'
+let g:python_highlight_all = 1
+
 " enable vimrc line extensions
 set nocompatible
 
@@ -438,6 +441,7 @@ Bundle 'ycm-core/YouCompleteMe'
 Bundle 'heavenshell/vim-pydocstring'
 Bundle 'rhysd/conflict-marker.vim'
 Bundle 'pedrohdz/vim-yaml-folds'
+Bundle 'vim-python/python-syntax'
 
 call vundle#end()
 filetype plugin on
