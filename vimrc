@@ -195,6 +195,7 @@ autocmd FileType python 2match OverLength /\%>120v.\+/
 " Press F5 to toggle highlighting on/off, and show current value.
 noremap <F5> :set hlsearch! hlsearch?<CR>
 set hlsearch
+set incsearch
 
 " Press & to switch between two related files
 au FileType cpp nnoremap & :e %:p:s,.h$,.X123X,:s,.cpp$,.h,:s,.X123X$,.cpp,<CR>
@@ -440,4 +441,6 @@ highlight TabLineFill  cterm=underline ctermfg=7  ctermbg=NONE
 highlight StatusLine   cterm=underline ctermfg=0  ctermbg=2
 highlight StatusLineNC cterm=underline ctermfg=7  ctermbg=NONE
 highlight VertSplit    cterm=NONE      ctermfg=7  ctermbg=NONE
+highlight Search       cterm=NONE      ctermfg=0  ctermbg=3
+highlight IncSearch    cterm=NONE      ctermfg=0  ctermbg=3
 set fillchars=vert:│
