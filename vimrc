@@ -179,9 +179,6 @@ noremap ( :tp<CR>
 " disable preview split on autocomplete
 :set completeopt-=preview
 
-" fancy status line
-:set statusline=%<%F\ %h%m%r%y%=%-14.(%l,%c%V%)\ %P
-
 " search and hilight word under cursor
 nnoremap * :keepjumps normal! mi*`i<CR>
 
@@ -340,6 +337,7 @@ function! MyTabLine()
       let s .= '%#TabCap#%#TabLineSel#' . i . ' ' . file . mod . '%#TabCap#'
     else
       if getbufvar(bufnr, '&modified')
+
         let s .= '%#TabCapMod#%#TabLineMod#' . i . ' ' . file . mod . '%#TabCapMod#'
       else
         let s .= '%#TabLine# ' . i . ' ' . file . mod . ' '
@@ -440,16 +438,28 @@ highlight TabLine      cterm=underline ctermfg=7  ctermbg=NONE
 highlight TabLineSel   cterm=NONE      ctermfg=0  ctermbg=2
 highlight TabLineFill  cterm=underline ctermfg=7  ctermbg=NONE
 highlight TabCap       cterm=NONE      ctermfg=2  ctermbg=NONE
-highlight TabLineMod   cterm=NONE      ctermfg=0  ctermbg=8
+highlight TabLineMod   cterm=NONE      ctermfg=15 ctermbg=8
 highlight TabCapMod    cterm=NONE      ctermfg=8  ctermbg=NONE
-highlight StatusLine   cterm=underline ctermfg=0  ctermbg=2
+highlight StatusLine   cterm=underline,bold ctermfg=2  ctermbg=None
+highlight StatusCap    cterm=underline ctermfg=2  ctermbg=0
 highlight StatusLineNC cterm=underline ctermfg=7  ctermbg=NONE
 highlight VertSplit    cterm=NONE      ctermfg=7  ctermbg=NONE
 highlight Search       cterm=NONE      ctermfg=0  ctermbg=3
 highlight IncSearch    cterm=NONE      ctermfg=0  ctermbg=3
 set fillchars=vert:│
 
+" fancy tab bar
 set stal=2
 set tabline=%!MyTabLine()
 set showtabline=1
 
+" fancy status line
+function! StatusLineFunc()
+  if win_getid() == g:statusline_winid
+    return '%<%F %h%m%r%y %= %-14.(%l,%c%V %) %P'
+  else
+    return '%<%F %h%m%r%y %= %-14.(%l,%c%V %) %P'
+  endif
+endfunction
+set fillchars+=stl:┈,stlnc:\ 
+set statusline=%!StatusLineFunc()
