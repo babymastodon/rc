@@ -336,12 +336,14 @@ function! MyTabLine()
 
     " highlight + edges
     if i == t
-      " active tab — filled half-moons (reverse fg/bg)
-      let s .= '%#TabLineSel#'
-      let s .= '%#TabCap#%#TabLineSel#' . i . ' %#TabLineSel#' . file . mod . '%#TabCap#'
+
+      let s .= '%#TabCap#%#TabLineSel#' . i . ' ' . file . mod . '%#TabCap#'
     else
-      " inactive tab — just spaces instead of outline
-      let s .= '%#TabLine# ' . i . ' ' . file . mod . ' '
+      if getbufvar(bufnr, '&modified')
+        let s .= '%#TabCapMod#%#TabLineMod#' . i . ' ' . file . mod . '%#TabCapMod#'
+      else
+        let s .= '%#TabLine# ' . i . ' ' . file . mod . ' '
+      endif
     endif
   endfor
 
@@ -438,6 +440,8 @@ highlight TabLine      cterm=underline ctermfg=7  ctermbg=NONE
 highlight TabLineSel   cterm=NONE      ctermfg=0  ctermbg=2
 highlight TabLineFill  cterm=underline ctermfg=7  ctermbg=NONE
 highlight TabCap       cterm=NONE      ctermfg=2  ctermbg=NONE
+highlight TabLineMod   cterm=NONE      ctermfg=0  ctermbg=8
+highlight TabCapMod    cterm=NONE      ctermfg=8  ctermbg=NONE
 highlight StatusLine   cterm=underline ctermfg=0  ctermbg=2
 highlight StatusLineNC cterm=underline ctermfg=7  ctermbg=NONE
 highlight VertSplit    cterm=NONE      ctermfg=7  ctermbg=NONE
