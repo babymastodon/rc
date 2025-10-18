@@ -307,51 +307,50 @@ let g:ctrlp_map = '<C-f>'
 command! -nargs=+ Gr execute 'silent Ggrep!' <q-args> | silent! botright cwindow 15 | cc | redraw! | let @/=<q-args> | set hls
 nnoremap gr :Gr <C-R>=expand("<cword>")<CR><CR>
 
-" Rename tabs to show tab number.
-" (Based on http://stackoverflow.com/questions/5927952/whats-implementation-of-vims-default-tabline-function)
-if exists("+showtabline")
-    function! MyTabLine()
-        let s = ''
-        let wn = ''
-        let t = tabpagenr()
-        let i = 1
-        while i <= tabpagenr('$')
-            let buflist = tabpagebuflist(i)
-            let winnr = tabpagewinnr(i)
-            let s .= '%' . i . 'T'
-            let s .= (i == t ? '%1*' : '%2*')
-            let s .= ' '
-            let wn = tabpagewinnr(i,'$')
+function! MyTabLine()
+  let s = ''
+  let t = tabpagenr()
 
-            let s .= '%#TabNum#'
-            let s .= i
-            " let s .= '%*'
-            let s .= (i == t ? '%#TabLineSel#' : '%#TabLine#')
-            let bufnr = buflist[winnr - 1]
-            let file = bufname(bufnr)
-            let buftype = getbufvar(bufnr, 'buftype')
-            if buftype == 'nofile'
-                if file =~ '\/.'
-                    let file = substitute(file, '.*\/\ze.', '', '')
-                endif
-            else
-                let file = fnamemodify(file, ':p:t')
-            endif
-            if file == ''
-                let file = '[No Name]'
-            endif
-            let s .= ' ' . file . ' '
-            let i = i + 1
-        endwhile
-        let s .= '%T%#TabLineFill#%='
-        let s .= (tabpagenr('$') > 1 ? '%999XX' : 'X')
-        return s
-    endfunction
-    set stal=2
-    set tabline=%!MyTabLine()
-    set showtabline=1
-    highlight link TabNum Special
-endif
+  for i in range(1, tabpagenr('$'))
+    let s .= '%' . i . 'T'
+
+    " get buffer name
+    let buflist = tabpagebuflist(i)
+    let winnr  = tabpagewinnr(i)
+    let bufnr  = buflist[winnr - 1]
+    let file   = bufname(bufnr)
+    let buftype = getbufvar(bufnr, 'buftype')
+
+    if buftype ==# 'nofile'
+      if file =~ '\/.'
+        let file = substitute(file, '.*\/\ze.', '', '')
+      endif
+    else
+      let file = fnamemodify(file, ':t')
+    endif
+    if empty(file)
+      let file = '[No Name]'
+    endif
+
+    let mod = getbufvar(bufnr, '&modified') ? ' •' : ''
+
+    " highlight + edges
+    if i == t
+      " active tab — filled half-moons (reverse fg/bg)
+      let s .= '%#TabLineSel#'
+      let s .= '%#TabNumCap#%#TabNum#' . i . '%#TabNumDiv#%#TabLineSel#' . file . mod . '%#TabCap#'
+    else
+      " inactive tab — just spaces instead of outline
+      let s .= '%#TabLine# ' . i . ' ' . file . mod . ' '
+    endif
+  endfor
+
+  " fill + close button
+  let s .= '%#TabLineFill#%T%='
+  let s .= (tabpagenr('$') > 1 ? '%999X✕' : '✕')
+  return s
+endfunction
+
 
 let g:clang_format#style_options = { "BinPackArguments" : "false", "BinPackParameters" : "false", "CommentPragmas" : ".*\\$", "Language" : "Cpp", "Standard" : "C++11"}
 au BufWrite *.{cc,cpp,h} :ClangFormat
@@ -436,11 +435,20 @@ syn on
 colorscheme default
 highlight Comment                      ctermfg=8
 highlight TabLine      cterm=underline ctermfg=7  ctermbg=NONE
-highlight TabLineSel   cterm=underline ctermfg=0  ctermbg=2
+highlight TabLineSel   cterm=NONE      ctermfg=0  ctermbg=2
 highlight TabLineFill  cterm=underline ctermfg=7  ctermbg=NONE
+highlight TabCap       cterm=NONE      ctermfg=2  ctermbg=NONE
+highlight TabNumCap    cterm=NONE      ctermfg=8  ctermbg=NONE
+highlight TabNum       cterm=NONE      ctermfg=15  ctermbg=8
+highlight TabNumDiv    cterm=NONE      ctermfg=8  ctermbg=2
 highlight StatusLine   cterm=underline ctermfg=0  ctermbg=2
 highlight StatusLineNC cterm=underline ctermfg=7  ctermbg=NONE
 highlight VertSplit    cterm=NONE      ctermfg=7  ctermbg=NONE
 highlight Search       cterm=NONE      ctermfg=0  ctermbg=3
 highlight IncSearch    cterm=NONE      ctermfg=0  ctermbg=3
 set fillchars=vert:│
+
+set stal=2
+set tabline=%!MyTabLine()
+set showtabline=1
+
