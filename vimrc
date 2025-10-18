@@ -334,13 +334,13 @@ function! MyTabLine()
     " highlight + edges
     if i == t
 
-      let s .= '%#TabCap#%#TabLineSel#' . i . ' ' . file . mod . '%#TabCap#'
+      let s .= '%#TabCap#%#TabLineSel#' . i . ' ' . file . mod . '%#TabCap#%#TabLine# '
     else
       if getbufvar(bufnr, '&modified')
 
-        let s .= '%#TabCapMod#%#TabLineMod#' . i . ' ' . file . mod . '%#TabCapMod#'
+        let s .= '%#TabCapMod#%#TabLineMod#' . i . ' ' . file . mod . '%#TabCapMod#%#TabLine# '
       else
-        let s .= '%#TabLine# ' . i . ' ' . file . mod . ' '
+        let s .= '%#TabLine# ' . i . ' ' . file . mod . '  '
       endif
     endif
   endfor
