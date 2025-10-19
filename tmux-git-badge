@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155 # allow inline decls
 set -euo pipefail
 
-TTL=10  # seconds before regeneration
+TTL=20  # seconds before regeneration
 
 # ---------- inputs ----------
 pane_id="${2:-${TMUX_PANE:-no_pane}}"
