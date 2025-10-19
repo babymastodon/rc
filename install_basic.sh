@@ -24,6 +24,7 @@ source ~/.bashrc
 mkdir -p ~/bin
 ln -sf $PWD/git-commit-all ~/bin/git-commit-all
 ln -sf $PWD/tmux-git-badge ~/bin/tmux-git-badge
+ln -sf $PWD/tmux-ssh-host ~/bin/tmux-ssh-host
 
 
 # install config files into etc
