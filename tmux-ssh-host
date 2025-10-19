@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-cache="${2:-/tmp/tmux-badge-ssh}"
+cache="/tmp/tmux-badge-ssh-${2//\//-}"
 now=${EPOCHSECONDS:-$(date +%s)}
 
 # ---------- FAST PATH (no forks) ----------

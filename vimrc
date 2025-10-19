@@ -212,7 +212,7 @@ autocmd BufWinLeave * call clearmatches()
 " reset the tmux status line
 augroup TmuxGitBadgeCleanup
   autocmd!
-  autocmd BufWritePost * silent! call system('rm -f /tmp/tmux-git-badge.*')
+  autocmd BufWritePost * silent! call system('rm -f /tmp/tmux-badge-git.*')
 augroup END
 
 " fix bug in go-vim syntax file

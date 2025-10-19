@@ -7,7 +7,7 @@
 
 set -euo pipefail
 
-cache="${2:-/tmp/tmux-badge-git}"
+cache="/tmp/tmux-badge-git${2//\//-}"
 CWD=${1:-$PWD}
 now=${EPOCHSECONDS:-$(date +%s)}
 
