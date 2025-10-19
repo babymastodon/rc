@@ -24,9 +24,9 @@ if { exec {fd}<"$cache"; } 2>/dev/null; then
       [[ -n $out_cached ]] && printf '%s\n' "$out_cached"
       exit 0
     else
-      HEAD="$git_root/.git/HEAD"
+      GIT="$git_root/.git"
       FETCH_HEAD="$git_root/.git/FETCH_HEAD"
-      if ! { [[ "$HEAD" -nt "$cache" ]] || [[ "$FETCH_HEAD" -nt "$cache" ]]; }; then
+      if ! { [[ "$GIT" -nt "$cache" ]] || [[ "$FETCH_HEAD" -nt "$cache" ]]; }; then
         [[ -n $out_cached ]] && printf '%s\n' "$out_cached"
         exit 0
       fi
