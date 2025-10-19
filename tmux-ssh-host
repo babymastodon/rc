@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # tmux-ssh-host — print "󰱠 <hostname>" for an SSH pane, cached 60s.
-# usage: tmux-ssh-host [pane_pid] [cache_path]
+# usage: tmux-ssh-host [pane_pid] [cache_key]
 
 set -euo pipefail
 
-cache="/tmp/tmux-badge-ssh-${2//\//-}"
+key=${2:-default}
+cache="/tmp/tmux-badge-ssh${key//\//-}"
 now=${EPOCHSECONDS:-$(date +%s)}
 
 # ---------- FAST PATH (no forks) ----------

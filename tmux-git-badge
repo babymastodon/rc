@@ -3,11 +3,12 @@
 # - Cache last status on filesystem
 # - Regens the status every 60s
 # - Or whenever the cwd, git dir, FETCH_HEAD, or upstream remote's reflog changes
-# usage: tmux-git-badge [pane_current_path] [cache_path]
+# usage: tmux-git-badge [pane_current_path] [cache_key]
 
 set -euo pipefail
 
-cache="/tmp/tmux-badge-git${2//\//-}"
+key=${2:-default}
+cache="/tmp/tmux-badge-git${key//\//-}"
 CWD=${1:-$PWD}
 now=${EPOCHSECONDS:-$(date +%s)}
 
