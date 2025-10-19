@@ -31,11 +31,13 @@ mkdir -p ~/etc
 
 
 # install vim plugins
-if [ ! -d ~/.vim/bundle/vundle ]
-then
-  mkdir -p ~/.vim/bundle
-  git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim
+# install vim-plug
+if [ ! -f ~/.vim/autoload/plug.vim ]; then
+  mkdir -p ~/.vim/autoload
+  curl -fLo ~/.vim/autoload/plug.vim \
+    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 fi
+
 
 # install git completion
 if [ ! -f ~/.git-completion.bash ]

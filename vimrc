@@ -401,35 +401,33 @@ let g:netrw_keepdir = 0
 :command! Rc :edit! ~/.vimrc
 :command! Src :source ~/.vimrc
 
-" Vundle packages
-filetype off
-set rtp+=~/.vim/bundle/Vundle.vim
-call vundle#begin()
+" Packages
+call plug#begin('~/.vim/plugged')
 
-Bundle 'gmarik/vundle'
-Bundle 'jnwhiteh/vim-golang'
-Bundle 'vim-scripts/Cpp11-Syntax-Support'
-Bundle 'nvie/vim-flake8'
-Bundle 'hynek/vim-python-pep8-indent'
-Bundle 'tpope/vim-fugitive'
-Bundle "pangloss/vim-javascript"
-Bundle 'fatih/vim-go'
-Bundle 'majutsushi/tagbar'
-Bundle 'Valloric/ListToggle'
-Bundle 'chrisbra/csv.vim'
-Bundle 'ctrlpvim/ctrlp.vim'
-Bundle 'powerman/vim-plugin-AnsiEsc'
-Bundle 'dense-analysis/ale'
-Bundle 'ycm-core/YouCompleteMe'
-Bundle 'heavenshell/vim-pydocstring'
-Bundle 'rhysd/conflict-marker.vim'
-Bundle 'pedrohdz/vim-yaml-folds'
-Bundle 'sheerun/vim-polyglot'
+Plug 'jnwhiteh/vim-golang'
+Plug 'vim-scripts/Cpp11-Syntax-Support'
+Plug 'nvie/vim-flake8'
+Plug 'hynek/vim-python-pep8-indent'
+Plug 'tpope/vim-fugitive'
+Plug 'pangloss/vim-javascript'
+Plug 'fatih/vim-go'
+Plug 'majutsushi/tagbar'
+Plug 'Valloric/ListToggle'
+Plug 'chrisbra/csv.vim'
+Plug 'ctrlpvim/ctrlp.vim'
+Plug 'powerman/vim-plugin-AnsiEsc'
+Plug 'dense-analysis/ale'
+Plug 'ycm-core/YouCompleteMe'
+Plug 'heavenshell/vim-pydocstring'
+Plug 'rhysd/conflict-marker.vim'
+Plug 'pedrohdz/vim-yaml-folds'
+Plug 'sheerun/vim-polyglot'
 
-call vundle#end()
-filetype plugin on
-filetype indent on
-syn on
+call plug#end()
+
+" Filetype settings
+filetype plugin indent on
+syntax on
 
 " custom colors
 colorscheme default
