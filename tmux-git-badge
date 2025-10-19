@@ -2,7 +2,7 @@
 # tmux-git-badge — fast Git status for tmux
 # - Cache last status on filesystem
 # - Regens the status every 60s
-# - Or whenver the cwd, git head, or fetch head changes
+# - Or whenver the cwd, git dir, or fetch head changes
 
 set -euo pipefail
 
