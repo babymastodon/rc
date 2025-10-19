@@ -395,8 +395,6 @@ hi DiffChange cterm=NONE ctermfg=NONE ctermbg=231
 hi DiffText cterm=NONE ctermfg=NONE ctermbg=189
 hi DiffDelete cterm=NONE ctermfg=NONE ctermbg=224
 
-let g:netrw_keepdir = 0
-
 " :Rc should open vimrc
 :command! Rc :edit! ~/.vimrc
 :command! Src :source ~/.vimrc

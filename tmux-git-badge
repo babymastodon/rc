@@ -1,26 +1,36 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2155 # allow inline decls
 set -euo pipefail
 
 TTL=10  # seconds before regeneration
 
-pane_id="${TMUX_PANE:-no_pane}"
+# ---------- inputs ----------
+pane_id="${2:-${TMUX_PANE:-no_pane}}"
 cache="/tmp/tmux-git-badge.${pane_id}"
 
 # ---------- resolve CWD ----------
 CWD=""
-if (( $# >= 1 )) && [ -n "${1:-}" ] && [ -d "$1" ]; then
-  CWD="$1"
+if (( $# >= 1 )) && [[ -n "${1:-}" && -d "$1" ]]; then
+  CWD=$1
 fi
-[ -n "$CWD" ] || CWD="${PWD:-/}"
+: "${CWD:=${PWD:-/}}"
 
 # ---------- fast path ----------
-if [ -s "$cache" ]; then
-  ts=0 cached_cwd="" cached_out=""
-  { IFS= read -r ts && IFS= read -r cached_cwd && IFS= read -r cached_out; } < "$cache" || true
-  now=$(date +%s)
-  if [ "$cached_cwd" = "$CWD" ] && (( now - ts < TTL )); then
-    # 🚀 If cached_out is empty, just print nothing and exit — non-git fast path
-    [ -n "$cached_out" ] && printf '%s\n' "$cached_out"
+if [[ -s $cache ]]; then
+  # Open once; read exactly 3 lines
+  exec {fd}<"$cache"
+  mapfile -t -n 3 lines <&"$fd" || true
+  exec {fd}<&-
+  ts=${lines[0]:-0}
+  cached_cwd=${lines[1]:-}
+  cached_out=${lines[2]:-}
+
+  # Use Bash's monotonic-ish epoch counter
+  now=${EPOCHSECONDS:-$(date +%s)}  # falls back only if not Bash 5
+
+  if [[ $cached_cwd == "$CWD" ]] && (( now - ts < TTL )); then
+    # 🚀 non-git fast path: print nothing if empty
+    [[ -n $cached_out ]] && printf '%s\n' "$cached_out"
     exit 0
   fi
 fi
