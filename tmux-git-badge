@@ -45,7 +45,7 @@ if { exec {fd}<"$cache"; } 2>/dev/null; then
           printf '%s\n' "$now"          # [2] last_head_check (updated)
           printf '%s\n' "$out"          # [3] out (unchanged)
           printf '%s\n' "$head"         # [4] head (unchanged)
-          printf '%s\n' "$now"          # [5] ts (keep monotonic; not used for decisions)
+          printf '%s\n' "$last_regen"   # [5] ts (unchanged)
           printf '\n'                   # [6] reserved
         } >"$tmp"
         mv "$tmp" "$cache"
