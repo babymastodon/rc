@@ -1,53 +1,40 @@
 #!/usr/bin/env bash
-# tmux-git-badge — fast Git status for tmux (MED + SLOW TTLs only).
-# Each run:
-#   - If CWD changed → rebuild.
-#   - Else if >5s since last HEAD check → one HEAD check; if unchanged, bump timestamp; else rebuild.
-#   - Else reuse cached output (no Git).
-# Cache lines (6): [1] cwd, [2] last_head_check, [3] out, [4] head, [5] ts (unused), [6] reserved.
-# Note: Because last_head_check is always >= ts, we never need to read/compare ts on fast/med paths.
+# tmux-git-badge — fast Git status for tmuxW
+#   - If CWD changed → rebuild Git string
+#   - Check HEAD for changes every 5 seconds
+#   - Else reuse cached output for up to 60s
+#   - Assumes that Vim clears cache upon each save
 
 set -euo pipefail
 
-MED_TTL=5      # HEAD check interval
-SLOW_TTL=60    # max reuse window; enforced against last_head_check
-
-# ---------- inputs ----------
 pane_id="${2:-${TMUX_PANE:-no_pane}}"
 cache="/tmp/tmux-git-badge.${pane_id}"
-
-# ---------- resolve CWD ----------
-CWD=""
-if (( $# >= 1 )) && [[ -n "${1:-}" && -d "$1" ]]; then CWD=$1; fi
-: "${CWD:=${PWD:-/}}"
-
+CWD=${1:-$PWD}
 now=${EPOCHSECONDS:-$(date +%s)}
 
-# ---------- FAST + MED PATHS (min I/O & commands; never read ts) ----------
-if exec {fd}<"$cache"; then
+# Read cache and check for changes
+if { exec {fd}<"$cache"; } 2>/dev/null; then
   IFS= read -r -u "$fd" cwd_cached  || cwd_cached=""
   IFS= read -r -u "$fd" last_check  || last_check=0
 
   if [[ $cwd_cached == "$CWD" ]]; then
-    # FAST reuse (within MED_TTL): read only 'out' and return (no git, no ts)
-    if (( now - last_check <= MED_TTL )); then
+    # Always return cache for up to 5 sec
+    if (( now - last_check <= 5)); then
       IFS= read -r -u "$fd" out || out=""
       exec {fd}<&-
       [[ -n $out ]] && printf '%s\n' "$out"
       exit 0
     fi
 
-    # Due to check: read 'out' and 'head' (skip ts), then single HEAD probe.
     IFS= read -r -u "$fd" out  || out=""
     IFS= read -r -u "$fd" head || head="-"
-    # skip reading ts (line 5) entirely — it’s redundant
+    IFS= read -r -u "$fd" last_regen || last_regen="-"
     exec {fd}<&-
 
-    # If head is unchanged within SLOW_TTL, return cache
-    if (( now - last_check < SLOW_TTL )); then
+    # For up to 60s, always return cache if HEAD unchanged
+    if (( now - last_regen < 60)); then
       cur="$(git -C "$CWD" rev-parse --verify --short=12 HEAD 2>/dev/null || printf '-')"
       if [[ $cur == "$head" ]]; then
-        # HEAD unchanged → update only last_head_check and reuse cached out.
         tmp="${cache}.tmp.$$"
         {
           printf '%s\n' "$cwd_cached"   # [1] cwd
