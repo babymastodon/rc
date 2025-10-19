@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TTL=10  # seconds before regeneration
+
+pane_id="${TMUX_PANE:-no_pane}"
+cache="/tmp/tmux-git-badge.${pane_id}"
+
+# ---------- resolve CWD ----------
+CWD=""
+if (( $# >= 1 )) && [ -n "${1:-}" ] && [ -d "$1" ]; then
+  CWD="$1"
+fi
+[ -n "$CWD" ] || CWD="${PWD:-/}"
+
+# ---------- fast path ----------
+if [ -s "$cache" ]; then
+  ts=0 cached_cwd="" cached_out=""
+  { IFS= read -r ts && IFS= read -r cached_cwd && IFS= read -r cached_out; } < "$cache" || true
+  now=$(date +%s)
+  if [ "$cached_cwd" = "$CWD" ] && (( now - ts < TTL )); then
+    # 🚀 If cached_out is empty, just print nothing and exit — non-git fast path
+    [ -n "$cached_out" ] && printf '%s\n' "$cached_out"
+    exit 0
+  fi
+fi
+
+# ---------- not a git repo? cache empty + exit ----------
+if ! git -C "$CWD" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  now=$(date +%s)
+  tmp="${cache}.tmp.$$"
+  { printf '%s\n' "$now"; printf '%s\n' "$CWD"; printf '\n'; } >"$tmp"
+  mv "$tmp" "$cache"
+  exit 0
+fi
+
+# ---------- gather git info ----------
+top="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$CWD")"
+repo="${top##*/}"
+branch="$(git -C "$CWD" symbolic-ref --short -q HEAD 2>/dev/null || git -C "$CWD" rev-parse --short HEAD 2>/dev/null || printf '?')"
+ahead="$(git -C "$CWD" rev-list --count @{u}..HEAD 2>/dev/null || printf 0)"
+behind="$(git -C "$CWD" rev-list --count HEAD..@{u} 2>/dev/null || printf 0)"
+
+# clean flag (✓ only)
+clean_mark=""
+if git -C "$CWD" diff --quiet --ignore-submodules HEAD 2>/dev/null; then
+  clean_mark=" ✓"
+fi
+
+# accurate added/removed counts (staged + unstaged)
+sum_numstat() {
+  awk '$1 ~ /^[0-9]+$/ {i+=$1} $2 ~ /^[0-9]+$/ {d+=$2} END {print (i+0), (d+0)}'
+}
+read -r i1 d1 <<<"$(git -C "$CWD" diff --numstat 2>/dev/null | sum_numstat)"
+read -r i2 d2 <<<"$(git -C "$CWD" diff --numstat --cached 2>/dev/null | sum_numstat)"
+ins=$((i1 + i2))
+del=$((d1 + d2))
+
+# ---------- build output ----------
+out="  $branch"
+(( ahead > 0 ))  && out+=" ↑$ahead"
+(( behind > 0 )) && out+=" ↓$behind"
+out+=" ($repo)$clean_mark"
+if (( ins > 0 || del > 0 )); then
+  out+=" [+$ins -$del]"
+fi
+
+# ---------- write cache ----------
+now=$(date +%s)
+tmp="${cache}.tmp.$$"
+{ printf '%s\n' "$now"; printf '%s\n' "$CWD"; printf '%s\n' "$out"; } >"$tmp"
+mv "$tmp" "$cache"
+
+printf '%s\n' "$out"
+

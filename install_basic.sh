@@ -23,6 +23,7 @@ source ~/.bashrc
 # install scripts into the bin
 mkdir -p ~/bin
 ln -sf $PWD/git-commit-all ~/bin/git-commit-all
+ln -sf $PWD/tmux-git-badge ~/bin/tmux-git-badge
 
 
 # install config files into etc
