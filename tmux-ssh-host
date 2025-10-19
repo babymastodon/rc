@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # tmux-ssh-host — print "󰱠 <hostname>" for an SSH pane, cached 60s.
-# usage: tmux-ssh-host [pane_id] [pane_pid]
+# usage: tmux-ssh-host [pane_pid] [cache_path]
 
 set -euo pipefail
 
-pane_id="${1:-${TMUX_PANE:-no_pane}}"
-cache="/tmp/tmux-ssh-host.${pane_id}"
+cache="${2:-/tmp/tmux-ssh-nopane}"
 now=${EPOCHSECONDS:-$(date +%s)}
 
 # ---------- FAST PATH (no forks) ----------
@@ -18,7 +17,7 @@ if { exec {fd}<"$cache"; } 2>/dev/null; then
   fi
 fi
 
-pane_pid="${2:-}"                 # no validation per request
+pane_pid="${1:-}"
 [[ -n "$pane_pid" ]] || exit 0
 
 # ---------- helpers ----------
