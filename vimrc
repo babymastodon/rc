@@ -1,8 +1,9 @@
 " tabs are saved as spaces
 set expandtab
 
-" filepaths relative to the current file
-set autochdir
+" let netrw manage cwd
+set noautochdir
+let g:netrw_keepdir = 0
 
 " default tab widths
 set bs=2
@@ -394,6 +395,8 @@ hi DiffChange cterm=NONE ctermfg=NONE ctermbg=231
 hi DiffText cterm=NONE ctermfg=NONE ctermbg=189
 hi DiffDelete cterm=NONE ctermfg=NONE ctermbg=224
 
+let g:netrw_keepdir = 0
+
 " :Rc should open vimrc
 :command! Rc :edit! ~/.vimrc
 :command! Src :source ~/.vimrc
@@ -412,11 +415,8 @@ Bundle 'tpope/vim-fugitive'
 Bundle "pangloss/vim-javascript"
 Bundle 'fatih/vim-go'
 Bundle 'majutsushi/tagbar'
-Bundle 'rodjek/vim-puppet'
 Bundle 'Valloric/ListToggle'
-Bundle 'rhysd/vim-clang-format'
 Bundle 'chrisbra/csv.vim'
-" Bundle 'vhdirk/vim-cmake'
 Bundle 'ctrlpvim/ctrlp.vim'
 Bundle 'powerman/vim-plugin-AnsiEsc'
 Bundle 'dense-analysis/ale'
