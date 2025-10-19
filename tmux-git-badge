@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# tmux-git-badge — fast Git status for tmuxW
-#   - If CWD changed → rebuild Git string
-#   - Check HEAD for changes every 5 seconds
-#   - Else reuse cached output for up to 60s
-#   - Assumes that Vim clears cache upon each save
+# tmux-git-badge — fast Git status for tmux
+# - Cache last status on filesystem
+# - Regens the status every 60s
+# - Or whenver the cwd, git head, or fetch head changes
 
 set -euo pipefail
 
@@ -12,78 +11,57 @@ cache="/tmp/tmux-git-badge.${pane_id}"
 CWD=${1:-$PWD}
 now=${EPOCHSECONDS:-$(date +%s)}
 
-# Read cache and check for changes
+# FAST PATH
 if { exec {fd}<"$cache"; } 2>/dev/null; then
-  IFS= read -r -u "$fd" cwd_cached  || cwd_cached=""
-  IFS= read -r -u "$fd" last_check  || last_check=0
+  mapfile -t L <&"$fd"; exec {fd}<&-
+  cwd_cached=${L[0]:-"_"}
+  git_root=${L[1]:-"_"}
+  out_cached=${L[2]:-}
+  regen_ts=${L[3]:-0}
 
-  if [[ $cwd_cached == "$CWD" ]]; then
-    # Always return cache for up to 5 sec
-    if (( now - last_check <= 5)); then
-      IFS= read -r -u "$fd" out || out=""
-      exec {fd}<&-
-      [[ -n $out ]] && printf '%s\n' "$out"
+  if [[ $cwd_cached == "$CWD" ]] && (( now - regen_ts < 60 )); then
+    if [[ $git_root == "_" ]]; then
+      [[ -n $out_cached ]] && printf '%s\n' "$out_cached"
       exit 0
-    fi
-
-    IFS= read -r -u "$fd" out  || out=""
-    IFS= read -r -u "$fd" head || head="_"
-    IFS= read -r -u "$fd" last_regen || last_regen="0"
-    exec {fd}<&-
-
-    # For up to 60s, always return cache if HEAD unchanged
-    if (( now - last_regen < 60)); then
-      if  [[ $head == "_" ]]; then
-        [[ -n $out ]] && printf '%s\n' "$out"
-        exit 0
-      fi
-      cur="$(git -C "$CWD" rev-parse --verify --short=12 HEAD 2>/dev/null || printf '_')"
-      if [[ $cur == "$head" ]]; then
-        tmp="${cache}.tmp.$$"
-        {
-          printf '%s\n' "$cwd_cached"   # [1] cwd
-          printf '%s\n' "$now"          # [2] last_head_check (updated)
-          printf '%s\n' "$out"          # [3] out (unchanged)
-          printf '%s\n' "$head"         # [4] head (unchanged)
-          printf '%s\n' "$last_regen"   # [5] ts (unchanged)
-          printf '\n'                   # [6] reserved
-        } >"$tmp"
-        mv "$tmp" "$cache"
-        [[ -n $out ]] && printf '%s\n' "$out"
+    else
+      HEAD="$git_root/.git/HEAD"
+      FETCH_HEAD="$git_root/.git/FETCH_HEAD"
+      if ! { [[ "$HEAD" -nt "$cache" ]] || [[ "$FETCH_HEAD" -nt "$cache" ]]; }; then
+        [[ -n $out_cached ]] && printf '%s\n' "$out_cached"
         exit 0
       fi
     fi
-  else
-    exec {fd}<&-
   fi
 fi
 
-# ---------- REGEN PATH (no cache / CWD changed / stale / HEAD moved) ----------
-# Non-git repo → cache empty badge and throttle future checks
-if ! git -C "$CWD" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+# REGEN PATH
+git_root="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || printf '_')"
+
+# Non-git: write empty badge and exit
+if [[ $git_root == "_" ]]; then
   tmp="${cache}.tmp.$$"
   {
-    printf '%s\n' "$CWD"  # [1] cwd
-    printf '%s\n' "$now"  # [2] last_head_check
-    printf '\n'           # [3] out (empty)
-    printf '_\n'          # [4] head placeholder
-    printf '%s\n' "$now"  # [5] ts (unused)
-    printf '\n'           # [6] reserved
+    printf '%s\n' "$CWD"     # [1] cwd
+    printf '%s\n' '_'        # [2] git_root
+    printf '\n'              # [3] out (empty)
+    printf '%s\n' "$now"     # [4] regen_ts
   } >"$tmp"
   mv "$tmp" "$cache"
   exit 0
 fi
 
-# ---------- gather git info (full rebuild) ----------
-top="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$CWD")"
-repo="${top##*/}"
-branch="$(git -C "$CWD" symbolic-ref --short -q HEAD 2>/dev/null || git -C "$CWD" rev-parse --short HEAD 2>/dev/null || printf '?')"
+# Otherwise get git info
+branch="$(git -C "$CWD" symbolic-ref --short -q HEAD 2>/dev/null \
+          || git -C "$CWD" rev-parse --short HEAD 2>/dev/null \
+          || printf '?')"
 ahead="$(git -C "$CWD" rev-list --count @{u}..HEAD 2>/dev/null || printf 0)"
 behind="$(git -C "$CWD" rev-list --count HEAD..@{u} 2>/dev/null || printf 0)"
-head_short="$(git -C "$CWD" rev-parse --verify --short=12 HEAD 2>/dev/null || printf '-')"
+repo="${git_root##*/}"
 
 clean_mark=""
-if git -C "$CWD" diff --quiet --ignore-submodules HEAD 2>/dev/null; then clean_mark=" ✓"; fi
+if git -C "$CWD" diff --quiet --ignore-submodules HEAD 2>/dev/null; then
+  clean_mark=" ✓"
+fi
 
 sum_numstat() { awk '$1 ~ /^[0-9]+$/ {i+=$1} $2 ~ /^[0-9]+$/ {d+=$2} END {print (i+0), (d+0)}'; }
 read -r i1 d1 <<<"$(git -C "$CWD" diff --numstat 2>/dev/null | sum_numstat)"
@@ -96,15 +74,13 @@ out="  $branch"
 out+=" ($repo)$clean_mark"
 if (( ins > 0 || del > 0 )); then out+=" [+$ins -$del]"; fi
 
-# ---------- write cache (order: cwd, last, out, head, ts, reserved) ----------
+# Write cache & print
 tmp="${cache}.tmp.$$"
 {
-  printf '%s\n' "$CWD"        # [1] cwd
-  printf '%s\n' "$now"        # [2] last_head_check = now
-  printf '%s\n' "$out"        # [3] out
-  printf '%s\n' "$head_short" # [4] head
-  printf '%s\n' "$now"        # [5] ts (not used for decisions)
-  printf '\n'                 # [6] reserved
+  printf '%s\n' "$CWD"      # [1] cwd
+  printf '%s\n' "$git_root" # [2] git_root
+  printf '%s\n' "$out"      # [3] out
+  printf '%s\n' "$now"      # [4] regen_ts
 } >"$tmp"
 mv "$tmp" "$cache"
 
