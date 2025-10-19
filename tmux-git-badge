@@ -38,7 +38,7 @@ if { exec {fd}<"$cache"; } 2>/dev/null; then
       fi
       if ! { [[ "$GIT" -nt "$cache" ]] \
           || [[ "$FETCH_HEAD" -nt "$cache" ]] \
-          || { [[ -n $REMOTE_LOG ]] && [[ "$REMOTE_LOG" -nt "$cache" ]]; }; }; then
+          || { [[ "$REMOTE_LOG" -nt "$cache" ]]; }; }; then
         [[ -n $out_cached ]] && printf '%s\n' "$out_cached"
         exit 0
       fi
