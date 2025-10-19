@@ -68,6 +68,7 @@ upstream="$(git -C "$CWD" rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/de
 
 # Git info
 branch="$(git -C "$CWD" symbolic-ref --short -q HEAD 2>/dev/null \
+          || git -C "$CWD" describe --tags --exact-match HEAD 2>/dev/null | sed 's/^/ /' \
           || git -C "$CWD" rev-parse --short HEAD 2>/dev/null \
           || printf '?')"
 ahead="$(git -C "$CWD" rev-list --count @{u}..HEAD 2>/dev/null || printf 0)"
