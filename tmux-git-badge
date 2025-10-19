@@ -15,6 +15,8 @@ if (( $# >= 1 )) && [[ -n "${1:-}" && -d "$1" ]]; then
 fi
 : "${CWD:=${PWD:-/}}"
 
+now=${EPOCHSECONDS:-$(date +%s)}  # falls back only if not Bash 5
+
 # ---------- fast path ----------
 if [[ -s $cache ]]; then
   # Open once; read exactly 3 lines
@@ -25,8 +27,6 @@ if [[ -s $cache ]]; then
   cached_cwd=${lines[1]:-}
   cached_out=${lines[2]:-}
 
-  # Use Bash's monotonic-ish epoch counter
-  now=${EPOCHSECONDS:-$(date +%s)}  # falls back only if not Bash 5
 
   if [[ $cached_cwd == "$CWD" ]] && (( now - ts < TTL )); then
     # 🚀 non-git fast path: print nothing if empty
@@ -37,7 +37,6 @@ fi
 
 # ---------- not a git repo? cache empty + exit ----------
 if ! git -C "$CWD" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  now=$(date +%s)
   tmp="${cache}.tmp.$$"
   { printf '%s\n' "$now"; printf '%s\n' "$CWD"; printf '\n'; } >"$tmp"
   mv "$tmp" "$cache"
@@ -76,7 +75,6 @@ if (( ins > 0 || del > 0 )); then
 fi
 
 # ---------- write cache ----------
-now=$(date +%s)
 tmp="${cache}.tmp.$$"
 { printf '%s\n' "$now"; printf '%s\n' "$CWD"; printf '%s\n' "$out"; } >"$tmp"
 mv "$tmp" "$cache"
