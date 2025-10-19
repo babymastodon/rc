@@ -2,7 +2,7 @@
 # tmux-git-badge — fast Git status for tmux
 # - Cache last status on filesystem
 # - Regens the status every 60s
-# - Or whenver the cwd, git dir, or fetch head changes
+# - Or whenever the cwd, git dir, FETCH_HEAD, or upstream remote's reflog changes
 
 set -euo pipefail
 
@@ -16,8 +16,9 @@ if { exec {fd}<"$cache"; } 2>/dev/null; then
   mapfile -t L <&"$fd"; exec {fd}<&-
   cwd_cached=${L[0]:-"_"}
   git_root=${L[1]:-"_"}
-  out_cached=${L[2]:-}
-  regen_ts=${L[3]:-0}
+  upstream=${L[2]:-"_"}
+  out_cached=${L[3]:-}
+  regen_ts=${L[4]:-0}
 
   if [[ $cwd_cached == "$CWD" ]] && (( now - regen_ts < 60 )); then
     if [[ $git_root == "_" ]]; then
@@ -25,8 +26,16 @@ if { exec {fd}<"$cache"; } 2>/dev/null; then
       exit 0
     else
       GIT="$git_root/.git"
-      FETCH_HEAD="$git_root/.git/FETCH_HEAD"
-      if ! { [[ "$GIT" -nt "$cache" ]] || [[ "$FETCH_HEAD" -nt "$cache" ]]; }; then
+      FETCH_HEAD="$GIT/FETCH_HEAD"
+      # If upstream is set, stat its remote-tracking reflog
+      if [[ $upstream != "_" ]]; then
+        REMOTE_LOG="$GIT/logs/refs/remotes/$upstream"
+      else
+        REMOTE_LOG=""
+      fi
+      if ! { [[ "$GIT" -nt "$cache" ]] \
+          || [[ "$FETCH_HEAD" -nt "$cache" ]] \
+          || { [[ -n $REMOTE_LOG ]] && [[ "$REMOTE_LOG" -nt "$cache" ]]; }; }; then
         [[ -n $out_cached ]] && printf '%s\n' "$out_cached"
         exit 0
       fi
@@ -43,14 +52,18 @@ if [[ $git_root == "_" ]]; then
   {
     printf '%s\n' "$CWD"     # [1] cwd
     printf '%s\n' '_'        # [2] git_root
-    printf '\n'              # [3] out (empty)
-    printf '%s\n' "$now"     # [4] regen_ts
+    printf '%s\n' '_'        # [3] upstream
+    printf '\n'              # [4] out (empty)
+    printf '%s\n' "$now"     # [5] regen_ts
   } >"$tmp"
   mv "$tmp" "$cache"
   exit 0
 fi
 
-# Otherwise get git info
+# Discover upstream as a single token "remote/branch" or "_"
+upstream="$(git -C "$CWD" rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || printf '_')"
+
+# Git info
 branch="$(git -C "$CWD" symbolic-ref --short -q HEAD 2>/dev/null \
           || git -C "$CWD" rev-parse --short HEAD 2>/dev/null \
           || printf '?')"
@@ -77,10 +90,11 @@ if (( ins > 0 || del > 0 )); then out+=" [+$ins -$del]"; fi
 # Write cache & print
 tmp="${cache}.tmp.$$"
 {
-  printf '%s\n' "$CWD"      # [1] cwd
-  printf '%s\n' "$git_root" # [2] git_root
-  printf '%s\n' "$out"      # [3] out
-  printf '%s\n' "$now"      # [4] regen_ts
+  printf '%s\n' "$CWD"       # [1] cwd
+  printf '%s\n' "$git_root"  # [2] git_root
+  printf '%s\n' "$upstream"  # [3] upstream
+  printf '%s\n' "$out"       # [4] out
+  printf '%s\n' "$now"       # [5] regen_ts
 } >"$tmp"
 mv "$tmp" "$cache"
 
