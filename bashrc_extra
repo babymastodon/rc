@@ -1,9 +1,9 @@
 # command prompt shows git branch
 function parse_git_branch () {
   set -o pipefail
-  git symbolic-ref --short -q HEAD 2>/dev/null | sed -E 's/(.*)/ ( \1)/' \
-            || git describe --tags --exact-match HEAD 2>/dev/null | sed -E 's/(.*)/ ( \1)/' \
-            || git rev-parse --short HEAD 2>/dev/null | sed -E 's/(.*)/ (󰜘 \1)/'
+  git symbolic-ref --short -q HEAD 2>/dev/null | sed -E 's/(.*)/( \1)/' \
+            || git describe --tags --exact-match HEAD 2>/dev/null | sed -E 's/(.*)/( \1)/' \
+            || git rev-parse --short HEAD 2>/dev/null | sed -E 's/(.*)/(󰜘 \1)/'
 }
 
 RED="\[\033[0;31m\]"
@@ -11,7 +11,7 @@ YELLOW="\[\033[0;33m\]"
 GREEN="\[\033[0;32m\]"
 NO_COLOUR="\[\033[0m\]"
 
-PS1="$GREEN\u@\h$NO_COLOUR:\w$YELLOW\$(parse_git_branch)$NO_COLOUR\$ "
+PS1="$GREEN\u@\h$NO_COLOUR:\w$YELLOW \$(parse_git_branch)$NO_COLOUR\$ "
 
 # set PATH so it includes user's private bin if it exists
 if [ -d "$HOME/bin" ] ; then
