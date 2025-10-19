@@ -5,7 +5,7 @@
 # - Or whenever the cwd, git dir, FETCH_HEAD, or upstream remote's reflog changes
 #
 # Usage: 
-#   set -g status-right '#H#(~/bin/tmux-git-badge "#{pane_current_path}" "#{pane_id}")'
+#   set -g status-right '#H#(tmux-git-badge "#{pane_current_path}" "#{pane_id}")'
 
 set -euo pipefail
 
