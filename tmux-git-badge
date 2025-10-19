@@ -23,7 +23,6 @@ if { exec {fd}<"$cache"; } 2>/dev/null; then
 
   if [[ $cwd_cached == "$CWD" ]] && (( now - regen_ts < 60 )); then
     if [[ $git_root == "_" ]]; then
-      [[ -n $out_cached ]] && printf '%s\n' "$out_cached"
       exit 0
     else
       GIT="$git_root/.git"
