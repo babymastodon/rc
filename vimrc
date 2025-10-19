@@ -209,6 +209,12 @@ autocmd InsertEnter * match ExtraWhitespace /\s\+\%#\@<!$/
 autocmd InsertLeave * match ExtraWhitespace /\s\+$/
 autocmd BufWinLeave * call clearmatches()
 
+" reset the tmux status line
+augroup TmuxGitBadgeCleanup
+  autocmd!
+  autocmd BufWritePost * silent! call system('rm -f /tmp/tmux-git-badge.*')
+augroup END
+
 " fix bug in go-vim syntax file
 let go_highlight_trailing_whitespace_error = 0
 

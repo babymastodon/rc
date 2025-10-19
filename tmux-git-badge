@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2155 # allow inline decls
+# shellcheck disable=SC2155
 set -euo pipefail
 
-TTL=20  # seconds before regeneration
+FAST_TTL=20
+MED_TTL=5      # also the HEAD check interval
+SLOW_TTL=60
 
-# ---------- inputs ----------
 pane_id="${2:-${TMUX_PANE:-no_pane}}"
 cache="/tmp/tmux-git-badge.${pane_id}"
 
@@ -15,58 +16,93 @@ if (( $# >= 1 )) && [[ -n "${1:-}" && -d "$1" ]]; then
 fi
 : "${CWD:=${PWD:-/}}"
 
-now=${EPOCHSECONDS:-$(date +%s)}  # falls back only if not Bash 5
+now=${EPOCHSECONDS:-$(date +%s)}
 
-# ---------- fast path ----------
-if [[ -s $cache ]]; then
-  # Open once; read exactly 3 lines
-  exec {fd}<"$cache"
-  mapfile -t -n 3 lines <&"$fd" || true
-  exec {fd}<&-
-  ts=${lines[0]:-0}
-  cached_cwd=${lines[1]:-}
-  cached_out=${lines[2]:-}
+# ---------- fast path: read only what we need (3 lines) ----------
+# Open once; no prior [[ -s ... ]] stat needed
+if exec {fd}<"$cache"; then
+  # read ts and cwd first (cheap, buffered)
+  IFS= read -r -u "$fd" cached_ts || cached_ts=0
+  IFS= read -r -u "$fd" cached_cwd || cached_cwd=""
+  IFS= read -r -u "$fd" cached_out || cached_out=""
 
-
-  if [[ $cached_cwd == "$CWD" ]] && (( now - ts < TTL )); then
-    # 🚀 non-git fast path: print nothing if empty
+  if [[ $cached_cwd == "$CWD" ]] && (( now - cached_ts < FAST_TTL )); then
     [[ -n $cached_out ]] && printf '%s\n' "$cached_out"
+    exec {fd}<&-
     exit 0
+  fi
+
+  # still within slow TTL? continue with medium path using same FD
+  IFS= read -r -u "$fd" cached_head || cached_head="-"
+  IFS= read -r -u "$fd" last_head_check || last_head_check=0
+
+  age=$(( now - cached_ts ))
+  since_last=$(( now - last_head_check ))
+
+  if (( age <= SLOW_TTL )); then
+    if (( since_last <= MED_TTL )); then
+      # medium path reuse; no git call; FD can be closed
+      [[ -n $cached_out ]] && printf '%s\n' "$cached_out"
+      exec {fd}<&-
+      exit 0
+    fi
+    # due to check HEAD: one git call
+    exec {fd}<&-
+    current_head="$(git -C "$CWD" rev-parse --verify --short=12 HEAD 2>/dev/null || printf '-')"
+    if [[ $current_head == "$cached_head" ]]; then
+      # write back only last_head_check (cheap) and reuse
+      tmp="${cache}.tmp.$$"
+      {
+        printf '%s\n' "$cached_ts"
+        printf '%s\n' "$cached_cwd"
+        printf '%s\n' "$cached_out"
+        printf '%s\n' "$cached_head"
+        printf '%s\n' "$now"
+        printf '\n'
+      } >"$tmp"
+      mv "$tmp" "$cache"
+      [[ -n $cached_out ]] && printf '%s\n' "$cached_out"
+      exit 0
+    fi
+  else
+    exec {fd}<&-
   fi
 fi
 
 # ---------- not a git repo? cache empty + exit ----------
 if ! git -C "$CWD" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   tmp="${cache}.tmp.$$"
-  { printf '%s\n' "$now"; printf '%s\n' "$CWD"; printf '\n'; } >"$tmp"
+  {
+    printf '%s\n' "$now"   # ts
+    printf '%s\n' "$CWD"   # cwd
+    printf '\n'            # out empty
+    printf '-\n'           # head placeholder
+    printf '%s\n' "$now"   # last head check = now (throttle future checks)
+    printf '\n'
+  } >"$tmp"
   mv "$tmp" "$cache"
   exit 0
 fi
 
-
-# ---------- gather git info ----------
+# ---------- gather git info (regen path) ----------
 top="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$CWD")"
 repo="${top##*/}"
 branch="$(git -C "$CWD" symbolic-ref --short -q HEAD 2>/dev/null || git -C "$CWD" rev-parse --short HEAD 2>/dev/null || printf '?')"
 ahead="$(git -C "$CWD" rev-list --count @{u}..HEAD 2>/dev/null || printf 0)"
 behind="$(git -C "$CWD" rev-list --count HEAD..@{u} 2>/dev/null || printf 0)"
+head_short="$(git -C "$CWD" rev-parse --verify --short=12 HEAD 2>/dev/null || printf '-')"
 
-# clean flag (✓ only)
 clean_mark=""
 if git -C "$CWD" diff --quiet --ignore-submodules HEAD 2>/dev/null; then
   clean_mark=" ✓"
 fi
 
-# accurate added/removed counts (staged + unstaged)
-sum_numstat() {
-  awk '$1 ~ /^[0-9]+$/ {i+=$1} $2 ~ /^[0-9]+$/ {d+=$2} END {print (i+0), (d+0)}'
-}
+sum_numstat() { awk '$1 ~ /^[0-9]+$/ {i+=$1} $2 ~ /^[0-9]+$/ {d+=$2} END {print (i+0), (d+0)}'; }
 read -r i1 d1 <<<"$(git -C "$CWD" diff --numstat 2>/dev/null | sum_numstat)"
 read -r i2 d2 <<<"$(git -C "$CWD" diff --numstat --cached 2>/dev/null | sum_numstat)"
 ins=$((i1 + i2))
 del=$((d1 + d2))
 
-# ---------- build output ----------
 out="  $branch"
 (( ahead > 0 ))  && out+=" ↑$ahead"
 (( behind > 0 )) && out+=" ↓$behind"
@@ -77,7 +113,14 @@ fi
 
 # ---------- write cache ----------
 tmp="${cache}.tmp.$$"
-{ printf '%s\n' "$now"; printf '%s\n' "$CWD"; printf '%s\n' "$out"; } >"$tmp"
+{
+  printf '%s\n' "$now"          # ts
+  printf '%s\n' "$CWD"          # cwd
+  printf '%s\n' "$out"          # out
+  printf '%s\n' "$head_short"   # cached head
+  printf '%s\n' "$now"          # last head check (we ran full regen now)
+  printf '\n'
+} >"$tmp"
 mv "$tmp" "$cache"
 
 printf '%s\n' "$out"
