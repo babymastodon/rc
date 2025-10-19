@@ -1,6 +1,9 @@
 # command prompt shows git branch
 function parse_git_branch () {
-       git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
+  set -o pipefail
+  git symbolic-ref --short -q HEAD 2>/dev/null | sed -E 's/(.*)/ ( \1)/' \
+            || git describe --tags --exact-match HEAD 2>/dev/null | sed -E 's/(.*)/ ( \1)/' \
+            || git rev-parse --short HEAD 2>/dev/null | sed -E 's/(.*)/ (󰜘 \1)/'
 }
 
 RED="\[\033[0;31m\]"
