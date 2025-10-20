@@ -4,6 +4,15 @@ set expandtab
 " let netrw manage cwd
 set noautochdir
 let g:netrw_keepdir = 0
+augroup AutoChdirFiles
+  autocmd!
+  autocmd BufEnter * if &buftype == '' && !isdirectory(expand('%'))
+        \ | set autochdir
+        \ | else
+        \ | set noautochdir
+        \ | endif
+augroup END
+
 
 " default tab widths
 set bs=2
