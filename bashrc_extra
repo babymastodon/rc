@@ -44,8 +44,8 @@ fi
 # aliases for tmux
 export TMUXTMP=~/.tmuxtmp
 mkdir -p $TMUXTMP
-alias newmoo="TMPDIR=$TMUXTMP echo -ne '\033]0;Terminal\007'; tmux new -s moo"
-alias moo="TMPDIR=$TMUXTMP echo -ne '\033]0;Terminal\007'; tmux attach -dt moo"
+alias newmoo="TMPDIR=$TMUXTMP echo -ne '\033]0;$(hostname)\007'; tmux new -s moo"
+alias moo="TMPDIR=$TMUXTMP echo -ne '\033]0;$(hostname)\007'; tmux attach -dt moo"
 alias fixmoo='TMPDIR=$TMUXTMP killall -s SIGUSR1 moo'
 alias vimdiff='vim -d'
 alias ck='git checkout'
