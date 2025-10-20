@@ -405,6 +405,11 @@ hi DiffDelete cterm=NONE ctermfg=NONE ctermbg=224
 :command! Rc :edit! ~/.vimrc
 :command! Src :source ~/.vimrc
 
+" Copy to clipboard
+nmap <leader>c <Plug>OSCYankOperator
+nmap <leader>cc <leader>c_
+vmap <leader>c <Plug>OSCYankVisual
+
 " Packages
 call plug#begin('~/.vim/plugged')
 
@@ -426,6 +431,7 @@ Plug 'heavenshell/vim-pydocstring'
 Plug 'rhysd/conflict-marker.vim'
 Plug 'pedrohdz/vim-yaml-folds'
 Plug 'sheerun/vim-polyglot'
+Plug 'ojroques/vim-oscyank'
 
 call plug#end()
 
