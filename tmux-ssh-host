@@ -23,32 +23,29 @@ pane_pid="${1:-}"
 
 # ---------- helpers ----------
 parse_host_from_argv_array() {
-  local -a argv=( "$@" )
-  local host="" after_ddash=0 tok i=1
-  [[ "${argv[0]:-}" =~ (^|/)(ssh|ssh\.exe)$ ]] || { echo ""; return; }
-  while (( i < ${#argv[@]} )); do
-    tok="${argv[i]}"
-    if (( after_ddash )); then host="$tok"; break; fi
-    if [[ "$tok" == "--" ]]; then after_ddash=1; ((i++)); continue; fi
-    if [[ "$tok" == -* ]]; then
-      case "$tok" in
-        -4|-6|-A|-a|-C|-f|-g|-K|-k|-M|-N|-n|-q|-T|-t|-v|-V|-Y|-y) ((i++)); continue ;;
-      esac
-      if [[ "$tok" == -[plbciEFJDoOsIQsBTwWdLR]* && ${#tok} -gt 2 ]]; then ((i++)); continue; fi
-      case "$tok" in
-        -p|-l|-b|-c|-i|-E|-F|-J|-D|-L|-R|-W|-w|-o|-O|-S|-I|-Q|-B|-T) ((i+=2)); continue ;;
-      esac
-      ((i++)); continue
-    fi
-    host="$tok"; break
+  local -a a=( "$@" )
+  local host="" i
+
+  for ((i=1;i<${#a[@]};i++)); do
+    case "${a[i]}" in
+      --) ((i++)); host="${a[i]}"; break ;;
+      -\#) ((i++)); host="${a[i]}"; break ;;  # mosh-client display name
+      -*) continue ;;                         # skip all flags
+      '|') continue ;;                        # skip mosh pipe separator
+      *) host="${a[i]}"; break ;;
+    esac
   done
-  if [[ -n "$host" ]]; then
-    host="${host##*@}"; host="${host#[}"; host="${host%]}"; host="${host%%:*}"
+
+
+  [[ -n "$host" ]] && {
+    host="${host##*@}"
+    host="${host#[}"
+    host="${host%]}"
+    host="${host%%[:|]*}"
     echo "$host"
-  else
-    echo ""
-  fi
+  } || echo ""
 }
+
 
 print_and_cache() {
   local out="$1"
@@ -65,36 +62,13 @@ tpgid="$(ps -o tpgid= -p "$pane_pid" 2>/dev/null | tr -d '[:space:]' || true)"
 [[ -n "$tpgid" ]] || exit 0
 
 host=""
-
-os="$(uname -s)"
-if [[ "$os" == "Linux" ]]; then
-  # Try group leader first
-  if [[ -r "/proc/$tpgid/cmdline" ]]; then
-    declare -a av=(); while IFS= read -r -d '' a; do av+=("$a"); done <"/proc/$tpgid/cmdline" || true
-    if [[ "${av[0]:-}" =~ (^|/)(ssh|ssh\.exe)$ ]]; then
-      h="$(parse_host_from_argv_array "${av[@]}")"
-      [[ -n "$h" ]] && host="$h"
-    fi
-  fi
-  # If not found, use procps **--pgroup** (correct selector for process group)
-  if [[ -z "$host" ]]; then
-    ssh_pid="$(ps --no-headers -o pid= -o comm= --pgroup "$tpgid" 2>/dev/null | awk '$2 ~ /(^|\/)ssh(\.exe)?$/ {print $1; exit}')"
-    if [[ -n "$ssh_pid" && -r "/proc/$ssh_pid/cmdline" ]]; then
-      declare -a av=(); while IFS= read -r -d '' a; do av+=("$a"); done <"/proc/$ssh_pid/cmdline" || true
-      h="$(parse_host_from_argv_array "${av[@]}")"
-      [[ -n "$h" ]] && host="$h"
-    fi
-  fi
-else
-  # macOS / BSD: BSD ps uses -g <pgrp>, parse full argv line directly
-  while IFS= read -r cmd; do
-    # shellcheck disable=SC2206
-    av=( $cmd )
-    [[ "${av[0]:-}" =~ (^|/)(ssh|ssh\.exe)$ ]] || continue
-    h="$(parse_host_from_argv_array "${av[@]}")"
-    if [[ -n "$h" ]]; then host="$h"; break; fi
-  done < <(ps -o command= -g "$tpgid" -ww 2>/dev/null || true)
-fi
+while IFS= read -r cmd; do
+  # shellcheck disable=SC2206
+  av=( $cmd )
+  [[ "${av[0]:-}" =~ (^|/)(ssh|ssh\.exe|mosh-client)$ ]] || continue
+  h="$(parse_host_from_argv_array "${av[@]}")"
+  if [[ -n "$h" ]]; then host="$h"; break; fi
+done < <(ps -o command= -p "$tpgid" -ww 2>/dev/null || true)
 
 [[ -n "$host" ]] || exit 0
 print_and_cache "󰱠 $host"
