@@ -79,3 +79,8 @@ fi
 
 # disable scroll lock
 stty -ixon
+
+# use vim
+export VISUAL=vim
+export EDITOR=vim
+
