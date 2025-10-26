@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
 Name=Yazi
-Comment=Terminal file manager
+GenericName=Terminal File Manager
+Comment=Browse and manage files in the terminal
 Exec=yazi
 Terminal=true
-Icon=system-file-manager
+Icon=yazi
 Categories=System;Utility;FileManager;
-Keywords=file;manager;terminal;
-
+Keywords=file manager;terminal;browser;files;
