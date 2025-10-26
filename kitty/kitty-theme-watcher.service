@@ -1,0 +1,10 @@
+[Unit]
+Description=Kitty Theme Watcher (GNOME light/dark auto-switch)
+
+[Service]
+ExecStart=%h/bin/kitty-theme-watcher.sh
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+
