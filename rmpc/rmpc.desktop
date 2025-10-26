@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=RMPC
+GenericName=Terminal MPD Client
+Comment=Beautiful and modern terminal-based client for MPD with album-art support
+Exec=kitty -e rmpc
+Terminal=false
+Icon=rmpc
+Categories=AudioVideo;Music;Utility;
+Keywords=mpd;music;player;rmpc;
+

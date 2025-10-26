@@ -10,7 +10,6 @@ ln -sf $PWD/yazi.toml ~/.config/yazi/yazi.toml
 
 mkdir -p ~/.local/share/applications/
 ln -sf $PWD/yazi.desktop ~/.local/share/applications/yazi.desktop
-chmod +x ~/.local/share/applications/yazi.desktop
 
 # Install Icon
 d="$HOME/.local/share/icons/hicolor/256x256/apps"
