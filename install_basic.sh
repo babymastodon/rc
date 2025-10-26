@@ -25,7 +25,6 @@ cat ~/.bash_profile | grep -v '.bashrc' > /tmp/bash_profile
 echo source ~/.bashrc >> /tmp/bash_profile
 mv /tmp/bash_profile ~/.bash_profile
 
-
 # install scripts into the bin
 mkdir -p ~/bin
 ln -sf $PWD/git-commit-all ~/bin/git-commit-all
