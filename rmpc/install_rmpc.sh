@@ -1,33 +1,109 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo "Install mpd and rmpc:"
-echo
-echo "  sudo dnf install mpd"
-echo "  cargo install rmpc --locked"
-echo "  systemctl --user enable mpd.service"
-echo "  systemctl --user start mpd.service"
-echo
+# ----- helpers -----
+log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
+warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
+err()   { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
+need_sudo() { if [[ $EUID -ne 0 ]]; then echo "sudo"; fi; }
+SUDO="$(need_sudo || true)"
 
-mkdir -p ~/.config/mpd/
-mkdir -p ~/.local/share/mpd/
-ln -sf $PWD/mpd.conf ~/.config/mpd/mpd.conf
+# Ensure DNF exists (Fedora/RHEL family)
+if ! command -v dnf >/dev/null 2>&1; then
+  err "This script expects Fedora (dnf not found)."
+  exit 1
+fi
 
-mkdir -p ~/.config/rmpc/
-ln -sf $PWD/config.ron ~/.config/rmpc/config.ron
+# ----- ensure cargo (and rustc) -----
+if ! command -v cargo >/dev/null 2>&1; then
+  log "Installing Cargo (and Rust toolchain) via DNF…"
+  $SUDO dnf -y install cargo rustc || {
+    err "Failed to install cargo/rustc via DNF."
+    exit 1
+  }
+else
+  log "Cargo already present: $(cargo --version)"
+fi
 
-mkdir -p ~/.local/share/applications/
-ln -sf $PWD/rmpc.desktop ~/.local/share/applications/rmpc.desktop
+# Make sure ~/.cargo/bin is in PATH for this session
+export PATH="$HOME/.cargo/bin:$PATH"
 
-# Install the icon
+# ----- enable RPM Fusion if missing -----
+is_rpmfusion_enabled() {
+  dnf repolist --enabled 2>/dev/null | grep -qi 'rpmfusion'
+}
+
+if ! is_rpmfusion_enabled; then
+  log "Enabling RPM Fusion (free + nonfree)…"
+  FEDVER="$($SUDO rpm -E %fedora)"
+  $SUDO dnf -y install \
+    "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-${FEDVER}.noarch.rpm" \
+    "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-${FEDVER}.noarch.rpm"
+  $SUDO dnf -y makecache
+else
+  log "RPM Fusion already enabled."
+fi
+
+# ----- install MPD if missing -----
+if ! command -v mpd >/dev/null 2>&1 && ! rpm -q mpd >/dev/null 2>&1; then
+  log "Installing MPD…"
+  $SUDO dnf -y install mpd || {
+    err "Failed to install MPD via DNF."
+    exit 1
+  }
+else
+  log "MPD already installed: $(mpd --version | head -n1 || echo 'version lookup skipped')"
+fi
+
+# ----- install rmpc if missing -----
+if ! command -v rmpc >/dev/null 2>&1; then
+  log "Installing rmpc via cargo…"
+  cargo install rmpc --locked || {
+    err "cargo install rmpc failed."
+    exit 1
+  }
+else
+  log "rmpc already installed: $(echo 'version lookup skipped')"
+fi
+
+# ----- systemd user service (AFTER mpd install) -----
+if systemctl --user 2>/dev/null >/dev/null; then
+  log "Enabling & starting user mpd.service…"
+  systemctl --user daemon-reload || true
+  systemctl --user enable mpd.service
+  systemctl --user start mpd.service
+else
+  warn "systemd user instance not detected. If needed, run:
+    loginctl enable-linger \"$USER\"
+  and re-run this script (or start mpd manually)."
+fi
+
+# ----- your original setup steps -----
+log "Linking configs…"
+mkdir -p "$HOME/.config/mpd/"
+mkdir -p "$HOME/.local/share/mpd/"
+ln -sf "$PWD/mpd.conf" "$HOME/.config/mpd/mpd.conf"
+
+mkdir -p "$HOME/.config/rmpc/"
+ln -sf "$PWD/config.ron" "$HOME/.config/rmpc/config.ron"
+
+mkdir -p "$HOME/.local/share/applications/"
+ln -sf "$PWD/rmpc.desktop" "$HOME/.local/share/applications/rmpc.desktop"
+
+# ----- icon install -----
+log "Installing rmpc icon…"
 ICON_URL="https://mierak.github.io/rmpc/favicon.svg"
 ICON_DIR="$HOME/.local/share/icons/hicolor/scalable/apps"
 ICON_PATH="$ICON_DIR/rmpc.svg"
 mkdir -p "$ICON_DIR"
 curl -fsSL "$ICON_URL" -o "$ICON_PATH"
-sed -i 's/#000\b/#89CFF0/Ig' "$ICON_PATH"
-sed -i 's/#fff\b/#89CFF0/Ig' "$ICON_PATH"
+# Tweak colors (best-effort)
+sed -i 's/#000\b/#89CFF0/Ig' "$ICON_PATH" || true
+sed -i 's/#fff\b/#89CFF0/Ig' "$ICON_PATH" || true
 gtk-update-icon-cache "$HOME/.local/share/icons/hicolor" -f 2>/dev/null || true
-echo "✅ Installed icon at $ICON_DIR/rmpc.svg"
+log "✅ Installed icon at $ICON_DIR/rmpc.svg"
 
-update-desktop-database ~/.local/share/applications
+# ----- desktop DB update -----
+update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
+log "Done."
 
