@@ -5,8 +5,35 @@ set -euo pipefail
 log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
 warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
 err()   { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
+
 need_sudo() { if [[ $EUID -ne 0 ]]; then echo "sudo"; fi; }
 SUDO="$(need_sudo || true)"
+
+# robust symlink creator (sudo-aware)
+maybe_link() {
+  local src="$1" dest="$2"
+  local prefix="${3:-}"  # optional third arg for sudo
+
+  if $prefix test -e "$dest" || $prefix test -L "$dest"; then
+    if $prefix test -L "$dest"; then
+      local target
+      target="$($prefix readlink "$dest")"
+      if [[ "$target" == "$src" ]]; then
+        log "Link already correct: $dest -> $src"
+      else
+        warn "Link exists but wrong target ($target), fixing..."
+        $prefix rm -f "$dest"
+        $prefix ln -s "$src" "$dest"
+        log "Fixed link: $dest -> $src"
+      fi
+    else
+      warn "Exists and not a link: $dest (skipping)"
+    fi
+  else
+    $prefix ln -s "$src" "$dest"
+    log "Linked: $dest -> $src"
+  fi
+}
 
 # Ensure Fedora/RHEL family
 if ! command -v dnf >/dev/null 2>&1; then
@@ -40,17 +67,13 @@ else
   log "git already present."
 fi
 
-# ----- place config (only if missing) -----
+# ----- place config -----
+log "Linking keyd config…"
 $SUDO mkdir -p /etc/keyd/
-if [[ -f "$CONF_DST" || -L "$CONF_DST" ]]; then
-  log "Config already exists at $CONF_DST — skipping link."
+if [[ -f "$CONF_SRC" ]]; then
+  maybe_link "$CONF_SRC" "$CONF_DST" "$SUDO"
 else
-  if [[ -f "$CONF_SRC" ]]; then
-    $SUDO ln -s "$CONF_SRC" "$CONF_DST"
-    log "Linked config: $CONF_SRC -> $CONF_DST"
-  else
-    warn "Config source not found at: $CONF_SRC (skipping link)"
-  fi
+  warn "Config source not found at: $CONF_SRC (skipping link)"
 fi
 
 # ----- install keyd if missing -----
@@ -84,4 +107,3 @@ else
 fi
 
 log "Done."
-
