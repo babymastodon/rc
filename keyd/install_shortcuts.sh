@@ -28,6 +28,36 @@ CUSTOM_SHORTCUTS=(
 )
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ── Scripts for custom shortcuts ─────────────────────────────────────────────
+log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
+warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
+maybe_link() {
+  local src="$1" dest="$2"
+
+  # If destination exists
+  if [[ -e "$dest" || -L "$dest" ]]; then
+    if [[ -L "$dest" ]]; then
+      local target
+      target="$(readlink "$dest")"
+      if [[ "$target" == "$src" ]]; then
+        log "Link already correct: $dest -> $src"
+      else
+        warn "Link exists but wrong target ($target), fixing..."
+        rm "$dest"
+        ln -s "$src" "$dest"
+        log "Fixed link: $dest -> $src"
+      fi
+    else
+      log "Exists and not a link: $dest (skipping)"
+    fi
+  else
+    ln -s "$src" "$dest"
+    log "Linked: $dest -> $src"
+  fi
+}
+
+maybe_link "$PWD/toggle-dark-mode.sh" "$HOME/.local/bin/toggle-dark-mode.sh"
+
 # ── Built-in keybindings helpers ─────────────────────────────────────────────
 wrap_as_array() {
   # If value already looks like a GNOME array (starts with '['), keep it.
@@ -43,7 +73,7 @@ wrap_as_array() {
 apply_gnome_shortcuts() {
   local created=0 updated=0 skipped=0 # (created not really used for built-in)
 
-  echo "=== GNOME built-in keybindings ==="
+  log "=== GNOME built-in keybindings ==="
   for entry in "${GNOME_SHORTCUTS[@]}"; do
     IFS='|' read -r SCHEMA KEY ACCEL <<< "$entry"
     local_new="$(wrap_as_array "$ACCEL")"
@@ -142,7 +172,7 @@ unquote() {
 }
 
 apply_custom_shortcuts() {
-  echo "=== GNOME custom shortcuts ==="
+  log "=== GNOME custom shortcuts ==="
 
   mapfile -t PATHS < <(get_paths)
 
