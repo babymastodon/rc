@@ -43,15 +43,22 @@ maybe_copy() {
   fi
 }
 
-ensure_line_in_file() {
-  local line="$1" file="$2"
+ensure_source_in_file() {
+  local src="$1" file="$2"
+  local name="$(basename "$src")"
   mkdir -p "$(dirname "$file")"
   touch "$file"
-  if grep -qxF "$line" "$file"; then
-    log "Line already present in $(basename "$file")"
+
+  # Remove any existing lines sourcing the same filename
+  grep -vE "^[[:space:]]*source[[:space:]]+.*${name}$" "$file" > "$file.tmp" || true
+  mv "$file.tmp" "$file"
+
+  # Add the new source line if not already present
+  if ! grep -qxF "source $src" "$file"; then
+    echo "source $src" >> "$file"
+    log "Added source $src to $(basename "$file")"
   else
-    printf "%s\n" "$line" >> "$file"
-    log "Appended to $(basename "$file"): $line"
+    log "Already sourcing $src in $(basename "$file")"
   fi
 }
 
@@ -79,8 +86,8 @@ mkdir -p "$HOME/.config/ghostty"
 maybe_link "$PWD/ghostty.config" "$HOME/.config/ghostty/config"
 
 # ----- ensure sourcing order in shell rc files -----
-ensure_line_in_file "source ~/.bashrc_extra" "$HOME/.bashrc"
-ensure_line_in_file "source ~/.bashrc"       "$HOME/.bash_profile"
+ensure_source_in_file "$HOME/.bashrc_extra" "$HOME/.bashrc"
+ensure_source_in_file "$HOME/.bashrc"       "$HOME/.bash_profile"
 
 # Source for current session (best-effort, non-interactive safe)
 if [[ -f "$HOME/.bashrc_extra" ]]; then
@@ -92,7 +99,7 @@ fi
 
 # ----- install scripts into ~/bin (only if missing) -----
 mkdir -p "$HOME/bin"
-maybe_link "$PWD/git-commit-all"      "$HOME/bin/git-commit-all"
+maybe_link "$PWD/bash/git-commit-all" "$HOME/bin/git-commit-all"
 maybe_link "$PWD/tmux/tmux-git-badge" "$HOME/bin/tmux-git-badge"
 maybe_link "$PWD/tmux/tmux-ssh-host"  "$HOME/bin/tmux-ssh-host"
 
@@ -181,3 +188,28 @@ log "Git identity and defaults configured."
 
 log "Done."
 
+# ----- OS detection -----
+os="$(uname -s)"
+case "$os" in
+  Linux)   PLATFORM="linux"; RC_SRC_REL="bashrc_linux"; RC_TARGET="$HOME/.bashrc_linux" ;;
+  Darwin)  PLATFORM="mac";   RC_SRC_REL="bashrc_mac";   RC_TARGET="$HOME/.bashrc_mac" ;;
+  *) echo "❌ This script can only run on Linux or macOS. Detected: $os"; exit 1 ;;
+esac
+
+# ----- link per-OS bashrc -----
+RC_SRC_PATH="$PWD/bash/$RC_SRC_REL"
+if [[ ! -f "$RC_SRC_PATH" ]]; then
+  warn "Expected $RC_SRC_PATH but it does not exist."
+else
+  maybe_link "$RC_SRC_PATH" "$RC_TARGET"
+fi
+
+# ----- ensure sourcing from the right startup files -----
+ensure_source_in_file "$RC_TARGET" "$HOME/.bashrc"
+
+# ----- reload shell config (best-effort) -----
+if [[ -f "$RC_TARGET" ]]; then
+  # shellcheck disable=SC1090
+  source "$RC_TARGET" || true
+  log "Sourced $RC_TARGET"
+fi
