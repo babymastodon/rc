@@ -27,7 +27,10 @@ maybe_link() {
         log "Fixed link: $dest -> $src"
       fi
     else
-      warn "Exists and not a link: $dest (skipping)"
+      warn "Exists and not a link: $dest (fixing)"
+      $prefix rm -f "$dest"
+      $prefix ln -s "$src" "$dest"
+        log "Fixed link: $dest -> $src"
     fi
   else
     $prefix ln -s "$src" "$dest"
