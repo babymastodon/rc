@@ -28,7 +28,9 @@ maybe_link() {
       fi
     else
       warn "Exists and not a link: $dest (fixing)"
-      $prefix rm -f "$dest"
+      bk="/tmp/${dest##*/}"
+      $prefix mv -f "$dest" "$bk"
+      log "Moved old file: $dest -> $bk"
       $prefix ln -s "$src" "$dest"
         log "Fixed link: $dest -> $src"
     fi
