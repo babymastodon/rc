@@ -8,6 +8,31 @@ err()   { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
 need_sudo() { if [[ $EUID -ne 0 ]]; then echo "sudo"; fi; }
 SUDO="$(need_sudo || true)"
 
+# robust symlink creator that verifies/fixes target
+maybe_link() {
+  local src="$1" dest="$2"
+
+  if [[ -e "$dest" || -L "$dest" ]]; then
+    if [[ -L "$dest" ]]; then
+      local target
+      target="$(readlink "$dest")"
+      if [[ "$target" == "$src" ]]; then
+        log "Link already correct: $dest -> $src"
+      else
+        warn "Link exists but wrong target ($target), fixing..."
+        rm -f "$dest"
+        ln -s "$src" "$dest"
+        log "Fixed link: $dest -> $src"
+      fi
+    else
+      warn "Exists and not a link: $dest (skipping)"
+    fi
+  else
+    ln -s "$src" "$dest"
+    log "Linked: $dest -> $src"
+  fi
+}
+
 # Ensure DNF exists (Fedora/RHEL family)
 if ! command -v dnf >/dev/null 2>&1; then
   err "This script expects Fedora (dnf not found)."
@@ -72,10 +97,10 @@ fi
 # ----- link configs -----
 log "Linking Yazi configuration…"
 mkdir -p "$HOME/.config/yazi/"
-ln -sf "$PWD/yazi.toml" "$HOME/.config/yazi/yazi.toml"
+maybe_link "$PWD/yazi.toml" "$HOME/.config/yazi/yazi.toml"
 
 mkdir -p "$HOME/.local/share/applications/"
-ln -sf "$PWD/yazi.desktop" "$HOME/.local/share/applications/yazi.desktop"
+maybe_link "$PWD/yazi.desktop" "$HOME/.local/share/applications/yazi.desktop"
 
 # ----- icon install -----
 log "Installing Yazi icon…"
@@ -92,4 +117,3 @@ log "✅ Installed: $ICON_DIR/yazi.png (use Icon=yazi in your .desktop)"
 update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
 
 log "Done."
-
