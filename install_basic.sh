@@ -161,6 +161,7 @@ git config --global user.email "$git_email"
 git config --global core.editor "vim"
 git config --global core.excludesfile "$HOME/.gitignore_global"
 git config --global push.default "current"
+git config --global pull.rebase true
 log "Git identity and defaults configured."
 
 log "Done."
