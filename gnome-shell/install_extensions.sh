@@ -3,6 +3,8 @@ set -euo pipefail
 
 # ============================================
 # Configure extensions here (UUIDs)
+#
+# Put the configs in the <extension_name>.conf file.
 # ============================================
 EXTENSIONS=(
   "hidetopbar@mathieu.bidon.ca"
@@ -107,6 +109,25 @@ read_uuids_from_file() {
   grep -v '^\s*$' "$file" | grep -v '^\s*#' | sed 's/^\s*//; s/\s*$//'
 }
 
+_get_dconf_key_prefix() {
+  local uuid="$1"
+  echo "$uuid" | cut -d'@' -f1
+}
+
+load_gnome_extensions() {
+  for ext in "${EXTENSIONS[@]}"; do
+      local prefix="$(_get_dconf_key_prefix "$ext")"
+      local path="/org/gnome/shell/extensions/${prefix}/"
+      local conf_file="$prefix.conf"
+
+      if [[ -f "$conf_file" ]]; then
+          echo "→ Loading settings for $ext..."
+          dconf load "$path" < "$conf_file"
+          echo "✅  Successfully loaded settings for $ext."
+      fi
+  done
+}
+
 usage() {
   cat <<EOF
 Usage:
@@ -149,6 +170,8 @@ main() {
   for u in "${all[@]}"; do
     install_extension_uuid "$u" "$major"
   done
+
+  load_gnome_extensions
 
   echo ""
   echo "✅  All done!"
