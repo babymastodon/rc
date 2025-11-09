@@ -8,6 +8,31 @@ err()   { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
 need_sudo() { if [[ $EUID -ne 0 ]]; then echo "sudo"; fi; }
 SUDO="$(need_sudo || true)"
 
+# robust symlink creator
+maybe_link() {
+  local src="$1" dest="$2"
+
+  if [[ -e "$dest" || -L "$dest" ]]; then
+    if [[ -L "$dest" ]]; then
+      local target
+      target="$(readlink "$dest")"
+      if [[ "$target" == "$src" ]]; then
+        log "Link already correct: $dest -> $src"
+      else
+        warn "Link exists but wrong target ($target), fixing..."
+        rm -f "$dest"
+        ln -s "$src" "$dest"
+        log "Fixed link: $dest -> $src"
+      fi
+    else
+      warn "Exists and not a link: $dest (skipping)"
+    fi
+  else
+    ln -s "$src" "$dest"
+    log "Linked: $dest -> $src"
+  fi
+}
+
 # Ensure DNF exists (Fedora/RHEL family)
 if ! command -v dnf >/dev/null 2>&1; then
   err "This script expects Fedora (dnf not found)."
@@ -78,17 +103,16 @@ else
   and re-run this script (or start mpd manually)."
 fi
 
-# ----- your original setup steps -----
+# ----- link configs -----
 log "Linking configs…"
-mkdir -p "$HOME/.config/mpd/"
-mkdir -p "$HOME/.local/share/mpd/"
-ln -sf "$PWD/mpd.conf" "$HOME/.config/mpd/mpd.conf"
+mkdir -p "$HOME/.config/mpd/" "$HOME/.local/share/mpd/"
+maybe_link "$PWD/mpd.conf" "$HOME/.config/mpd/mpd.conf"
 
 mkdir -p "$HOME/.config/rmpc/"
-ln -sf "$PWD/config.ron" "$HOME/.config/rmpc/config.ron"
+maybe_link "$PWD/config.ron" "$HOME/.config/rmpc/config.ron"
 
 mkdir -p "$HOME/.local/share/applications/"
-ln -sf "$PWD/rmpc.desktop" "$HOME/.local/share/applications/rmpc.desktop"
+maybe_link "$PWD/rmpc.desktop" "$HOME/.local/share/applications/rmpc.desktop"
 
 # ----- icon install -----
 log "Installing rmpc icon…"
@@ -101,7 +125,7 @@ curl -fsSL "$ICON_URL" -o "$ICON_PATH"
 sed -i 's/#000\b/#89CFF0/Ig' "$ICON_PATH" || true
 sed -i 's/#fff\b/#89CFF0/Ig' "$ICON_PATH" || true
 gtk-update-icon-cache "$HOME/.local/share/icons/hicolor" -f 2>/dev/null || true
-log "✅ Installed icon at $ICON_DIR/rmpc.svg"
+log "✅ Installed icon at $ICON_PATH"
 
 # ----- desktop DB update -----
 update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
