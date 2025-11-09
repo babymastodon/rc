@@ -19,6 +19,3 @@ function _makefile_targets {
     COMPREPLY=( $(compgen -W "${targets[@]}" -- $curr_arg ) );
 }
 complete -F _makefile_targets make
-
-export LANG=en_US.UTF-8
-export LC_ALL=en_US.UTF-8
