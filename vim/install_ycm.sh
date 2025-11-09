@@ -48,26 +48,6 @@ dnf5_install() { local cmd=(dnf5 install -y --skip-unavailable "$@"); [[ -n "$SU
 apt_install()  { local cmd=(apt-get install -y --no-install-recommends "$@"); [[ -n "$SUDO" ]] && $SUDO "${cmd[@]}" || "${cmd[@]}" || true; }
 brew_install() { if ! need_cmd brew; then err "Homebrew not found. Install https://brew.sh"; exit 1; fi; brew install "$@" || true; }
 
-# ---------------- PATH/user dirs ----------------
-ensure_path_augments() {
-  local rc; rc="$USER_HOME/.bashrc"; [[ -n "${ZSH_VERSION-}" ]] && rc="$USER_HOME/.zshrc"
-  touch "$rc"
-  local npm_prefix="$USER_HOME/.npm-global"
-  local user_bin="$USER_HOME/.local/bin"
-  local npm_bin="$npm_prefix/bin"
-  local cargo_bin="$USER_HOME/.cargo/bin"
-  mkdir -p "$user_bin" "$npm_bin"
-  grep -qs 'NPM_CONFIG_PREFIX=' "$rc" || {
-    {
-      echo ''; echo '# Added by setup-vim-ycm.sh'
-      echo "export NPM_CONFIG_PREFIX=\"$npm_prefix\""
-      echo "export PATH=\"$npm_bin:$user_bin:$cargo_bin:\$PATH\""
-    } >> "$rc"
-  }
-  export NPM_CONFIG_PREFIX="$npm_prefix"
-  export PATH="$npm_bin:$user_bin:$cargo_bin:$PATH"
-}
-
 # ---------------- Version helpers ----------------
 parse_go_version() { go version 2>/dev/null | sed -n 's/.* go\([0-9]\+\)\.\([0-9]\+\)\(\.[0-9]\+\)\{0,1\}.*/\1.\2\3/p' | sed 's/\.$//'; }
 ver_ge() { local a1 a2 a3 b1 b2 b3; IFS=. read -r a1 a2 a3 <<<"${1}.0.0"; IFS=. read -r b1 b2 b3 <<<"${2}.0.0"; ((a1>b1))||((a1==b1&&a2>b2))||((a1==b1&&a2==b2&&a3>=b3)); }
@@ -150,7 +130,6 @@ install_or_upgrade_go_to_min() {
 
 # ---------------- JS/TS (user npm first) ----------------
 install_typescript_user_then_global() {
-  ensure_path_augments
   if need_cmd npm; then
     log "Installing TypeScript (user)..."
     npm install -g typescript >/dev/null 2>&1 && { log "TypeScript installed (user)."; return 0; }
@@ -163,7 +142,6 @@ install_typescript_user_then_global() {
 
 # ---------------- Rust (cargo first) ----------------
 ensure_rust_analyzer_user_then_system() {
-  ensure_path_augments
   if need_cmd rust-analyzer; then log "rust-analyzer already present."; return 0; fi
   if need_cmd cargo; then
     log "Installing rust-analyzer via cargo (user)..."
@@ -302,7 +280,6 @@ EOF
 # ---------------- main ----------------
 main() {
   log "Detected OS: ${OS} (pkg mgr: ${PKG})"
-  ensure_path_augments
   install_system_deps
   install_typescript_user_then_global
   ensure_rust_analyzer_user_then_system
