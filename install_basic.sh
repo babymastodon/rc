@@ -19,7 +19,7 @@ maybe_link() {
       if [[ "$target" == "$src" ]]; then
         log "Link already correct: $dest -> $src"
       else
-        log "Link exists but wrong target ($target), fixing..."
+        warn "Link exists but wrong target ($target), fixing..."
         rm "$dest"
         ln -s "$src" "$dest"
         log "Fixed link: $dest -> $src"
@@ -66,8 +66,8 @@ if ! command -v curl >/dev/null 2>&1; then
 fi
 
 # ----- link config files (only if missing) -----
-maybe_link "$PWD/vimrc"             "$HOME/.vimrc"
-maybe_link "$PWD/ideavimrc"         "$HOME/.ideavimrc"
+maybe_link "$PWD/vim/vimrc"         "$HOME/.vimrc"
+maybe_link "$PWD/vim/ideavimrc"     "$HOME/.ideavimrc"
 maybe_link "$PWD/tmux/tmux.conf"    "$HOME/.tmux.conf"
 maybe_link "$PWD/bashrc_extra"      "$HOME/.bashrc_extra"
 maybe_link "$PWD/gitignore_global"  "$HOME/.gitignore_global"
