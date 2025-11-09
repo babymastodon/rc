@@ -10,8 +10,23 @@ SUDO="$(need_sudo || true)"
 
 maybe_link() {
   local src="$1" dest="$2"
+
+  # If destination exists
   if [[ -e "$dest" || -L "$dest" ]]; then
-    log "Exists, not linking: $dest"
+    if [[ -L "$dest" ]]; then
+      local target
+      target="$(readlink "$dest")"
+      if [[ "$target" == "$src" ]]; then
+        log "Link already correct: $dest -> $src"
+      else
+        log "Link exists but wrong target ($target), fixing..."
+        rm "$dest"
+        ln -s "$src" "$dest"
+        log "Fixed link: $dest -> $src"
+      fi
+    else
+      log "Exists and not a link: $dest (skipping)"
+    fi
   else
     ln -s "$src" "$dest"
     log "Linked: $dest -> $src"
@@ -53,7 +68,7 @@ fi
 # ----- link config files (only if missing) -----
 maybe_link "$PWD/vimrc"             "$HOME/.vimrc"
 maybe_link "$PWD/ideavimrc"         "$HOME/.ideavimrc"
-maybe_link "$PWD/tmux.conf"         "$HOME/.tmux.conf"
+maybe_link "$PWD/tmux/tmux.conf"    "$HOME/.tmux.conf"
 maybe_link "$PWD/bashrc_extra"      "$HOME/.bashrc_extra"
 maybe_link "$PWD/gitignore_global"  "$HOME/.gitignore_global"
 
@@ -77,9 +92,9 @@ fi
 
 # ----- install scripts into ~/bin (only if missing) -----
 mkdir -p "$HOME/bin"
-maybe_link "$PWD/git-commit-all" "$HOME/bin/git-commit-all"
-maybe_link "$PWD/tmux-git-badge" "$HOME/bin/tmux-git-badge"
-maybe_link "$PWD/tmux-ssh-host"  "$HOME/bin/tmux-ssh-host"
+maybe_link "$PWD/git-commit-all"      "$HOME/bin/git-commit-all"
+maybe_link "$PWD/tmux/tmux-git-badge" "$HOME/bin/tmux-git-badge"
+maybe_link "$PWD/tmux/tmux-ssh-host"  "$HOME/bin/tmux-ssh-host"
 
 # ----- install config files into ~/etc -----
 mkdir -p "$HOME/etc"

@@ -61,7 +61,11 @@ alias ph='git push --force-with-lease'
 alias mg='git fetch && git merge origin/master --no-edit'
 alias fh='git fetch'
 alias gd='git diff origin/master...'
-alias gs='git status -s && echo ---------------------------- && git diff --stat'
+alias gs='git -c color.status=always status -s && \
+  unstaged=$(git diff --stat) && \
+  staged=$(git diff --cached --stat) && \
+  if [[ -n "$unstaged" ]]; then echo && echo -e "\033[1;33mUnstaged changes:\033[0m" && echo "$unstaged"; fi && \
+  if [[ -n "$staged" ]]; then echo && echo -e "\033[1;32mStaged changes:\033[0m" && echo "$staged"; fi'
 alias gd='git diff'
 alias ch='git cherry-pick'
 alias lg='lazygit'
