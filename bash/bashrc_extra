@@ -13,22 +13,19 @@ NO_COLOUR="\[\033[0m\]"
 
 PS1="$GREEN\u@\h$NO_COLOUR:\w$YELLOW \$(parse_git_branch)$NO_COLOUR\$ "
 
-# Add directory to PATH if it exists and not already in PATH
 add_to_path() {
-    [ -d "$1" ] || return
+    dir=${1%/}
+    [ -d "$dir" ] || return
     case ":$PATH:" in
-        *":$1:"*) ;;  # already in PATH
-        *) PATH="$1:$PATH" ;;
+        *":$dir:"*) ;;  # already in PATH
+        *) PATH="$dir${PATH:+:$PATH}" ;;
     esac
 }
 
-# User-level bin directories
 add_to_path "$HOME/bin"
 add_to_path "$HOME/.local/bin"
 add_to_path "$HOME/.npm-global/bin"
 add_to_path "$HOME/.local/go/bin"
-
-# Tool-specific bin directories
 add_to_path "${KREW_ROOT:-$HOME/.krew}/bin"
 add_to_path "$HOME/.cargo/bin"
 
