@@ -5,6 +5,43 @@ set -euo pipefail
 log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
 warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
 
+maybe_link() {
+  local src="$1" dest="$2"
+
+  # If destination exists
+  if [[ -e "$dest" || -L "$dest" ]]; then
+    if [[ -L "$dest" ]]; then
+      local target
+      target="$(readlink "$dest")"
+      if [[ "$target" == "$src" ]]; then
+        log "Link already correct: $dest -> $src"
+      else
+        warn "Link exists but wrong target ($target), fixing..."
+        rm "$dest"
+        ln -s "$src" "$dest"
+        log "Fixed link: $dest -> $src"
+      fi
+    else
+      log "Exists and not a link: $dest (skipping)"
+    fi
+  else
+    ln -s "$src" "$dest"
+    log "Linked: $dest -> $src"
+  fi
+}
+
+ensure_line_in_file() {
+  local line="$1" file="$2"
+  mkdir -p "$(dirname "$file")"
+  touch "$file"
+  if grep -qxF "$line" "$file"; then
+    log "Line already present in $(basename "$file")"
+  else
+    printf "%s\n" "$line" >> "$file"
+    log "Appended to $(basename "$file"): $line"
+  fi
+}
+
 # ----- run common instructions -----
 if [[ -f "$PWD/install_basic.sh" ]]; then
   log "Running common installer: install_basic.sh"
@@ -14,26 +51,10 @@ else
 fi
 
 # ----- link .bashrc_linux -----
-if [[ -f "$PWD/bashrc_linux" ]]; then
-  ln -sf "$PWD/bashrc_linux" "$HOME/.bashrc_linux"
-  log "Linked: $PWD/bashrc_linux -> ~/.bashrc_linux"
-else
-  warn "bashrc_linux file not found at $PWD — skipping link."
-fi
+maybe_link "$PWD/bash/bashrc_linux" "$HOME/.bashrc_linux"
 
 # ----- ensure .bashrc sources .bashrc_linux only once -----
-BASHRC="$HOME/.bashrc"
-touch "$BASHRC"
-if grep -qxF "source ~/.bashrc_linux" "$BASHRC"; then
-  log "~/.bashrc already sources ~/.bashrc_linux"
-else
-  log "Adding source line to ~/.bashrc"
-  {
-    grep -v 'bashrc_linux' "$BASHRC" || true
-    echo "source ~/.bashrc_linux"
-  } > /tmp/bashrc.$$
-  mv /tmp/bashrc.$$ "$BASHRC"
-fi
+ensure_line_in_file "source ~/.bashrc_linux" "$HOME/.bashrc"
 
 # ----- reload shell config (best-effort) -----
 if [[ -f "$HOME/.bashrc_linux" ]]; then

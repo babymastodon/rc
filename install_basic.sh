@@ -69,7 +69,7 @@ fi
 maybe_link "$PWD/vim/vimrc"         "$HOME/.vimrc"
 maybe_link "$PWD/vim/ideavimrc"     "$HOME/.ideavimrc"
 maybe_link "$PWD/tmux/tmux.conf"    "$HOME/.tmux.conf"
-maybe_link "$PWD/bashrc_extra"      "$HOME/.bashrc_extra"
+maybe_link "$PWD/bash/bashrc_extra" "$HOME/.bashrc_extra"
 maybe_link "$PWD/gitignore_global"  "$HOME/.gitignore_global"
 
 mkdir -p "$HOME/.config/btop"
