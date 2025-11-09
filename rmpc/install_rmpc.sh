@@ -55,17 +55,6 @@ else
   log "MPD already installed: $(mpd --version | head -n1 || echo 'version lookup skipped')"
 fi
 
-# ----- install MPC if missing -----
-if ! command -v mpc >/dev/null 2>&1 && ! rpm -q mpc >/dev/null 2>&1; then
-  log "Installing MPC…"
-  $SUDO dnf -y install mpc || {
-    err "Failed to install MPC via DNF."
-    exit 1
-  }
-else
-  log "MPC already installed: $(mpc --version 2>/dev/null | head -n1 || echo 'version lookup skipped')"
-fi
-
 # ----- install rmpc if missing -----
 if ! command -v rmpc >/dev/null 2>&1; then
   log "Installing rmpc via cargo…"
