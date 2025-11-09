@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 # setup-vim-ycm-fedora.sh
-# Installs Vim + YouCompleteMe with "all completers" on Fedora.
-# - Assumes vimrc uses vim-plug and includes YouCompleteMe
-# - Elevates to sudo only when necessary
+# Fedora 43 (DNF5) script to install Vim + YouCompleteMe with all completers.
+# Changes requested:
+#  - Do NOT retry failed build
+#  - Do NOT install gopls to any bin
+#  - Update YCM submodules to force a recent (fixed) gopls/x-tools
+# Other behavior:
+#  - Uses dnf5 (refresh once), sudo only when needed
+#  - Installs base toolchains and runtimes (incl. Go) but does not preinstall gopls
+#  - Installs global TypeScript (tsserver) for JS/TS support
 
 set -euo pipefail
 
@@ -11,87 +17,79 @@ warn() { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
 err()  { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
 
 SUDO="sudo"
-if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
-  SUDO=""  # already root
-fi
+if [[ ${EUID:-$(id -u)} -eq 0 ]]; then SUDO=""; fi
 
-# Detect the real user (who will own plugin builds)
 INVOKING_USER="${SUDO_USER-$(id -un)}"
-USER_HOME="$(getent passwd "$INVOKING_USER" | cut -d: -f6)"
+USER_HOME="$(getent passwd "$INVOKING_USER" | cut -d: -f6 || true)"
+: "${USER_HOME:=$HOME}"
 
-dnf_install() {
-  # Wrapper: install packages, ignore ones that aren't found if '--best' fails
-  # Usage: dnf_install pkg1 pkg2 ...
-  if [[ -z "$SUDO" ]]; then
-    dnf -y install "$@" || true
-  else
-    $SUDO dnf -y install "$@" || true
-  fi
+DNF_BIN="dnf5"
+
+need_cmd() { command -v "$1" >/dev/null 2>&1; }
+
+# ---------------- dnf5 helpers (flags go after subcommand) ----------------
+dnf5_install() {
+  # usage: dnf5_install pkg1 pkg2 ...
+  local cmd=("${DNF_BIN}" install --assumeyes --skip-unavailable "$@")
+  if [[ -z "$SUDO" ]]; then "${cmd[@]}" || true; else $SUDO "${cmd[@]}" || true; fi
 }
 
-dnf_groupinstall() {
-  if [[ -z "$SUDO" ]]; then
-    dnf -y groupinstall "$@" || true
-  else
-    $SUDO dnf -y groupinstall "$@" || true
-  fi
-}
-
-need_cmd() {
-  command -v "$1" >/dev/null 2>&1
-}
-
+# ---------------- system deps ----------------
 install_system_deps() {
-  log "Installing development toolchain (sudo when needed)..."
-  dnf_groupinstall "Development Tools"
-
-  # Core editors/tools
-  dnf_install vim git curl wget tar unzip
-
-  # Build toolchain + Python dev headers
-  dnf_install python3 python3-pip python3-devel \
-              cmake ninja-build make gcc gcc-c++ \
-              llvm llvm-devel clang clang-devel pkgconf-pkg-config
-
-  # Runtimes for YCM completers
-  dnf_install nodejs npm golang rust cargo rust-analyzer \
-              java-latest-openjdk-devel mono-devel
-
-  # Java LSP used by some setups; Fedora package name is eclipse-jdtls (optional)
-  if ! dnf_install eclipse-jdtls; then
-    warn "eclipse-jdtls not available in your enabled repos; continuing without it."
+  log "Refreshing DNF metadata once..."
+  if [[ -n "$SUDO" ]]; then
+    $SUDO ${DNF_BIN} makecache --refresh || true
+  else
+    ${DNF_BIN} makecache --refresh || true
   fi
 
-  # Optional: dotnet SDK is not in Fedora base; skipping (Mono covers C# for YCM).
+  log "Installing base tools and build deps (Fedora 43 / DNF5)..."
+  BASE_PKGS=(
+    vim git curl wget tar unzip
+    python3 python3-pip python3-devel
+    cmake ninja-build make gcc gcc-c++
+    llvm llvm-devel clang clang-devel
+    pkgconf-pkg-config
+  )
+  dnf5_install "${BASE_PKGS[@]}"
+
+  RUNTIME_PKGS=(
+    nodejs npm
+    golang
+    rust cargo rust-analyzer
+    java-latest-openjdk-devel
+    mono-devel
+  )
+  dnf5_install "${RUNTIME_PKGS[@]}"
+
+  log "Installing optional eclipse-jdtls (Java LSP)..."
+  dnf5_install eclipse-jdtls
 }
 
+# ---------------- language tooling (no gopls install) ----------------
 install_lang_tools() {
-  # Ensure tsserver (TypeScript) available globally
+  # JS/TS: ensure tsserver
   if need_cmd npm; then
-    log "Ensuring global TypeScript (tsserver) is present..."
-    $SUDO npm install -g typescript >/dev/null 2>&1 || npm install -g typescript || warn "Could not install global TypeScript."
+    log "Installing global TypeScript (tsserver)..."
+    if ! $SUDO npm install -g typescript >/dev/null 2>&1; then
+      npm install -g typescript || warn "Could not install global TypeScript; tsserver may be missing."
+    fi
   else
     warn "npm not found; JS/TS completer may be limited."
   fi
 
-  # Go: install gopls (nice to have)
-  if need_cmd go; then
-    log "Installing gopls (optional but recommended for Go)..."
-    GOPATH="${GOPATH:-${USER_HOME}/go}"
-    GOBIN="${GOBIN:-${GOPATH}/bin}"
-    mkdir -p "$GOBIN"
-    sudo -u "$INVOKING_USER" env HOME="$USER_HOME" GOPATH="$GOPATH" GOBIN="$GOBIN" \
-      bash -lc 'go install golang.org/x/tools/gopls@latest' || warn "gopls installation skipped."
+  # Intentionally NOT installing gopls (per request).
+}
+
+# ---------------- vim-plug ----------------
+run_vimplug() {
+  log "Running vim-plug (PlugInstall) for ${INVOKING_USER}..."
+  if ! sudo -u "$INVOKING_USER" env HOME="$USER_HOME" bash -lc 'vim +PlugInstall +qall'; then
+    warn "vim-plug failed. Check your vimrc and network connection."
   fi
 }
 
-run_vimplug() {
-  log "Running vim-plug (PlugInstall) for ${INVOKING_USER}..."
-  # Headless install of plugins
-  sudo -u "$INVOKING_USER" env HOME="$USER_HOME" bash -lc 'vim +PlugInstall +qall' || \
-    warn "PlugInstall reported non-zero exit; verify your vimrc and network."
-}
-
+# ---------------- locate YCM ----------------
 find_ycm_dir() {
   local cands=(
     "$USER_HOME/.vim/plugged/YouCompleteMe"
@@ -99,67 +97,105 @@ find_ycm_dir() {
     "$USER_HOME/.vim/pack/plugins/start/YouCompleteMe"
   )
   for d in "${cands[@]}"; do
-    if [[ -d "$d" ]]; then
-      echo "$d"
-      return 0
-    fi
+    [[ -d "$d" ]] && echo "$d" && return 0
   done
   return 1
 }
 
+# ---------------- update submodules to force recent gopls/x-tools ---------- #
+update_ycm_submodules() {
+  local y="$1"
+  log "Updating YCM repository and submodules to latest..."
+  # Safe pulls as the invoking user so the repo stays user-owned
+  sudo -u "$INVOKING_USER" bash -lc "git -C '$y' fetch --tags origin || true"
+  sudo -u "$INVOKING_USER" bash -lc "git -C '$y' pull --ff-only || true"
+  sudo -u "$INVOKING_USER" bash -lc "git -C '$y' submodule update --init --recursive --remote"
+}
+
+# ---------------- clean stale Go caches inside YCM tree ----------------
+clean_old_go_caches() {
+  local y="$1"
+  log "Cleaning YCM-local Go caches..."
+  rm -rf "${y}/third_party/go/pkg/mod" \
+         "${y}/third_party/go/bin" \
+         "${y}/third_party/go/cache" 2>/dev/null || true
+  if need_cmd go; then
+    sudo -u "$INVOKING_USER" bash -lc 'go clean -modcache' || true
+  fi
+}
+
+# ---------------- build YCM (single attempt, no retry) ----------------
 build_ycm() {
   local ycm_dir
   if ! ycm_dir="$(find_ycm_dir)"; then
-    err "Could not locate YouCompleteMe after PlugInstall. Ensure the Plug is present and re-run."
+    err "YouCompleteMe directory not found after PlugInstall."
     exit 2
   fi
   log "Found YouCompleteMe at: ${ycm_dir}"
 
+  # Ensure submodules are current to pull a fixed gopls/x-tools version
+  update_ycm_submodules "$ycm_dir"
+
+  # Clear caches so the build can't reuse bad x/tools
+  clean_old_go_caches "$ycm_dir"
+
+  # Show the Go that will be used (helpful for debugging)
+  local GO_BIN GOROOT
+  GO_BIN="$(sudo -u "$INVOKING_USER" bash -lc 'command -v go || true')"
+  GOROOT="$(sudo -u "$INVOKING_USER" bash -lc 'go env GOROOT 2>/dev/null || true')"
+  log "Using go at: ${GO_BIN:-<not found>}"
+  sudo -u "$INVOKING_USER" bash -lc 'go version || true'
+
   local ncpu
   ncpu="$(getconf _NPROCESSORS_ONLN || echo 2)"
 
-  log "Building YCM with all completers using system libclang..."
+  log "Building YCM (single attempt) with --all --system-libclang..."
   pushd "$ycm_dir" >/dev/null
 
-  # Build as the invoking user (no root-owned artifacts in $HOME)
-  if ! sudo -u "$INVOKING_USER" env HOME="$USER_HOME" CMAKE_BUILD_PARALLEL_LEVEL="$ncpu" \
-      bash -lc 'python3 install.py --all --system-libclang'; then
-    warn "YCM --all build failed; retrying with explicit completer flags..."
-    sudo -u "$INVOKING_USER" env HOME="$USER_HOME" CMAKE_BUILD_PARALLEL_LEVEL="$ncpu" \
-      bash -lc 'python3 install.py --clangd-completer --ts-completer --go-completer --rust-completer --cs-completer --system-libclang' || {
-        err "YCM build failed. Check clang/mono/npm/go/rust setup above."
-        exit 3
-      }
-  fi
+  # Minimal, consistent env; do NOT install gopls or modify PATH for it
+  local build_env=(HOME="$USER_HOME" CMAKE_BUILD_PARALLEL_LEVEL="$ncpu" GO111MODULE=on GOWORK=off)
+  [[ -n "$GOROOT" ]] && build_env+=("GOROOT=$GOROOT")
+
+  # Single attempt only (per request). If it fails, exit non-zero.
+  sudo -u "$INVOKING_USER" env "${build_env[@]}" \
+    bash -lc 'python3 install.py --all --system-libclang --verbose'
 
   popd >/dev/null
 }
 
+# ---------------- notes ----------------
 post_notes() {
   cat <<'EOF'
 
 ----------------------------------------------------------------------
-YouCompleteMe installation finished.
+✅ YouCompleteMe installation finished.
 
-Check per-language support:
-  - C/C++: clang/llvm + libclang (we used --system-libclang).
-  - JS/TS: tsserver (global TypeScript installed via npm).
-  - Go: gopls recommended (attempted install).
-  - Rust: rust-analyzer installed via dnf.
-  - C#: Mono installed via dnf (dotnet SDK optional).
+Notes:
+  • Submodules were updated to ensure a recent gopls/x-tools is used by the build.
+  • We did NOT install gopls ourselves (the YCM build handles Go tools).
+  • If the build complains about x/tools versions, ensure your network/proxy isn't pinning old modules.
 
-If Vim can’t find completers, reopen Vim or verify your runtime paths.
+Language Support:
+  • C/C++: system libclang
+  • JS/TS: tsserver via TypeScript (installed globally)
+  • Go: provided by YCM's build (no manual gopls install)
+  • Rust: rust-analyzer
+  • C#: Mono runtime
+
+If Vim can't find completers, restart the shell and check :messages in Vim.
 ----------------------------------------------------------------------
 EOF
 }
 
+# ---------------- main ----------------
 main() {
   install_system_deps
   install_lang_tools
   run_vimplug
   build_ycm
   post_notes
-  log "Done!"
+  log "✅ All done!"
 }
 
 main "$@"
+

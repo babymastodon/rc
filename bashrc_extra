@@ -13,23 +13,24 @@ NO_COLOUR="\[\033[0m\]"
 
 PS1="$GREEN\u@\h$NO_COLOUR:\w$YELLOW \$(parse_git_branch)$NO_COLOUR\$ "
 
-# set PATH so it includes user's private bin if it exists
-if [ -d "$HOME/bin" ] ; then
-    export PATH="$HOME/bin:$PATH"
-fi
-if [ -d "$HOME/.local/bin" ] ; then
-    export PATH="$HOME/.local/bin:$PATH"
-fi
+# Add directory to PATH if it exists and not already in PATH
+add_to_path() {
+    case ":$PATH:" in
+        *":$1:"*) ;;  # already in PATH
+        *) export PATH="$1:$PATH" ;;
+    esac
+}
 
-# Add Krew path to bin if exists
-if [ -d "${KREW_ROOT:-$HOME/.krew}/bin" ] ; then
-    export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
-fi
+# Include user's private bin if it exists
+[ -d "$HOME/bin" ] && add_to_path "$HOME/bin"
+[ -d "$HOME/.local/bin" ] && add_to_path "$HOME/.local/bin"
 
-# Add Cargo path to bin if exists
-if [ -d "$HOME/.cargo/bin" ] ; then
-    export PATH="$HOME/.cargo/bin:$PATH"
-fi
+# Add Krew path to bin if it exists
+KREW_PATH="${KREW_ROOT:-$HOME/.krew}/bin"
+[ -d "$KREW_PATH" ] && add_to_path "$KREW_PATH"
+
+# Add Cargo path to bin if it exists
+[ -d "$HOME/.cargo/bin" ] && add_to_path "$HOME/.cargo/bin"
 
 # store the ssh auth sock in the home folder for access from tmux and mosh
 if [ ! -z "$SSH_AUTH_SOCK" -a "$SSH_AUTH_SOCK" != "$HOME/.ssh/agent_sock" ] ; then
