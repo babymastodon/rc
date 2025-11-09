@@ -8,6 +8,31 @@ err()   { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
 need_sudo() { if [[ $EUID -ne 0 ]]; then echo "sudo"; fi; }
 SUDO="$(need_sudo || true)"
 
+# robust symlink creator that verifies/fixes target
+maybe_link() {
+  local src="$1" dest="$2"
+
+  if [[ -e "$dest" || -L "$dest" ]]; then
+    if [[ -L "$dest" ]]; then
+      local target
+      target="$(readlink "$dest")"
+      if [[ "$target" == "$src" ]]; then
+        log "Link already correct: $dest -> $src"
+      else
+        warn "Link exists but wrong target ($target), fixing..."
+        rm -f "$dest"
+        ln -s "$src" "$dest"
+        log "Fixed link: $dest -> $src"
+      fi
+    else
+      warn "Exists and not a link: $dest (skipping)"
+    fi
+  else
+    ln -s "$src" "$dest"
+    log "Linked: $dest -> $src"
+  fi
+}
+
 # Ensure DNF exists (Fedora/RHEL family)
 if ! command -v dnf >/dev/null 2>&1; then
   err "This script expects Fedora (dnf not found)."
@@ -25,19 +50,17 @@ else
   log "Kitty already installed: $(kitty --version 2>/dev/null | head -n1 || echo 'version lookup skipped')"
 fi
 
-# ----- link configs -----
+# ----- link configs (via maybe_link) -----
 log "Linking Kitty configuration…"
-mkdir -p "$HOME/.config/kitty/"
-ln -sf "$PWD/kitty.conf" "$HOME/.config/kitty/kitty.conf"
-
-mkdir -p "$HOME/.config/kitty/themes/"
-ln -sf "$PWD/MonokaiPro.conf"       "$HOME/.config/kitty/themes/MonokaiPro.conf"
-ln -sf "$PWD/MonokaiProLight.conf"  "$HOME/.config/kitty/themes/MonokaiProLight.conf"
+mkdir -p "$HOME/.config/kitty/" "$HOME/.config/kitty/themes/"
+maybe_link "$PWD/kitty.conf"              "$HOME/.config/kitty/kitty.conf"
+maybe_link "$PWD/MonokaiPro.conf"         "$HOME/.config/kitty/themes/MonokaiPro.conf"
+maybe_link "$PWD/MonokaiProLight.conf"    "$HOME/.config/kitty/themes/MonokaiProLight.conf"
 
 # ----- install watcher script into ~/bin and ensure it's executable -----
 log "Installing theme watcher script…"
 mkdir -p "$HOME/bin"
-ln -sf "$PWD/kitty-theme-watcher.sh" "$HOME/bin/kitty-theme-watcher.sh"
+maybe_link "$PWD/kitty-theme-watcher.sh"  "$HOME/bin/kitty-theme-watcher.sh"
 chmod +x "$HOME/bin/kitty-theme-watcher.sh" || true
 
 # Ensure ~/bin is in PATH for future sessions (best-effort)
@@ -45,10 +68,10 @@ if [[ ":${PATH}:" != *":${HOME}/bin:"* ]]; then
   warn "~/bin is not in PATH for this session. Consider adding: 'export PATH=\$HOME/bin:\$PATH' to your shell rc."
 fi
 
-# ----- install and enable user systemd service (link first, then reload/enable) -----
+# ----- install and enable user systemd service (via maybe_link) -----
 log "Installing user systemd service for theme watcher…"
 mkdir -p "$HOME/.config/systemd/user"
-ln -sf "$PWD/kitty-theme-watcher.service" "$HOME/.config/systemd/user/kitty-theme-watcher.service"
+maybe_link "$PWD/kitty-theme-watcher.service" "$HOME/.config/systemd/user/kitty-theme-watcher.service"
 
 # If a user systemd instance is available, enable the service
 if systemctl --user 2>/dev/null >/dev/null; then
@@ -63,4 +86,3 @@ else
 fi
 
 log "Done."
-
