@@ -138,7 +138,7 @@ load_gnome_extensions() {
       if [[ "$current" == "$desired" ]]; then
         log "Settings already up to date for $ext ($conf_file)"
       else
-        log "Loading settings for $ext"
+        log "Loading settings for $ext ($conf_file)"
         dconf load "$path" < "$conf_file"
         log "Applied settings for $ext"
       fi
