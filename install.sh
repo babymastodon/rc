@@ -80,10 +80,7 @@ maybe_link "$PWD/bash/bashrc_extra" "$HOME/.bashrc_extra"
 maybe_link "$PWD/gitignore_global"  "$HOME/.gitignore_global"
 
 mkdir -p "$HOME/.config/btop"
-maybe_copy "$PWD/btop.conf" "$HOME/.config/btop/btop.conf"
-
-mkdir -p "$HOME/.config/ghostty"
-maybe_link "$PWD/ghostty.config" "$HOME/.config/ghostty/config"
+maybe_copy "$PWD/bash/btop.conf" "$HOME/.config/btop/btop.conf"
 
 # ----- ensure sourcing order in shell rc files -----
 ensure_source_in_file "$HOME/.bashrc_extra" "$HOME/.bashrc"
