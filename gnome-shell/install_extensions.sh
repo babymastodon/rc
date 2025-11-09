@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# ----- helpers -----
+log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
+warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
+err()   { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
+need_sudo() { if [[ $EUID -ne 0 ]]; then echo "sudo"; fi; }
+SUDO="$(need_sudo || true)"
+
 # ============================================
 # Configure extensions here (UUIDs)
-#
-# Put the configs in the <extension_name>.conf file.
 # ============================================
 EXTENSIONS=(
   "hidetopbar@mathieu.bidon.ca"
   "monitor-brightness-volume@ailin.nemui"
 )
 
-# --------------------------------------------
-# GNOME Extensions installer
-# Installs GNOME Extensions app + CLI if missing
-# and installs listed extensions using major version only
-# --------------------------------------------
-
+# ----- helpers -----
 require_cmd() { command -v "$1" &>/dev/null; }
 
 detect_distro() {
@@ -32,21 +32,25 @@ install_pkgs() {
   local distro; distro="$(detect_distro)"
   case "$distro" in
     ubuntu|debian)
-      sudo apt-get update -y
-      sudo apt-get install -y curl jq gnome-extensions gnome-extensions-app gnome-shell-extensions
+      log "Installing required packages (apt)"
+      $SUDO apt-get update -y
+      $SUDO apt-get install -y curl jq gnome-extensions gnome-extensions-app gnome-shell-extensions
       ;;
     fedora)
-      sudo dnf install -y curl jq gnome-extensions gnome-extensions-app
+      log "Installing required packages (dnf)"
+      $SUDO dnf install -y curl jq gnome-extensions gnome-extensions-app
       ;;
     arch)
-      sudo pacman -Sy --noconfirm curl jq gnome-extensions gnome-extensions-app || true
+      log "Installing required packages (pacman)"
+      $SUDO pacman -Sy --noconfirm curl jq gnome-extensions gnome-extensions-app || true
       ;;
     opensuse*|sles)
-      sudo zypper refresh
-      sudo zypper install -y curl jq gnome-extensions gnome-extensions-app gnome-shell-extensions || true
+      log "Installing required packages (zypper)"
+      $SUDO zypper refresh
+      $SUDO zypper install -y curl jq gnome-extensions gnome-extensions-app gnome-shell-extensions || true
       ;;
     *)
-      echo "⚠️  Unknown distro. Please ensure curl, jq, gnome-extensions, and gnome-extensions-app are installed." >&2
+      warn "Unknown distro — please ensure curl, jq, gnome-extensions, and gnome-extensions-app are installed."
       ;;
   esac
 }
@@ -57,15 +61,18 @@ ensure_base_tools() {
     if ! require_cmd "$bin"; then need_install=true; fi
   done
   if ! require_cmd gnome-extensions-app; then need_install=true; fi
+
   if [[ "$need_install" == true ]]; then
-    echo "→ Installing required GNOME tools..."
+    log "Installing missing GNOME tools..."
     install_pkgs
+  else
+    log "All required GNOME tools already installed."
   fi
 }
 
 get_major_shell_version() {
   if ! require_cmd gnome-shell; then
-    echo "⚠️  gnome-shell not found. Defaulting to 45." >&2
+    warn "gnome-shell not found, defaulting to 45."
     echo "45"
     return 0
   fi
@@ -78,34 +85,38 @@ get_major_shell_version() {
 install_extension_uuid() {
   local uuid="$1"
   local major="$2"
-  local tmpdir="$(mktemp -d)"
-  local info dl zip status
+  local tmpdir; tmpdir="$(mktemp -d)"
+  local info dl zip
 
-  echo "→ Resolving $uuid for GNOME Shell $major…"
-  info="$(curl -fsSL "https://extensions.gnome.org/extension-info/?uuid=${uuid}&shell_version=${major}" || true)"
-  dl="$(jq -r '.download_url // empty' <<<"$info")"
-
-  if [[ -z "$dl" || "$dl" == "null" ]]; then
-    echo "❌  Could not find a compatible download for $uuid (shell $major). Skipping." >&2
-    rm -rf "$tmpdir"
-    return 1
-  fi
-
-  zip="$tmpdir/${uuid}.zip"
-  curl -fsSL "https://extensions.gnome.org${dl}" -o "$zip"
-
-  if gnome-extensions install --force "$zip"; then
-    gnome-extensions enable "$uuid" || true
-    echo "✅  $uuid installed and enabled (shell $major)."
+  if gnome-extensions info "$uuid" &>/dev/null; then
+    log "Extension already installed: $uuid"
   else
-    echo "❌  $uuid failed to install."
+    log "Fetching $uuid for GNOME Shell $major"
+    info="$(curl -fsSL "https://extensions.gnome.org/extension-info/?uuid=${uuid}&shell_version=${major}" || true)"
+    dl="$(jq -r '.download_url // empty' <<<"$info")"
+    if [[ -z "$dl" || "$dl" == "null" ]]; then
+      err "No compatible download for $uuid (shell $major)"
+      rm -rf "$tmpdir"
+      return 1
+    fi
+
+    zip="$tmpdir/${uuid}.zip"
+    curl -fsSL "https://extensions.gnome.org${dl}" -o "$zip"
+    gnome-extensions install --force "$zip" && log "Installed: $uuid" || err "Failed to install: $uuid"
   fi
+
+  if gnome-extensions list --enabled | grep -Fxq "$uuid"; then
+    log "Extension already enabled: $uuid"
+  else
+    gnome-extensions enable "$uuid" && log "Enabled extension: $uuid" || warn "Failed to enable extension: $uuid"
+  fi
+
   rm -rf "$tmpdir"
 }
 
 read_uuids_from_file() {
   local file="$1"
-  [[ -f "$file" ]] || { echo "❌  File not found: $file" >&2; exit 1; }
+  [[ -f "$file" ]] || { err "File not found: $file"; exit 1; }
   grep -v '^\s*$' "$file" | grep -v '^\s*#' | sed 's/^\s*//; s/\s*$//'
 }
 
@@ -116,28 +127,57 @@ _get_dconf_key_prefix() {
 
 load_gnome_extensions() {
   for ext in "${EXTENSIONS[@]}"; do
-      local prefix="$(_get_dconf_key_prefix "$ext")"
-      local path="/org/gnome/shell/extensions/${prefix}/"
-      local conf_file="$prefix.conf"
+    local prefix="$(_get_dconf_key_prefix "$ext")"
+    local path="/org/gnome/shell/extensions/${prefix}/"
+    local conf_file="${prefix}.conf"
 
-      if [[ -f "$conf_file" ]]; then
-          echo "→ Loading settings for $ext..."
-          dconf load "$path" < "$conf_file"
-          echo "✅  Successfully loaded settings for $ext."
+    if [[ -f "$conf_file" ]]; then
+      local current desired
+      current="$(dconf dump "$path" 2>/dev/null || true)"
+      desired="$(cat "$conf_file")"
+      if [[ "$current" == "$desired" ]]; then
+        log "Settings already up to date for $ext ($conf_file)"
+      else
+        log "Loading settings for $ext"
+        dconf load "$path" < "$conf_file"
+        log "Applied settings for $ext"
       fi
+    else
+      log "No config found for: $ext (skipping)"
+    fi
   done
+}
+
+set_gnome_input_prefs() {
+  log "Applying GNOME input/interface preferences"
+
+  # Disable hot corner
+  local current_hot
+  current_hot="$(gsettings get org.gnome.desktop.interface enable-hot-corners)"
+  if [[ "$current_hot" != "false" ]]; then
+    gsettings set org.gnome.desktop.interface enable-hot-corners false
+    log "Disabled hot corners (was $current_hot)"
+  else
+    log "Hot corners already disabled"
+  fi
+
+  # Trackpad scrolling
+  local current_nat
+  current_nat="$(gsettings get org.gnome.desktop.peripherals.touchpad natural-scroll)"
+  if [[ "$current_nat" != "false" ]]; then
+    gsettings set org.gnome.desktop.peripherals.touchpad natural-scroll false
+    log "Set traditional scroll direction (was $current_nat)"
+  else
+    log "Trackpad already traditional scroll"
+  fi
 }
 
 usage() {
   cat <<EOF
 Usage:
-  $0                       # install the EXTENSIONS array (top of script)
-  $0 uuid1 uuid2 ...       # also install these extra UUIDs
-  $0 -f extensions.txt     # also install from file (one UUID per line)
-
-Notes:
-- Uses only the MAJOR GNOME Shell version (e.g. 49 instead of 49.1)
-- After installing, restart GNOME Shell or log out/in.
+  $0                       # install the EXTENSIONS array
+  $0 uuid1 uuid2 ...       # install extra UUIDs
+  $0 -f extensions.txt     # install from file (one UUID per line)
 EOF
 }
 
@@ -154,9 +194,8 @@ main() {
   done
 
   ensure_base_tools
-  local major
-  major="$(get_major_shell_version)"
-  echo "→ Detected GNOME Shell major version: $major"
+  local major; major="$(get_major_shell_version)"
+  log "Detected GNOME Shell major version: $major"
 
   local all=("${EXTENSIONS[@]}")
   if [[ -n "$file" ]]; then
@@ -166,20 +205,17 @@ main() {
   all+=("${extra[@]}")
   mapfile -t all < <(printf "%s\n" "${all[@]}" | awk 'NF && !seen[$0]++')
 
-  echo "→ Installing ${#all[@]} extension(s)…"
+  log "Installing ${#all[@]} extension(s)"
   for u in "${all[@]}"; do
     install_extension_uuid "$u" "$major"
   done
 
   load_gnome_extensions
+  set_gnome_input_prefs
 
   echo ""
-  echo "✅  All done!"
-  echo "- GNOME Extensions app + CLI installed if missing."
-  echo "- Installed/Enabled extensions listed above."
-  echo ""
-  echo "You may need to restart GNOME Shell or log out/in for everything to take effect."
+  log "All done!"
+  warn "Restart GNOME Shell (Alt+F2 → 'r') or log out/in for changes to apply."
 }
 
 main "$@"
-
