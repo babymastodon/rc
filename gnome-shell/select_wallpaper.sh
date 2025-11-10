@@ -38,7 +38,7 @@ print_columns() {
     for ((c=0; c<cols; c++)); do
       idx=$(( c * rows + r ))
       [[ $idx -ge ${#arr[@]} ]] && continue
-      printf "%2d) %-22s" "$((idx+1))" "${arr[idx]}" >&3
+      printf "%2d) %-27s" "$((idx+1))" "${arr[idx]}" >&3
     done
     printf "\n" >&3
   done
