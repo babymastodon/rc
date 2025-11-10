@@ -5,7 +5,7 @@ set -euo pipefail
 SUB=${1:-walls/nord}
 
 # Directory of your wallpapers
-DIR="$HOME/Pictures/$SUB"
+DIR="$HOME/Pictures/wallpapers/$SUB"
 
 # Pick a random image (jpg/jpeg/png/heic)
 PIC="$(find "$DIR" -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.heic' \) | sort -R | head -n 1)"
