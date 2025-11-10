@@ -5,7 +5,7 @@ set -euo pipefail
 ARG="${1:-}"
 if [[ -z "$ARG" ]]; then
   echo "Usage: $0 <wallpaper_subdir>"
-  echo "Example: $0 nord"
+  echo "Example: $0 walls/nord"
   exit 1
 fi
 
@@ -54,4 +54,4 @@ echo "Loading LaunchAgent..."
 launchctl unload "$PLIST_PATH" 2>/dev/null || true
 launchctl load "$PLIST_PATH"
 
-echo "✅ Installed wallpaper rotator — runs every 60 seconds with arg '$ARG'."
+echo "✅ Installed wallpaper rotator — runs every 60 seconds with wallpaper dir '$HOME/Pictures/$ARG'."
