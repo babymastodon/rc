@@ -13,7 +13,7 @@ REPOS=(
 )
 
 # Base directory where each repo's dest folder will be created
-BASE_DIR="${HOME}/Pictures"
+BASE_DIR="${HOME}/Pictures/wallpapers"
 
 # Depth for cloning (set to empty for full clone)
 GIT_CLONE_DEPTH="--depth 1"

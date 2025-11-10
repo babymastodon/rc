@@ -1,52 +1,106 @@
 #!/usr/bin/env bash
-# set-azwallpaper-dir.sh
-# Usage: set-azwallpaper-dir.sh [subdir-under-Pictures]
-# Default: walls/nord
+# use_walls.sh
+# - Recursively finds wallpaper sets under ~/Pictures/wallpapers that contain images
+# - Lists directories in transposed (vertical) columns
+# - Uses numbered selection (no fzf)
+# - Sets AZWallpaper dir via gsettings and nudges slideshow
 
 set -euo pipefail
 
-EXT_PATH="/org/gnome/shell/extensions/azwallpaper@azwallpaper.gitlab.com/"
+SCHEMA="org.gnome.shell.extensions.azwallpaper"
 KEY="slideshow-directory"
-DEFAULT_SUBDIR="walls/nord"
+WALL_BASE="$HOME/Pictures/wallpapers"
+EXTDIR="${EXTDIR:-$HOME/.local/share/gnome-shell/extensions/azwallpaper@azwallpaper.gitlab.com}"
 
-err() { printf "Error: %s\n" "$*" >&2; exit 1; }
+err(){ printf "Error: %s\n" "$*" >&2; exit 1; }
 
-# --- prerequisites
-command -v dconf >/dev/null 2>&1 || err "dconf not found. Install dconf-cli first."
+command -v gsettings >/dev/null 2>&1 || err "gsettings not found."
+[[ -d "$EXTDIR/schemas" ]] || err "Schemas dir not found: $EXTDIR/schemas"
+[[ -d "$WALL_BASE" ]] || err "Wallpaper base not found: $WALL_BASE"
 
-# --- args
-SUBDIR=${1:-$DEFAULT_SUBDIR}
+# Find valid dirs (only those containing image files)
+list_valid_dirs() {
+  find "$WALL_BASE" -type f \( \
+      -iname '*.jpg'  -o -iname '*.jpeg' -o -iname '*.png' -o \
+      -iname '*.webp' -o -iname '*.bmp'  -o -iname '*.gif' \
+    \) -printf '%h\n' | sort -u | awk -v base="$WALL_BASE/" '{ sub("^"base, "", $0); print }'
+}
 
-# --- resolve and validate directory
-BASE_DIR="${HOME}/Pictures"
-TARGET_DIR="${BASE_DIR}/${SUBDIR}"
+# Print vertically packed columns (transposed)
+print_columns() {
+  local termwidth rows cols i r c idx
+  termwidth=$(tput cols 2>/dev/null || echo 80)
+  cols=$(( termwidth / 25 ))
+  cols=$(( cols < 1 ? 1 : cols ))
+  rows=$(( ((${#arr[@]} + cols - 1)) / cols ))
 
-if [[ ! -d "$TARGET_DIR" ]]; then
-  err "Directory does not exist: $TARGET_DIR"
+  for ((r=0; r<rows; r++)); do
+    for ((c=0; c<cols; c++)); do
+      idx=$(( c * rows + r ))
+      [[ $idx -ge ${#arr[@]} ]] && continue
+      printf "%2d) %-22s" "$((idx+1))" "${arr[idx]}" >&3
+    done
+    printf "\n" >&3
+  done
+}
+
+pick_dir() {
+  local options selection
+  options="$(list_valid_dirs || true)"
+  [[ -n "$options" ]] || err "No folders with images found under: $WALL_BASE"
+
+  mapfile -t arr <<<"$options"
+  [[ ${#arr[@]} -gt 0 ]] || err "No folders to select."
+
+  # Open TTY for I/O
+  exec 3>/dev/tty 4</dev/tty
+  printf "Choose wallpaper folder:\n\n" >&3
+  print_columns
+  printf "\n" >&3
+
+  local choice
+  while :; do
+    printf "Number> " >&3
+    IFS= read -r choice <&4 || { exec 3>&- 4<&-; err "No selection made."; }
+    [[ "$choice" =~ ^[0-9]+$ ]] || { printf "Please enter a number.\n" >&3; continue; }
+    (( choice>=1 && choice<=${#arr[@]} )) || { printf "Out of range.\n" >&3; continue; }
+    selection="${arr[choice-1]}"
+    break
+  done
+
+  exec 3>&- 4<&-
+  [[ -n "$selection" ]] || err "No selection made."
+  printf "%s\n" "$selection"
+}
+
+set_dir() {
+  local subdir="$1"
+  local target="$WALL_BASE/$subdir"
+
+  [[ -d "$target" ]] || err "Directory does not exist: $target"
+  [[ -r "$target" ]] || err "Directory not readable: $target"
+
+  if ! find "$target" -type f \( \
+        -iname '*.jpg'  -o -iname '*.jpeg' -o -iname '*.png' -o \
+        -iname '*.webp' -o -iname '*.bmp'  -o -iname '*.gif' \
+      \) | read -r _; then
+    err "No image files found under: $target"
+  fi
+
+  gsettings --schemadir "$EXTDIR/schemas" set "$SCHEMA" "$KEY" "$target"
+  gsettings --schemadir "$EXTDIR/schemas" set "$SCHEMA" slideshow-change-slide-event 2
+
+  local readback
+  readback=$(gsettings --schemadir "$EXTDIR/schemas" get "$SCHEMA" "$KEY" || true)
+  printf "Success: %s set to %s\n" "$KEY" "$target"
+  [[ -n "$readback" ]] && printf "gsettings reports: %s\n" "$readback"
+  printf "AZWallpaper will rotate from:\n  %s\n" "$target"
+}
+
+# --- Main ---
+if [[ $# -eq 0 ]]; then
+  sel="$(pick_dir)"
+  set_dir "$sel"
+else
+  set_dir "$1"
 fi
-if [[ ! -r "$TARGET_DIR" ]]; then
-  err "Directory is not readable: $TARGET_DIR"
-fi
-
-# Optional: ensure it contains at least one common image file
-shopt -s nullglob
-images=( "$TARGET_DIR"/*.{jpg,jpeg,png,webp,bmp,gif} )
-shopt -u nullglob
-if (( ${#images[@]} == 0 )); then
-  printf "Warning: no image files found in '%s'. The extension may have nothing to rotate.\n" "$TARGET_DIR" >&2
-fi
-
-# --- write setting with dconf
-dconf load "$EXT_PATH" <<EOF
-[/]
-${KEY}='${TARGET_DIR}'
-EOF
-
-# --- verify and report
-READBACK=$(dconf read "${EXT_PATH}${KEY}" 2>/dev/null || true)
-
-printf "Success: set %s to %s\n" "${KEY}" "${TARGET_DIR}"
-if [[ -n "$READBACK" ]]; then
-  printf "dconf now reports: %s\n" "$READBACK"
-fi
-printf "AZWallpaper will rotate your wallpaper from:\n  %s\n" "$TARGET_DIR"
