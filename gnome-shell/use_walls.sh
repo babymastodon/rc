@@ -29,7 +29,7 @@ list_valid_dirs() {
 # Print vertically packed columns (transposed)
 print_columns() {
   local termwidth rows cols i r c idx
-  termwidth=$(tput cols 2>/dev/null || echo 80)
+  termwidth=${COLUMNS:-$(tput cols || echo 80)}
   cols=$(( termwidth / 25 ))
   cols=$(( cols < 1 ? 1 : cols ))
   rows=$(( ((${#arr[@]} + cols - 1)) / cols ))

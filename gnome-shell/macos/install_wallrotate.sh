@@ -28,7 +28,7 @@ list_valid_dirs() {
 # ---- UTIL: print options in transposed (vertical) columns ----
 print_columns() {
   local termwidth cols rows r c idx
-  termwidth=$(tput cols 2>/dev/null || echo 80)
+  termwidth=${COLUMNS:-$(tput cols || echo 80)}
   local COLW=30
   cols=$(( termwidth / COLW ))
   (( cols < 1 )) && cols=1
