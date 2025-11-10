@@ -44,6 +44,24 @@ print_columns() {
   done
 }
 
+# Show current selection (if any) from gsettings
+print_current_selection() {
+  local val rel
+  val="$(gsettings --schemadir "$EXTDIR/schemas" get "$SCHEMA" "$KEY" 2>/dev/null || true)"
+  # Strip single quotes that gsettings includes around strings
+  [[ -n "$val" ]] && val="${val#\'}" && val="${val%\'}"
+
+  # Only print if it's a real, existing directory
+  if [[ -n "${val:-}" && -d "$val" ]]; then
+    if [[ "$val" == "$WALL_BASE"* ]]; then
+      rel="${val#"$WALL_BASE"/}"
+      echo "$rel"
+    else
+      echo "$val"
+    fi
+  fi
+}
+
 pick_dir() {
   local options selection
   options="$(list_valid_dirs || true)"
@@ -52,9 +70,12 @@ pick_dir() {
   mapfile -t arr <<<"$options"
   [[ ${#arr[@]} -gt 0 ]] || err "No folders to select."
 
+  cur=$(print_current_selection)
+
   # Open TTY for I/O
   exec 3>/dev/tty 4</dev/tty
-  printf "Choose wallpaper folder:\n\n" >&3
+  printf "Choose wallpaper folder [$cur]:\n\n" >&3
+
   print_columns
   printf "\n" >&3
 
