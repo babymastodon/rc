@@ -30,7 +30,7 @@ list_valid_dirs() {
 print_columns() {
   local termwidth rows cols i r c idx
   termwidth=${COLUMNS:-$(tput cols || echo 80)}
-  cols=$(( termwidth / 25 ))
+  cols=$(( termwidth / 30 ))
   cols=$(( cols < 1 ? 1 : cols ))
   rows=$(( ((${#arr[@]} + cols - 1)) / cols ))
 
