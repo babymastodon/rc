@@ -83,6 +83,14 @@ pick_dir() {
   while :; do
     printf "Number> " >&3
     IFS= read -r choice <&4 || { exec 3>&- 4<&-; err "No selection made."; }
+
+    # Exit cleanly if input is empty
+    [[ -z "$choice" ]] && {
+      exec 3>&- 4<&-
+      printf "No selection made. Exiting.\n" >&2
+      exit 1
+    }
+
     [[ "$choice" =~ ^[0-9]+$ ]] || { printf "Please enter a number.\n" >&3; continue; }
     (( choice>=1 && choice<=${#arr[@]} )) || { printf "Out of range.\n" >&3; continue; }
     selection="${arr[choice-1]}"
@@ -92,6 +100,7 @@ pick_dir() {
   exec 3>&- 4<&-
   [[ -n "$selection" ]] || err "No selection made."
   printf "%s\n" "$selection"
+
 }
 
 set_dir() {
@@ -120,8 +129,11 @@ set_dir() {
 
 # --- Main ---
 if [[ $# -eq 0 ]]; then
-  sel="$(pick_dir)"
+  if ! sel="$(pick_dir)"; then
+    exit 0
+  fi
   set_dir "$sel"
 else
   set_dir "$1"
 fi
+
