@@ -14,6 +14,7 @@ SUDO="$(need_sudo || true)"
 EXTENSIONS=(
   "hidetopbar@mathieu.bidon.ca"
   "monitor-brightness-volume@ailin.nemui"
+  "azwallpaper@azwallpaper.gitlab.com"
 )
 
 # ----- helpers -----
