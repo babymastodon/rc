@@ -419,6 +419,9 @@ nmap <leader>c <Plug>OSCYankOperator
 nmap <leader>cc <leader>c_
 vmap <leader>c <Plug>OSCYankVisual
 
+" for vim-ai
+let g:vim_ai_token_file_path = '~/.config/openai.token'
+
 " Packages
 call plug#begin('~/.vim/plugged')
 
@@ -441,6 +444,7 @@ Plug 'rhysd/conflict-marker.vim'
 Plug 'pedrohdz/vim-yaml-folds'
 Plug 'sheerun/vim-polyglot'
 Plug 'ojroques/vim-oscyank'
+Plug 'madox2/vim-ai'
 
 call plug#end()
 

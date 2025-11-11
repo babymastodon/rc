@@ -107,3 +107,6 @@ export LC_ALL=en_US.UTF-8
 
 # configure NPM
 NPM_CONFIG_PREFIX="$HOME/.npm-global"
+
+# load tokens (if present)
+export OPENAI_API_KEY="$(cat $HOME/.config/openai.token)"
