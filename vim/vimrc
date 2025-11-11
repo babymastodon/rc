@@ -419,9 +419,6 @@ nmap <leader>c <Plug>OSCYankOperator
 nmap <leader>cc <leader>c_
 vmap <leader>c <Plug>OSCYankVisual
 
-" for vim-ai
-let g:vim_ai_token_file_path = '~/.config/openai.token'
-
 " Packages
 call plug#begin('~/.vim/plugged')
 
@@ -484,3 +481,117 @@ function! StatusLineFunc()
 endfunction
 set fillchars+=stl:┈,stlnc:\ 
 set statusline=%!StatusLineFunc()
+
+" for vim-ai
+" <leader>w in visual mode: Copies selected text and starts an AI chat session.
+" <leader>w in normal mode: Starts an AI chat session.
+" <leader>a in visual mode: Appends selected text to a buffer named 'aicontext'.
+" <leader>a in normal mode: Clears the 'aicontext' buffer.
+" <leader>e in visual mode: Edits the selected text using AI with an optional prompt and the 'aicontext' as context.
+if exists('g:vim_ai_chat')
+  xnoremap <leader>w y:AIChat<CR>:<C-u>call PasteAicontextBuffer()<CR>:execute 'vertical resize' float2nr(&columns / 2)<CR>Gpggo<CR>
+  nnoremap <leader>w :AIChat<CR>
+
+  let g:vim_ai_token_file_path = '~/.config/openai.token'
+  let g:vim_ai_chat.ui.open_chat_command = 'preset_right'
+  " let g:vim_ai_chat.options.model = 'gpt-5'
+  let g:vim_ai_chat.options.model = 'gpt-4o'
+  let g:vim_ai_edit.options.initial_prompt =<< trim END
+  >>> system
+
+  You are coding assistant.
+  Answer shortly, consisely and only what you are asked.
+  Do not provide any explanantion or comments.
+  Do not wrap code in markdown code block or delimiter.
+  Perform minimal modifications to the input code.
+  END
+  let g:vim_ai_chat.options.initial_prompt =<< trim END
+  >>> system
+
+  You are coding assistant.
+  Answer shortly, concisely, and only what you are asked.
+  Do not provide any explanation or comments.
+  Answer as concisely as possible.
+  END
+
+  " --- append selection to right-side 'aicontext' ---
+  function! AppendAicontextFromVisual()
+    let win = win_getid()
+    normal! gv"ay
+
+    let name = 'aicontext'
+    if bufexists(name)
+      let bn = bufnr(name)
+      let w  = bufwinnr(bn)
+      if w > -1
+        execute w . 'wincmd w'
+      else
+        execute 'vert sbuffer ' . bn
+      endif
+    else
+      vert new | setlocal buftype=nofile bufhidden=hide noswapfile
+      execute 'file ' . name
+    endif
+
+    normal! G
+    if getline('$') !=# ''
+      call append(line('$'), '')
+    endif
+    execute 'normal! "ap'
+    call win_gotoid(win)
+  endfunction
+
+  " --- clear 'aicontext' without opening a split ---
+  function! ClearAicontextBuffer()
+    let name = 'aicontext'
+    let bn = bufnr(name)
+    if bn == -1 | return | endif
+
+    let w = bufwinnr(bn)
+    if w > -1
+      let win = win_getid()
+      execute w . 'wincmd w'
+      %delete _
+      call win_gotoid(win)
+    else
+      try
+        call deletebufline(bn, 1, '$')
+      catch
+        call setbufline(bn, 1, '')
+        call deletebufline(bn, 2, '$')
+      endtry
+    endif
+  endfunction
+
+  " --- mappings ---
+  xnoremap <silent> <leader>a :<C-u>call AppendAicontextFromVisual()<CR>
+  nnoremap <silent> <leader>a :<C-u>call ClearAicontextBuffer()<CR>
+
+  function! AIEditRangeWithPromptAndAicontext() range
+    " Optional prompt
+    let prompt = input('AIEdit prompt (optional): ')
+
+    " Optional context
+    let ctx = ''
+    if bufexists('aicontext')
+      let ctx = join(getbufline('aicontext', 1, '$'), "\n")
+    endif
+
+    let prefix = "use the following code as context but do not include in output\n\n"
+
+    " Combine everything
+    if empty(ctx)
+      let arg = prompt
+    elseif empty(prompt)
+      let arg = prefix . ctx
+    else
+      let arg = prompt . "\n\n" . prefix . ctx
+    endif
+
+    execute "'<,'>AIEdit " . shellescape(arg)
+  endfunction
+
+  " Visual-only mapping
+  xnoremap <silent> <leader>e :<C-u>call AIEditRangeWithPromptAndAicontext()<CR>
+
+endif
