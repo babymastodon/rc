@@ -41,6 +41,15 @@ if [ -z "$SSH_AUTH_SOCK" ] ; then
   export SSH_AUTH_SOCK="$HOME/.ssh/agent_sock"
 fi
 
+# yazi with cd on exit
+function y() {
+  local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
+  yazi "$@" --cwd-file="$tmp"
+  IFS= read -r -d '' cwd < "$tmp"
+  [ -n "$cwd" ] && [ "$cwd" != "$PWD" ] && builtin cd -- "$cwd"
+  rm -f -- "$tmp"
+}
+
 # aliases for tmux
 export TMUXTMP=~/.tmuxtmp
 mkdir -p $TMUXTMP
@@ -68,7 +77,6 @@ alias gs='git -c color.status=always status -s && \
 alias gd='git diff'
 alias ch='git cherry-pick'
 alias lg='lazygit'
-alias yz='yazi'
 alias p='ps aux | grep'
 alias submit='git status && git diff --stat && git commit -am progress && git push'
 alias br='git log --graph --oneline --decorate --all'
