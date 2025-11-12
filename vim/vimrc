@@ -507,12 +507,12 @@ endfunction
 set fillchars+=stl:┈,stlnc:\ 
 set statusline=%!StatusLineFunc()
 
-" for vim-ai
-" <leader>w in visual mode: Copies selected text and starts an AI chat session.
-" <leader>w in normal mode: Starts an AI chat session.
-" <leader>a in visual mode: Appends selected text to a buffer named 'aicontext'.
-" <leader>a in normal mode: Clears the 'aicontext' buffer.
-" <leader>e in visual mode: Edits the selected text using AI with an optional prompt and the 'aicontext' as context.
+" Vim-AI Configuration
+" <leader>w in visual mode: Copies selected text and appends ALE messages, then starts AI chat.
+" <leader>w in normal mode: Appends current line's ALE message, then starts AI chat.
+" <leader>a in visual mode: Appends selected text to 'aicontext' buffer.
+" <leader>a in normal mode: Clears 'aicontext' buffer.
+" <leader>e in visual mode: Edits selected text using AI, with optional prompt and 'aicontext' as context.
 let g:vim_ai_token_file_path = '~/.config/openai.token'
 
 let g:vim_ai_edit = {
