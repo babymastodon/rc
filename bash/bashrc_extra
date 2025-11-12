@@ -110,3 +110,4 @@ NPM_CONFIG_PREFIX="$HOME/.npm-global"
 
 # load tokens (if present)
 export OPENAI_API_KEY="$(cat $HOME/.config/openai.token)"
+export OPENROUTER_API_KEY="$(cat $HOME/.config/openrouter.token)"

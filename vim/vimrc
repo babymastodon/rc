@@ -513,21 +513,22 @@ set statusline=%!StatusLineFunc()
 " <leader>a in visual mode: Appends selected text to 'aicontext' buffer.
 " <leader>a in normal mode: Clears 'aicontext' buffer.
 " <leader>e in visual mode: Edits selected text using AI, with optional prompt and 'aicontext' as context.
-let g:vim_ai_token_file_path = '~/.config/openai.token'
+let g:vim_ai_token_file_path = '~/.config/openrouter.token'
+let endpoint_url = 'https://openrouter.ai/api/v1/chat/completions'
 
 let g:vim_ai_edit = {
 \  "provider": "openai",
 \  "prompt": "",
 \  "options": {
-\    "model": "gpt-4o",
-\    "endpoint_url": "https://api.openai.com/v1/chat/completions",
+\    "model": "x-ai/grok-code-fast-1",
+\    "endpoint_url": endpoint_url,
 \    "max_tokens": 0,
 \    "max_completion_tokens": 0,
 \    "temperature": 0.1,
 \    "request_timeout": 20,
 \    "stream": 1,
 \    "auth_type": "bearer",
-\    "token_file_path": "",
+\    "token_file_path": g:vim_ai_token_file_path,
 \    "token_load_fn": "",
 \    "selection_boundary": "",
 \    "initial_prompt": "",
@@ -561,15 +562,15 @@ let g:vim_ai_chat = {
 \  "provider": "openai",
 \  "prompt": "",
 \  "options": {
-\    "model": "gpt-4o",
-\    "endpoint_url": "https://api.openai.com/v1/chat/completions",
+\    "model": "x-ai/grok-code-fast-1",
+\    "endpoint_url": endpoint_url,
 \    "max_tokens": 0,
 \    "max_completion_tokens": 0,
 \    "temperature": 1,
 \    "request_timeout": 20,
 \    "stream": 1,
 \    "auth_type": "bearer",
-\    "token_file_path": "",
+\    "token_file_path": g:vim_ai_token_file_path,
 \    "token_load_fn": "",
 \    "selection_boundary": "",
 \    "initial_prompt": "",
