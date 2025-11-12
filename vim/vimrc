@@ -250,14 +250,39 @@ let g:ale_fixers = {
 \    'remove_trailing_lines',
 \    'trim_whitespace',
 \    'yapf'
+\  ],
+\  'rust': [
+\    'rustfmt',
 \  ]
 \}
 let g:ale_python_autopep8_options = '--ignore F811,W503,W504,E731,E125'
 let g:ale_python_autoflake_options= '--ignore-init-module-imports --remove-all-unused-imports --ignore-pass-after-docstring'
 let g:ale_fix_on_save = 1
-nnoremap ' :ALEImport<CR>
-nnoremap " :ALEFix<CR>
+nnoremap " :ALEImport<CR>
+nnoremap <silent> <leader>f :ALEFix<CR>
+nnoremap <silent> ' :call ToggleALEDetail()<CR>
 nnoremap <F4> :ALEStopAllLSPs<CR>:YcmRestartServer<CR>
+function! ToggleALEDetail()
+  " Check if a preview window (used by ALEDetail) is open
+  if &previewwindow
+    " If we're *in* the preview window, close it
+    pclose
+    return
+  endif
+
+  " Check if any preview window is open anywhere
+  for w in range(1, winnr('$'))
+    if getwinvar(w, '&previewwindow')
+      exec w . 'wincmd w'
+      pclose
+      return
+    endif
+  endfor
+
+  " Otherwise, show the ALE detail for current position
+  ALEDetail
+endfunction
+
 
 let g:go_fmt_experimental = 1
 let g:go_fmt_fail_silently = 1
