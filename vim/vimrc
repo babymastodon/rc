@@ -693,22 +693,9 @@ xnoremap <silent> <leader>e :<C-u>call AIEditRangeWithPromptAndAicontext()<CR>
 nnoremap <silent> <leader>e :<C-u>call AIEditRangeWithPromptAndAicontext()<CR>
 
 " Get ALE detail for the current line (all messages joined)
-function! s:GetALEDetailForLine()
-  if !exists('*ale#engine#GetLoclist')
-    return ''
-  endif
-  let l:errs = filter(ale#engine#GetLoclist(bufnr('%')), {_, v -> v.lnum == line('.')})
-  if empty(l:errs)
-    return ''
-  endif
-  return join(map(l:errs, 'v:val.text'), "\n")
-endfunction
-
-" --- helper: get the first ALE error in a selected range ---
-function! s:GetALEDetailInRange(start_lnum, end_lnum)
-  if !exists('*ale#engine#GetLoclist')
-    return ''
-  endif
+" --- find the first ALE item in a range (by lnum then col) ---
+function! s:FirstALEItemInRange(start_lnum, end_lnum)
+  if !exists('*ale#engine#GetLoclist') | return {} | endif
   let items = ale#engine#GetLoclist(bufnr('%'))
   let first = {}
   for it in items
@@ -720,109 +707,118 @@ function! s:GetALEDetailInRange(start_lnum, end_lnum)
       endif
     endif
   endfor
-  return empty(first) ? '' : get(first, 'text', '')
+  return first
 endfunction
 
+" --- capture EXACT ALE preview window lines for a given (lnum,col) ---
+function! s:GetALEPreviewLinesAt(lnum, col)
+  let curwin = win_getid()
+  let curpos = getpos('.')
 
-" --- main: yank selection, open AIChat, paste + append ALE error ---
-" --- helper: get the first ALE error in a given line range ---
-function! s:GetALEDetailInRange(start_lnum, end_lnum)
-  if !exists('*ale#engine#GetLoclist') | return '' | endif
-  let items = ale#engine#GetLoclist(bufnr('%'))
-  let first = {}
-  for it in items
-    if it.lnum >= a:start_lnum && it.lnum <= a:end_lnum
-      if empty(first)
-            \ || it.lnum < first.lnum
-            \ || (it.lnum == first.lnum && get(it,'col',0) < get(first,'col',0))
-        let first = it
-      endif
+  " Move to target location so :ALEDetail renders the right item
+  call cursor(a:lnum, max([1, a:col]))
+
+  " Show preview
+  silent! ALEDetail
+
+  " Locate the preview window
+  let lines = []
+  let pwin = -1
+  for w in range(1, winnr('$'))
+    if getwinvar(w, '&previewwindow')
+      let pwin = w
+      break
     endif
   endfor
-  return empty(first) ? '' : get(first, 'text', '')
+
+  if pwin > -1
+    " Read the preview buffer lines exactly as ALE shows them
+    execute pwin . 'wincmd w'
+    let bn = bufnr('%')
+    let lines = getbufline(bn, 1, '$')
+    " Close preview and go back
+    pclose
+  endif
+
+  " Restore original cursor/window
+  call win_gotoid(curwin)
+  call setpos('.', curpos)
+
+  return lines
 endfunction
 
+" --- ensure we're in (or open) the aichat buffer and resize ---
+function! s:FocusAIChatHalfWidth()
+  AIChat
+  let bn = bufnr('aichat')
+  if bn != -1
+    let wnr = bufwinnr(bn)
+    if wnr > -1 | execute wnr . 'wincmd w' | endif
+  endif
+  execute 'vertical resize' float2nr(&columns / 2)
+endfunction
 
-" --- visual-mode: send selected code + first ALE error ---
+" --- VISUAL: send selection + ALE preview lines (exact) ---
 function! AIChatAppendVisualAndALE() range
-  " If already in aichat buffer, just call AIChat and exit
+  " If already in aichat, just show the UI and bail
   if expand('%:t') ==# 'aichat'
     AIChat
     return
   endif
 
-  " Yank selection
+  " Yank selection for pasting into chat
   normal! gv"ay
 
-  " Determine range for ALE
+  " Compute visual range robustly
   let s = getpos("'<")[1]
   let e = getpos("'>")[1]
   let start = min([s, e])
   let finish = max([s, e])
 
-  let l:aledetail = s:GetALEDetailInRange(start, finish)
+  " Find first ALE item in that range
+  let item = s:FirstALEItemInRange(start, finish)
 
-  " Open AIChat
-  AIChat
+  " If we found one, capture EXACT preview content; else []
+  let preview_lines = empty(item) ? [] : s:GetALEPreviewLinesAt(item.lnum, get(item,'col',1))
 
-  " Focus aichat buffer if exists
-  let bn = bufnr('aichat')
-  if bn != -1
-    let wnr = bufwinnr(bn)
-    if wnr > -1 | execute wnr . 'wincmd w' | endif
-  endif
-
-  " Resize to half screen width
-  execute 'vertical resize' float2nr(&columns / 2)
-
-  " Paste code + ALE error
+  " Open/focus chat and paste
+  call s:FocusAIChatHalfWidth()
   normal! G
-  if @a !=# '' | execute 'normal! "ap' | endif
-  if !empty(l:aledetail)
+  if @a !=# ''
+    execute 'normal! "ap'
+  endif
+  if !empty(preview_lines)
     call append(line('$'), '')
-    call append(line('$'), 'ALE: ' . l:aledetail)
+    call append(line('$'), preview_lines)
   endif
-
-  normal! G
-  normal! o
+  normal! G | normal! o
 endfunction
 
-
-" --- normal-mode: open AIChat, paste current line's ALE error (if any) ---
+" --- NORMAL: open chat; append current line's ALE preview (exact) if present ---
 function! AIChatOpenWithALE()
+  " Do nothing if already in aichat
   if expand('%:t') ==# 'aichat'
     return
   endif
 
-  let l:aledetail = s:GetALEDetailInRange(line('.'), line('.'))
+  " Find ALE item on the current line
+  let item = s:FirstALEItemInRange(line('.'), line('.'))
+  let preview_lines = empty(item) ? [] : s:GetALEPreviewLinesAt(item.lnum, get(item,'col',1))
 
-  " Always open AIChat
-  AIChat
+  " Open/focus chat
+  call s:FocusAIChatHalfWidth()
 
-  " Focus the aichat buffer if exists
-  let bn = bufnr('aichat')
-  if bn != -1
-    let wnr = bufwinnr(bn)
-    if wnr > -1 | execute wnr . 'wincmd w' | endif
-  endif
-
-  " Resize to half width
-  execute 'vertical resize' float2nr(&columns / 2)
-
-  " If ALE error found, append it to chat
-  if !empty(l:aledetail)
+  " Append preview text if any and ready a new line
+  if !empty(preview_lines)
     normal! G
-    call append(line('$'), 'ALE: ' . l:aledetail)
-    normal! G
-    normal! o
+    call append(line('$'), preview_lines)
+    normal! G | normal! o
   endif
 endfunction
 
-
 " --- mappings ---
-" Visual: send selection + ALE error
+" Visual: selection + exact ALE preview
 xnoremap <silent> <leader>w :<C-u>call AIChatAppendVisualAndALE()<CR>
-
-" Normal: open AIChat, paste current line's ALE error
+" Normal: open chat + exact current-line ALE preview
 nnoremap <silent> <leader>w :<C-u>call AIChatOpenWithALE()<CR>
 
