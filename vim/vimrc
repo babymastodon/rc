@@ -500,10 +500,10 @@ highlight StatusLineNC cterm=underline ctermfg=7  ctermbg=NONE
 highlight VertSplit    cterm=NONE      ctermfg=7  ctermbg=NONE
 highlight Search       cterm=NONE      ctermfg=0  ctermbg=3
 highlight IncSearch    cterm=NONE      ctermfg=0  ctermbg=3
-highlight DiffAdd      cterm=reverse ctermfg=2   ctermbg=NONE
+highlight DiffAdd      cterm=underline,italic ctermfg=2   ctermbg=NONE
 highlight DiffChange   cterm=NONE    ctermfg=NONE   ctermbg=NONE
 highlight DiffDelete   cterm=reverse ctermfg=9   ctermbg=NONE
-highlight DiffText     cterm=reverse ctermfg=4   ctermbg=NONE
+highlight DiffText     cterm=underline,italic ctermfg=4   ctermbg=NONE
 set fillchars=vert:│
 
 " fancy tab bar
