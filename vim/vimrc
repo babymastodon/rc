@@ -430,10 +430,21 @@ nnoremap <F10> :Pydocstring<CR>
 " :Gdiff should show side-by-side
 set diffopt=vertical
 :command! Diff Gdiff master
-hi DiffAdd cterm=NONE ctermfg=NONE ctermbg=194
-hi DiffChange cterm=NONE ctermfg=NONE ctermbg=231
-hi DiffText cterm=NONE ctermfg=NONE ctermbg=189
-hi DiffDelete cterm=NONE ctermfg=NONE ctermbg=224
+function! ToggleGdiffsplit()
+  if exists('t:gdiffsplit_winid') && win_gotoid(t:gdiffsplit_winid) && &diff
+    windo if &diff | diffoff | endif
+    if win_gotoid(t:gdiffsplit_winid)
+      close
+    endif
+    unlet t:gdiffsplit_winid
+  else
+    let l:cur = win_getid()
+    Gdiffsplit HEAD
+    let t:gdiffsplit_winid = win_getid()
+    call win_gotoid(l:cur)
+  endif
+endfunction
+nnoremap <leader>d <Cmd>call ToggleGdiffsplit()<CR>
 
 " :Rc should open vimrc
 :command! Rc :edit! ~/.vimrc
@@ -489,6 +500,10 @@ highlight StatusLineNC cterm=underline ctermfg=7  ctermbg=NONE
 highlight VertSplit    cterm=NONE      ctermfg=7  ctermbg=NONE
 highlight Search       cterm=NONE      ctermfg=0  ctermbg=3
 highlight IncSearch    cterm=NONE      ctermfg=0  ctermbg=3
+highlight DiffAdd      cterm=reverse ctermfg=2   ctermbg=NONE
+highlight DiffChange   cterm=NONE    ctermfg=NONE   ctermbg=NONE
+highlight DiffDelete   cterm=reverse ctermfg=9   ctermbg=NONE
+highlight DiffText     cterm=reverse ctermfg=4   ctermbg=NONE
 set fillchars=vert:│
 
 " fancy tab bar
