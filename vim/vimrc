@@ -355,9 +355,9 @@ function! MyTabLine()
     " get buffer name
     let buflist = tabpagebuflist(i)
     let winnr  = tabpagewinnr(i)
-    let bufnr  = buflist[winnr - 1]
-    let file   = bufname(bufnr)
-    let buftype = getbufvar(bufnr, 'buftype')
+    let bufnm  = buflist[winnr - 1]
+    let file   = bufname(bufnm)
+    let buftype = getbufvar(bufnm, 'buftype')
 
     if buftype ==# 'nofile'
       if file =~ '\/.'
@@ -370,14 +370,14 @@ function! MyTabLine()
       let file = '[No Name]'
     endif
 
-    let mod = getbufvar(bufnr, '&modified') ? ' •' : ''
+    let mod = getbufvar(bufnm, '&modified') ? ' •' : ''
 
     " highlight + edges
     if i == t
 
       let s .= '%#TabCap#%#TabLineSel#' . i . ' ' . file . mod . '%#TabCap#%#TabLine# '
     else
-      if getbufvar(bufnr, '&modified')
+      if getbufvar(bufnm, '&modified')
 
         let s .= '%#TabCapMod#%#TabLineMod#' . i . ' ' . file . mod . '%#TabCapMod#%#TabLine# '
       else
@@ -513,9 +513,6 @@ set statusline=%!StatusLineFunc()
 " <leader>a in visual mode: Appends selected text to a buffer named 'aicontext'.
 " <leader>a in normal mode: Clears the 'aicontext' buffer.
 " <leader>e in visual mode: Edits the selected text using AI with an optional prompt and the 'aicontext' as context.
-xnoremap <leader>w y:AIChat<CR>:<C-u>call PasteAicontextBuffer()<CR>:execute 'vertical resize' float2nr(&columns / 2)<CR>Gpggo<CR>
-nnoremap <leader>w :AIChat<CR>
-
 let g:vim_ai_token_file_path = '~/.config/openai.token'
 
 let g:vim_ai_edit = {
@@ -694,3 +691,138 @@ endfunction
 
 xnoremap <silent> <leader>e :<C-u>call AIEditRangeWithPromptAndAicontext()<CR>
 nnoremap <silent> <leader>e :<C-u>call AIEditRangeWithPromptAndAicontext()<CR>
+
+" Get ALE detail for the current line (all messages joined)
+function! s:GetALEDetailForLine()
+  if !exists('*ale#engine#GetLoclist')
+    return ''
+  endif
+  let l:errs = filter(ale#engine#GetLoclist(bufnr('%')), {_, v -> v.lnum == line('.')})
+  if empty(l:errs)
+    return ''
+  endif
+  return join(map(l:errs, 'v:val.text'), "\n")
+endfunction
+
+" --- helper: get the first ALE error in a selected range ---
+function! s:GetALEDetailInRange(start_lnum, end_lnum)
+  if !exists('*ale#engine#GetLoclist')
+    return ''
+  endif
+  let items = ale#engine#GetLoclist(bufnr('%'))
+  let first = {}
+  for it in items
+    if it.lnum >= a:start_lnum && it.lnum <= a:end_lnum
+      if empty(first)
+            \ || it.lnum < first.lnum
+            \ || (it.lnum == first.lnum && get(it,'col',0) < get(first,'col',0))
+        let first = it
+      endif
+    endif
+  endfor
+  return empty(first) ? '' : get(first, 'text', '')
+endfunction
+
+
+" --- main: yank selection, open AIChat, paste + append ALE error ---
+" --- helper: get the first ALE error in a given line range ---
+function! s:GetALEDetailInRange(start_lnum, end_lnum)
+  if !exists('*ale#engine#GetLoclist') | return '' | endif
+  let items = ale#engine#GetLoclist(bufnr('%'))
+  let first = {}
+  for it in items
+    if it.lnum >= a:start_lnum && it.lnum <= a:end_lnum
+      if empty(first)
+            \ || it.lnum < first.lnum
+            \ || (it.lnum == first.lnum && get(it,'col',0) < get(first,'col',0))
+        let first = it
+      endif
+    endif
+  endfor
+  return empty(first) ? '' : get(first, 'text', '')
+endfunction
+
+
+" --- visual-mode: send selected code + first ALE error ---
+function! AIChatAppendVisualAndALE() range
+  " If already in aichat buffer, just call AIChat and exit
+  if expand('%:t') ==# 'aichat'
+    AIChat
+    return
+  endif
+
+  " Yank selection
+  normal! gv"ay
+
+  " Determine range for ALE
+  let s = getpos("'<")[1]
+  let e = getpos("'>")[1]
+  let start = min([s, e])
+  let finish = max([s, e])
+
+  let l:aledetail = s:GetALEDetailInRange(start, finish)
+
+  " Open AIChat
+  AIChat
+
+  " Focus aichat buffer if exists
+  let bn = bufnr('aichat')
+  if bn != -1
+    let wnr = bufwinnr(bn)
+    if wnr > -1 | execute wnr . 'wincmd w' | endif
+  endif
+
+  " Resize to half screen width
+  execute 'vertical resize' float2nr(&columns / 2)
+
+  " Paste code + ALE error
+  normal! G
+  if @a !=# '' | execute 'normal! "ap' | endif
+  if !empty(l:aledetail)
+    call append(line('$'), '')
+    call append(line('$'), 'ALE: ' . l:aledetail)
+  endif
+
+  normal! G
+  normal! o
+endfunction
+
+
+" --- normal-mode: open AIChat, paste current line's ALE error (if any) ---
+function! AIChatOpenWithALE()
+  if expand('%:t') ==# 'aichat'
+    return
+  endif
+
+  let l:aledetail = s:GetALEDetailInRange(line('.'), line('.'))
+
+  " Always open AIChat
+  AIChat
+
+  " Focus the aichat buffer if exists
+  let bn = bufnr('aichat')
+  if bn != -1
+    let wnr = bufwinnr(bn)
+    if wnr > -1 | execute wnr . 'wincmd w' | endif
+  endif
+
+  " Resize to half width
+  execute 'vertical resize' float2nr(&columns / 2)
+
+  " If ALE error found, append it to chat
+  if !empty(l:aledetail)
+    normal! G
+    call append(line('$'), 'ALE: ' . l:aledetail)
+    normal! G
+    normal! o
+  endif
+endfunction
+
+
+" --- mappings ---
+" Visual: send selection + ALE error
+xnoremap <silent> <leader>w :<C-u>call AIChatAppendVisualAndALE()<CR>
+
+" Normal: open AIChat, paste current line's ALE error
+nnoremap <silent> <leader>w :<C-u>call AIChatOpenWithALE()<CR>
+
