@@ -525,8 +525,6 @@ set statusline=%!StatusLineFunc()
 " Vim-AI Configuration
 " <leader>w (visual): Copy selection, append ALE messages, start AI chat.
 " <leader>w (normal): Append current line ALE message, start AI chat.
-" <leader>a (visual): Append selection to 'aicontext' buffer.
-" <leader>a (normal): Clear 'aicontext' buffer.
 " <leader>e (visual): Edit selection with AI, optional prompt, using 'aicontext'.
 " <leader>m (normal): Pick AI model and update vim_ai_edit.options.model.
 let g:vim_ai_token_file_path = '~/.config/openrouter.token'
@@ -657,95 +655,13 @@ Do not provide any explanation or comments.
 Answer as concisely as possible.
 END
 
-" --- append selection to right-side 'aicontext' ---
-function! AppendAicontextFromVisual()
-  let win = win_getid()
-  normal! gv"ay
-
-  let name = 'aicontext'
-  if bufexists(name)
-    let bn = bufnr(name)
-    let w  = bufwinnr(bn)
-    if w > -1
-      execute w . 'wincmd w'
-    else
-      execute 'vert sbuffer ' . bn
-    endif
-  else
-    vert new | setlocal buftype=nofile bufhidden=hide noswapfile
-    execute 'file ' . name
-  endif
-
-  normal! G
-  if getline('$') !=# ''
-    call append(line('$'), '')
-  endif
-  execute 'normal! "ap'
-  call win_gotoid(win)
-endfunction
-
-" --- clear 'aicontext' without opening a split ---
-function! ClearAicontextBuffer()
-  let name = 'aicontext'
-  let bn = bufnr(name)
-  if bn == -1 | return | endif
-
-  let w = bufwinnr(bn)
-  if w > -1
-    let win = win_getid()
-    execute w . 'wincmd w'
-    %delete _
-    call win_gotoid(win)
-  else
-    try
-      call deletebufline(bn, 1, '$')
-    catch
-      call setbufline(bn, 1, '')
-      call deletebufline(bn, 2, '$')
-    endtry
-  endif
-endfunction
-
-function! PasteAicontextBuffer()
-  let name = 'aicontext'
-  if !bufexists(name)
-    echo "aicontext not found."
-    return
-  endif
-  let lines = getbufline(name, 1, '$')
-  call append('.', lines)
-endfunction
-
-" --- mappings ---
-xnoremap <silent> <leader>a :<C-u>call AppendAicontextFromVisual()<CR>
-nnoremap <silent> <leader>a :<C-u>call ClearAicontextBuffer()<CR>
-
-function! AIEditRangeWithPromptAndAicontext() range
-  " Optional prompt
+function! AIEditRangeWithPrompt() range
   let prompt = input('AIEdit prompt (optional): ')
-
-  " Optional context
-  let ctx = ''
-  if bufexists('aicontext')
-    let ctx = join(getbufline('aicontext', 1, '$'), "\n")
-  endif
-
-  let prefix = "use the following code as context but do not include in output\n\n"
-
-  " Combine everything
-  if empty(ctx)
-    let arg = prompt
-  elseif empty(prompt)
-    let arg = prefix . ctx
-  else
-    let arg = prompt . "\n\n" . prefix . ctx
-  endif
-
-  execute "'<,'>AIEdit " . shellescape(arg)
+  execute "'<,'>AIEdit " . shellescape(prompt)
 endfunction
 
-xnoremap <silent> <leader>e :<C-u>call AIEditRangeWithPromptAndAicontext()<CR>
-nnoremap <silent> <leader>e :<C-u>call AIEditRangeWithPromptAndAicontext()<CR>
+xnoremap <silent> <leader>e :<C-u>call AIEditRangeWithPrompt()<CR>
+nnoremap <silent> <leader>e :<C-u>call AIEditRangeWithPrompt()<CR>
 
 " Get ALE detail for the current line (all messages joined)
 " --- find the first ALE item in a range (by lnum then col) ---
