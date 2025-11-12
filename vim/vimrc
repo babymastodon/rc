@@ -657,6 +657,9 @@ END
 
 function! AIEditRangeWithPrompt() range
   let prompt = input('AIEdit prompt (optional): ')
+  if empty(prompt)
+    return
+  endif
   execute "'<,'>AIEdit " . shellescape(prompt)
 endfunction
 
@@ -799,3 +802,90 @@ xnoremap <silent> <leader>w :<C-u>call AIChatAppendVisualAndALE()<CR>
 " Normal: open chat + exact current-line ALE preview
 nnoremap <silent> <leader>w :<C-u>call AIChatOpenWithALE()<CR>
 
+" Scratch buffer operations  
+" visual <leader>a appends selection to scratch buffer
+" normal <leader>a clears all scratch contents
+" <leader>p pastes scratch lines at cursor position
+" <leader>t toggles the vertical scratch buffer split
+" --- append selection to right-side 'scratch' ---
+function! AppendScratchFromVisual()
+  let win = win_getid()
+  normal! gv"ay
+
+  let name = 'scratch'
+  if bufexists(name)
+    let bn = bufnr(name)
+    let w  = bufwinnr(bn)
+    if w > -1
+      execute w . 'wincmd w'
+    else
+      execute 'vert sbuffer ' . bn
+    endif
+  else
+    vert new | setlocal buftype=nofile bufhidden=hide noswapfile
+    execute 'file ' . name
+  endif
+
+  normal! G
+  if getline('$') !=# ''
+    call append(line('$'), '')
+  endif
+  execute 'normal! "ap'
+  call win_gotoid(win)
+endfunction
+
+" --- clear 'scratch' without opening a split ---
+function! ClearScratchBuffer()
+  let name = 'scratch'
+  let bn = bufnr(name)
+  if bn == -1 | return | endif
+
+  let w = bufwinnr(bn)
+  if w > -1
+    let win = win_getid()
+    execute w . 'wincmd w'
+    %delete _
+    call win_gotoid(win)
+  else
+    try
+      call deletebufline(bn, 1, '$')
+    catch
+      call setbufline(bn, 1, '')
+      call deletebufline(bn, 2, '$')
+    endtry
+  endif
+endfunction
+
+function! PasteScratchBuffer()
+  let name = 'scratch'
+  if !bufexists(name)
+    echo "scratch not found."
+    return
+  endif
+  let lines = getbufline(name, 1, '$')
+  call append('.', lines)
+endfunction
+
+function! ToggleScratchBuffer() abort
+  let name = 'scratch'
+  let bn = bufnr(name)
+  if bn > 0
+    let w = bufwinnr(bn)
+    if w > -1
+      execute w . 'wincmd c'
+      return
+    endif
+  endif
+  if bn == -1
+    vert new | setlocal buftype=nofile bufhidden=hide noswapfile
+    execute 'file ' . name
+  else
+    execute 'vert sbuffer ' . bn
+  endif
+endfunction
+
+" --- mappings ---
+xnoremap <silent> <leader>a :<C-u>call AppendScratchFromVisual()<CR>
+nnoremap <silent> <leader>a :<C-u>call ClearScratchBuffer()<CR>
+nnoremap <silent> <leader>p :<C-u>call PasteScratchBuffer()<CR>
+nnoremap <silent> <leader>t :<C-u>call ToggleScratchBuffer()<CR>
