@@ -487,12 +487,23 @@ highlight DiffText     cterm=underline,italic ctermfg=4   ctermbg=NONE
 highlight CocInlayHint cterm=italic    ctermfg=8  ctermbg=NONE
 " Dropdown (completion menu)
 highlight NormalFloat        cterm=NONE ctermbg=NONE ctermfg=NONE
-highlight CocFloating        cterm=NONE ctermbg=NONE ctermfg=NONE
-highlight FgCocErrorFloatBgCocFloating      cterm=NONE ctermbg=NONE ctermfg=9
-highlight FgCocWarningFloatBgCocFloating    cterm=NONE ctermbg=NONE ctermfg=11
-highlight FgCocInfoFloatBgCocFloating       cterm=NONE ctermbg=NONE ctermfg=12
-highlight FgCocHintFloatBgCocFloating       cterm=NONE ctermbg=NONE ctermfg=8
 highlight SignColumn ctermbg=NONE ctermfg=NONE
+function! OverrideCocFloats() abort
+  hi! NormalFloat        cterm=NONE ctermbg=NONE ctermfg=NONE
+  hi! CocFloating        cterm=NONE ctermbg=NONE ctermfg=NONE
+  hi! CocMenuSel         cterm=NONE ctermbg=8    ctermfg=NONE
+  hi! FgCocErrorFloatBgCocFloating      cterm=NONE ctermbg=NONE ctermfg=9
+  hi! FgCocWarningFloatBgCocFloating    cterm=NONE ctermbg=NONE ctermfg=11
+  hi! FgCocInfoFloatBgCocFloating       cterm=NONE ctermbg=NONE ctermfg=12
+  hi! FgCocHintFloatBgCocFloating       cterm=NONE ctermbg=NONE ctermfg=8
+endfunction
+augroup CocFloatOverride
+  autocmd!
+  autocmd VimEnter * call OverrideCocFloats()
+  autocmd ColorScheme * call OverrideCocFloats()
+  autocmd User CocNvimInit call OverrideCocFloats()
+augroup END
+
 set fillchars=vert:│
 
 " TAB accepts the currently selected completion item
@@ -1044,4 +1055,3 @@ augroup FormatOnSave
   " HTML/CSS/YAML/SH: LSP formatting where supported
   autocmd BufWritePre *.html,*.htm,*.css,*.scss,*.yaml,*.yml,*.sh silent! call CocAction('format')
 augroup END
-
