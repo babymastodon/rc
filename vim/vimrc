@@ -142,17 +142,6 @@ let g:tagbar_type_go = {
 " format json
 nnoremap gj :%!python -m json.tool<CR>
 
-" python with virtualenv support
-" Virtualenv needs to be active when opening vim
-" py3 << EOF
-" import os
-" import sys
-" if 'VIRTUAL_ENV' in os.environ:
-"   project_base_dir = os.environ['VIRTUAL_ENV']
-"   activate_this = os.path.join(project_base_dir, 'bin/activate_this.py')
-"   exec(open(activate_this).read(), {'__file__': activate_this})
-" EOF
-
 " enable python highlighting
 let python_highlight_all=1
 
@@ -476,6 +465,9 @@ let g:coc_user_config = {
 \ 'pyright.enable': v:true,
 \ 'pyright.disableOrganizeImports': v:false,
 \ 'coc.preferences.codeActionOnSave': ['source.organizeImports'],
+\ 'diagnostic.virtualTextCurrentLineOnly': v:false, 
+\ 'diagnostic.virtualText': v:true,
+\ 'diagnostic.virtualTextPrefix': ' ❯❯❯ ',
 \}
 
 " Filetype settings
@@ -489,7 +481,7 @@ highlight TabLine      cterm=underline ctermfg=7  ctermbg=NONE
 highlight TabLineSel   cterm=NONE      ctermfg=0  ctermbg=2
 highlight TabLineFill  cterm=underline ctermfg=7  ctermbg=NONE
 highlight TabCap       cterm=NONE      ctermfg=2  ctermbg=NONE
-highlight TabLineMod   cterm=NONE      ctermfg=7 ctermbg=8
+highlight TabLineMod   cterm=NONE      ctermfg=0 ctermbg=7
 highlight TabCapMod    cterm=NONE      ctermfg=7  ctermbg=NONE
 highlight StatusLine   cterm=underline,bold ctermfg=2  ctermbg=None
 highlight StatusCap    cterm=underline ctermfg=2  ctermbg=0
@@ -506,6 +498,15 @@ highlight CocInlayHint cterm=italic    ctermfg=7  ctermbg=NONE
 " Dropdown (completion menu)
 highlight NormalFloat        cterm=NONE ctermbg=NONE ctermfg=NONE
 highlight SignColumn ctermbg=NONE ctermfg=NONE
+" Error formatting
+highlight CocErrorHighlight cterm=underline
+highlight CocWarningHighlight cterm=underline
+highlight CocInfoHighlight cterm=underline
+highlight CocHintHighlight cterm=underline
+highlight CocErrorVirtualText    cterm=italic
+highlight CocWarningVirtualText  cterm=italic
+highlight CocInfoVirtualText     cterm=italic
+highlight CocHintVirtualText     cterm=italic
 function! OverrideCocFloats() abort
   hi! NormalFloat        cterm=NONE ctermbg=8 ctermfg=NONE
   hi! CocFloating        cterm=NONE ctermbg=8 ctermfg=NONE
@@ -743,67 +744,15 @@ endfunction
 
 " Toggle detail window using Coc diagnostics (replaces ToggleALEDetail)
 function! ToggleALEDetail() abort
-  " If we're in a preview window, close it
-  if &previewwindow
-    pclose
-    return
-  endif
-
-  " If any preview window is open anywhere, close it
-  for w in range(1, winnr('$'))
-    if getwinvar(w, '&previewwindow')
-      exec w . 'wincmd w'
-      pclose
-      return
-    endif
-  endfor
-
-  " Otherwise, show diagnostic detail for current line using ALE
-  let item = s:FirstALEItemInRange(line('.'), line('.'))
-  if empty(item)
-    " No ALE diagnostics: fall back to CoC hover/type info
-    if exists('*CocAction')
-      if CocAction('hasProvider', 'hover')
-        call CocActionAsync('doHover')
-      else
-        echo "No diagnostics and no hover provider"
-      endif
+  if exists('*CocAction')
+    if CocAction('hasProvider', 'hover')
+      call CocActionAsync('doHover')
     else
-      echo "No diagnostics"
+      echo "No diagnostics and no hover provider"
     endif
-    return
+  else
+    echo "No diagnostics"
   endif
-
-  let lines = s:GetALEPreviewLinesAt(item.lnum, get(item, 'col', 1))
-  if empty(lines)
-    " No detailed ALE info: fall back to CoC hover/type info
-    if exists('*CocAction')
-      if CocAction('hasProvider', 'hover')
-        call CocActionAsync('doHover')
-      else
-        echo "No diagnostics and no hover provider"
-      endif
-    else
-      echo "No diagnostics"
-    endif
-    return
-  endif
-
-  " Open a preview window and populate it
-  pedit CocDiagnostics
-  wincmd P
-
-  " Make the preview buffer truly scratch / not saveable
-  setlocal buftype=nofile bufhidden=wipe nobuflisted noswapfile
-  setlocal modifiable
-
-  call setline(1, lines)
-  if line('$') > len(lines)
-    execute (len(lines)+1).',$delete _'
-  endif
-
-  " Lock it so it doesn't look editable
-  setlocal nomodifiable
 endfunction
 
 
