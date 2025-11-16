@@ -36,6 +36,6 @@ maybe_link() {
 # ----- link configs (via maybe_link) -----
 log "Linking Ghotty configuration…"
 mkdir -p "$HOME/.config/ghostty/" "$HOME/.config/ghostty/themes/"
-maybe_link "$PWD/ghostty.conf"              "$HOME/.config/ghostty/ghostty.conf"
+maybe_link "$PWD/ghostty.conf"              "$HOME/.config/ghostty/config"
 maybe_link "$PWD/monokai-custom.theme"         "$HOME/.config/ghostty/themes/monokai-custom.theme"
 maybe_link "$PWD/monokai-custom-light.theme"    "$HOME/.config/ghostty/themes/monokai-custom-light.theme"
