@@ -16,7 +16,6 @@ EXTENSIONS=(
   "monitor-brightness-volume@ailin.nemui"
   "azwallpaper@azwallpaper.gitlab.com"
   "blur-my-shell@aunetx"
-  "Bluetooth-Battery-Meter@maniacx.github.com"
 )
 
 # ----- helpers -----
