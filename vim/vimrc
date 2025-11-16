@@ -465,10 +465,10 @@ let g:coc_user_config = {
 \ 'pyright.enable': v:true,
 \ 'pyright.disableOrganizeImports': v:false,
 \ 'coc.preferences.codeActionOnSave': ['source.organizeImports'],
-\ 'diagnostic.virtualTextCurrentLineOnly': v:false, 
-\ 'diagnostic.virtualText': v:true,
-\ 'diagnostic.virtualTextPrefix': ' ❯❯❯ ',
 \}
+" \ 'diagnostic.virtualTextCurrentLineOnly': v:false, 
+" \ 'diagnostic.virtualText': v:true,
+" \ 'diagnostic.virtualTextPrefix': ' ❯❯❯ ',
 
 " Filetype settings
 filetype plugin indent on
