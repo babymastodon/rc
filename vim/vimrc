@@ -165,10 +165,7 @@ noremap = :cnext<CR>
 
 
 " go to first linter error, and iterate through the errors
-" :nnoremap ; :lfirst<CR>
-:nnoremap <silent> ; gg <Plug>(coc-diagnostic-next)
-" nnoremap - <Plug>(coc-diagnostic-prev)
-" nnoremap = <Plug>(coc-diagnostic-next)
+:nnoremap ; :lfirst<CR>
 :nnoremap + :lnext<CR>
 :nnoremap _ :lprev<CR>
 function! s:UpdateCocLoclistAll() abort
