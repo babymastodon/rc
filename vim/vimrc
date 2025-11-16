@@ -59,9 +59,8 @@ noremap gf :vertical wincmd F<CR>
 " pressing F2 enters paste mode
 set pastetoggle=<F2>
 
-" map <F3> to YCMHover to show type information
-noremap <F3> <plug>(YCMHover)
-let g:ycm_auto_hover = ''
+" F3: show hover/type info (YCMHover → Coc hover)
+nnoremap <silent> <F3> :call CocActionAsync('doHover')<CR>
 
 " Insert Ascii Text Headers
 command! -nargs=* Header read !figlet -f starwars -k -w 60 -c <args>
@@ -161,11 +160,15 @@ let python_highlight_all=1
 let g:lt_location_list_toggle_map = '<leader>l'
 let g:lt_quickfix_list_toggle_map = '<leader>q'
 let g:lt_height = 10
-noremap - :cprev<CR>
-noremap = :cnext<CR>
+"noremap - :cprev<CR>
+"noremap = :cnext<CR>
+nnoremap - <Plug>(coc-diagnostic-prev)
+nnoremap = <Plug>(coc-diagnostic-next)
+
 
 " go to first linter error, and iterate through the errors
-:nnoremap ; :lfirst<CR>
+" :nnoremap ; :lfirst<CR>
+:nnoremap <silent> ; gg <Plug>(coc-diagnostic-next)
 :nnoremap + :lnext<CR>
 :nnoremap _ :lprev<CR>
 
@@ -188,6 +191,12 @@ noremap ( :tp<CR>
 
 " disable preview split on autocomplete
 :set completeopt-=preview
+
+" --- Coc.nvim basic LSP/completion settings (replacement for YCM/ALE) ---
+set completeopt+=menuone,noinsert,noselect
+set updatetime=300
+set shortmess+=c
+set signcolumn=yes
 
 " search and hilight word under cursor
 nnoremap * :keepjumps normal! mi*`i<CR>
@@ -227,62 +236,12 @@ augroup END
 " fix bug in go-vim syntax file
 let go_highlight_trailing_whitespace_error = 0
 
-" default ycm compilation flags
-let g:ycm_global_ycm_extra_conf = '~/.ycm_extra_conf.py'
-" disable ycm autoconfirmation
-let g:ycm_confirm_extra_conf = 0
-" get identifiers from tag files
-let g:ycm_collect_identifiers_from_tags_files = 1
-let ycm_auto_trigger = 1
-" use ycm's goto def, instead of vim's default
-nnoremap gd :YcmCompleter GoTo<CR>
-nnoremap gl :YcmCompleter FixIt<CR>
-
-" ale linters
-let g:ale_linters = {
-\  'python': ['flake8', 'pyright']
-\}
-let g:ale_fixers = {
-\  'python': [
-\    'autopep8',
-\    'autoflake',
-\    'isort',
-\    'remove_trailing_lines',
-\    'trim_whitespace',
-\    'yapf'
-\  ],
-\  'rust': [
-\    'rustfmt',
-\  ]
-\}
-let g:ale_python_autopep8_options = '--ignore F811,W503,W504,E731,E125'
-let g:ale_python_autoflake_options= '--ignore-init-module-imports --remove-all-unused-imports --ignore-pass-after-docstring'
-let g:ale_fix_on_save = 1
-nnoremap " :ALEImport<CR>
-nnoremap <silent> <leader>f :ALEFix<CR>
-nnoremap <silent> ' :call ToggleALEDetail()<CR>
-nnoremap <F4> :ALEStopAllLSPs<CR>:YcmRestartServer<CR>
-function! ToggleALEDetail()
-  " Check if a preview window (used by ALEDetail) is open
-  if &previewwindow
-    " If we're *in* the preview window, close it
-    pclose
-    return
-  endif
-
-  " Check if any preview window is open anywhere
-  for w in range(1, winnr('$'))
-    if getwinvar(w, '&previewwindow')
-      exec w . 'wincmd w'
-      pclose
-      return
-    endif
-  endfor
-
-  " Otherwise, show the ALE detail for current position
-  ALEDetail
-endfunction
-
+" Coc-based goto def / FixIt (YCM → Coc)
+nmap <silent> gd <Plug>(coc-definition)
+nmap <silent> gl <Plug>(coc-codeaction-cursor)
+set signcolumn=auto
+nnoremap <silent> <F4> :CocRestart<CR>
+nnoremap <silent> <leader>h :CocCommand document.toggleInlayHint<CR>
 
 let g:go_fmt_experimental = 1
 let g:go_fmt_fail_silently = 1
@@ -470,16 +429,36 @@ Plug 'Valloric/ListToggle'
 Plug 'chrisbra/csv.vim'
 Plug 'ctrlpvim/ctrlp.vim'
 Plug 'powerman/vim-plugin-AnsiEsc'
-Plug 'dense-analysis/ale'
-Plug 'ycm-core/YouCompleteMe'
 Plug 'heavenshell/vim-pydocstring'
 Plug 'rhysd/conflict-marker.vim'
 Plug 'pedrohdz/vim-yaml-folds'
 Plug 'sheerun/vim-polyglot'
 Plug 'ojroques/vim-oscyank'
 Plug 'madox2/vim-ai'
+Plug 'neoclide/coc.nvim', {'branch': 'release'}
 
 call plug#end()
+
+" Coc extensions for: python, rust, go, java, c/c++, ts/js, html, css, json, yaml, sh, snippets
+let g:coc_global_extensions = [
+      \ 'coc-pyright',
+      \ 'coc-rust-analyzer',
+      \ 'coc-go',
+      \ 'coc-java',
+      \ 'coc-clangd',
+      \ 'coc-tsserver',
+      \ 'coc-json',
+      \ 'coc-html',
+      \ 'coc-css',
+      \ 'coc-yaml',
+      \ 'coc-sh',
+      \ 'coc-snippets'
+      \ ]
+let g:coc_user_config = {
+\ 'pyright.enable': v:true,
+\ 'pyright.disableOrganizeImports': v:false,
+\ 'coc.preferences.codeActionOnSave': ['source.organizeImports'],
+\}
 
 " Filetype settings
 filetype plugin indent on
@@ -501,10 +480,25 @@ highlight VertSplit    cterm=NONE      ctermfg=7  ctermbg=NONE
 highlight Search       cterm=NONE      ctermfg=0  ctermbg=3
 highlight IncSearch    cterm=NONE      ctermfg=0  ctermbg=3
 highlight DiffAdd      cterm=underline,italic ctermfg=2   ctermbg=NONE
-highlight DiffChange   cterm=NONE    ctermfg=NONE   ctermbg=NONE
-highlight DiffDelete   cterm=reverse ctermfg=9   ctermbg=NONE
+highlight DiffChange   cterm=NONE      ctermfg=NONE ctermbg=NONE
+highlight DiffDelete   cterm=reverse   ctermfg=9   ctermbg=NONE
 highlight DiffText     cterm=underline,italic ctermfg=4   ctermbg=NONE
+" Inline type hints (inlay hints)
+highlight CocInlayHint cterm=italic    ctermfg=8  ctermbg=NONE
+" Dropdown (completion menu)
+highlight NormalFloat        cterm=NONE ctermbg=NONE ctermfg=NONE
+highlight CocFloating        cterm=NONE ctermbg=NONE ctermfg=NONE
+highlight FgCocErrorFloatBgCocFloating      cterm=NONE ctermbg=NONE ctermfg=9
+highlight FgCocWarningFloatBgCocFloating    cterm=NONE ctermbg=NONE ctermfg=11
+highlight FgCocInfoFloatBgCocFloating       cterm=NONE ctermbg=NONE ctermfg=12
+highlight FgCocHintFloatBgCocFloating       cterm=NONE ctermbg=NONE ctermfg=8
+highlight SignColumn ctermbg=NONE ctermfg=NONE
 set fillchars=vert:│
+
+" TAB accepts the currently selected completion item
+inoremap <silent><expr> <Tab>
+      \ coc#pum#visible() ? coc#pum#confirm() :
+      \ "\<Tab>"
 
 " fancy tab bar
 set stal=2
@@ -523,9 +517,9 @@ set fillchars+=stl:┈,stlnc:\
 set statusline=%!StatusLineFunc()
 
 " Vim-AI Configuration
-" <leader>w (visual): Copy selection, append ALE messages, start AI chat.
-" <leader>w (normal): Append current line ALE message, start AI chat.
-" <leader>e (visual): Edit selection with AI, optional prompt, using 'aicontext'.
+" <leader>w (visual): Copy selection, append diagnostics messages, start AI chat.
+" <leader>w (normal): Append current line diagnostic message, start AI chat.
+" <leader>e (visual/normal): Edit with AI with optional prompt.
 " <leader>m (normal): Pick AI model and update vim_ai_edit.options.model.
 let g:vim_ai_token_file_path = '~/.config/openrouter.token'
 let vim_ai_endpoint_url = 'https://openrouter.ai/api/v1/chat/completions'
@@ -614,7 +608,7 @@ let g:vim_ai_chat = {
 \  "provider": "openai",
 \  "prompt": "",
 \  "options": {
-\    "model": vim_ai_models[0],
+\    "model": g:vim_ai_model,
 \    "endpoint_url": vim_ai_endpoint_url,
 \    "max_tokens": 0,
 \    "max_completion_tokens": 0,
@@ -666,13 +660,18 @@ endfunction
 xnoremap <silent> <leader>e :<C-u>call AIEditRangeWithPrompt()<CR>
 nnoremap <silent> <leader>e :<C-u>call AIEditRangeWithPrompt()<CR>
 
-" Get ALE detail for the current line (all messages joined)
-" --- find the first ALE item in a range (by lnum then col) ---
+" --- DIAGNOSTICS (ALE → Coc) used by AI and detail toggling ---
+
+" Find the first diagnostic item in a range (by lnum then col)
 function! s:FirstALEItemInRange(start_lnum, end_lnum)
-  if !exists('*ale#engine#GetLoclist') | return {} | endif
-  let items = ale#engine#GetLoclist(bufnr('%'))
+  if !exists('*CocAction') | return {} | endif
+  let items = CocAction('diagnosticList')
   let first = {}
+  let curfile = expand('%:p')
   for it in items
+    if get(it, 'file', '') !=# curfile
+      continue
+    endif
     if it.lnum >= a:start_lnum && it.lnum <= a:end_lnum
       if empty(first)
             \ || it.lnum < first.lnum
@@ -684,42 +683,103 @@ function! s:FirstALEItemInRange(start_lnum, end_lnum)
   return first
 endfunction
 
-" --- capture EXACT ALE preview window lines for a given (lnum,col) ---
+" Build human-readable diagnostic lines for a given (lnum, col)
 function! s:GetALEPreviewLinesAt(lnum, col)
-  let curwin = win_getid()
-  let curpos = getpos('.')
-
-  " Move to target location so :ALEDetail renders the right item
-  call cursor(a:lnum, max([1, a:col]))
-
-  " Show preview
-  silent! ALEDetail
-
-  " Locate the preview window
+  if !exists('*CocAction') | return [] | endif
+  let items = CocAction('diagnosticList')
+  let curfile = expand('%:p')
   let lines = []
-  let pwin = -1
+  for it in items
+    if get(it, 'file', '') !=# curfile
+      continue
+    endif
+    if it.lnum == a:lnum
+      let sevval = get(it, 'severity', 0)
+      if type(sevval) == type(0)
+        let sevmap = {1: 'Error', 2: 'Warning', 3: 'Information', 4: 'Hint'}
+        let sevname = get(sevmap, sevval, 'Information')
+      else
+        let sevname = sevval
+      endif
+      let prefix = sevname[0]
+      let msg = get(it, 'message', '')
+      let src = get(it, 'source', 'coc')
+      let code = get(it, 'code', '')
+      let text = printf('%s: %s [%s%s%s]', prefix, msg, src, code ==# '' ? '' : ' ', code)
+      call add(lines, text)
+    endif
+  endfor
+  return lines
+endfunction
+
+" Toggle detail window using Coc diagnostics (replaces ToggleALEDetail)
+function! ToggleALEDetail() abort
+  " If we're in a preview window, close it
+  if &previewwindow
+    pclose
+    return
+  endif
+
+  " If any preview window is open anywhere, close it
   for w in range(1, winnr('$'))
     if getwinvar(w, '&previewwindow')
-      let pwin = w
-      break
+      exec w . 'wincmd w'
+      pclose
+      return
     endif
   endfor
 
-  if pwin > -1
-    " Read the preview buffer lines exactly as ALE shows them
-    execute pwin . 'wincmd w'
-    let bn = bufnr('%')
-    let lines = getbufline(bn, 1, '$')
-    " Close preview and go back
-    pclose
+  " Otherwise, show diagnostic detail for current line using ALE
+  let item = s:FirstALEItemInRange(line('.'), line('.'))
+  if empty(item)
+    " No ALE diagnostics: fall back to CoC hover/type info
+    if exists('*CocAction')
+      if CocAction('hasProvider', 'hover')
+        call CocActionAsync('doHover')
+      else
+        echo "No diagnostics and no hover provider"
+      endif
+    else
+      echo "No diagnostics"
+    endif
+    return
   endif
 
-  " Restore original cursor/window
-  call win_gotoid(curwin)
-  call setpos('.', curpos)
+  let lines = s:GetALEPreviewLinesAt(item.lnum, get(item, 'col', 1))
+  if empty(lines)
+    " No detailed ALE info: fall back to CoC hover/type info
+    if exists('*CocAction')
+      if CocAction('hasProvider', 'hover')
+        call CocActionAsync('doHover')
+      else
+        echo "No diagnostics and no hover provider"
+      endif
+    else
+      echo "No diagnostics"
+    endif
+    return
+  endif
 
-  return lines
+  " Open a preview window and populate it
+  pedit CocDiagnostics
+  wincmd P
+
+  " Make the preview buffer truly scratch / not saveable
+  setlocal buftype=nofile bufhidden=wipe nobuflisted noswapfile
+  setlocal modifiable
+
+  call setline(1, lines)
+  if line('$') > len(lines)
+    execute (len(lines)+1).',$delete _'
+  endif
+
+  " Lock it so it doesn't look editable
+  setlocal nomodifiable
 endfunction
+
+
+" map ' to toggle diagnostic detail (same key as before)
+nnoremap <silent> ' :call ToggleALEDetail()<CR>
 
 " --- ensure we're in (or open) the aichat buffer and resize ---
 function! s:FocusAIChatHalfWidth()
@@ -732,7 +792,7 @@ function! s:FocusAIChatHalfWidth()
   execute 'vertical resize' float2nr(&columns / 2)
 endfunction
 
-" --- VISUAL: send selection + ALE preview lines (exact) ---
+" --- VISUAL: send selection + diagnostic lines (Coc-based) ---
 function! AIChatAppendVisualAndALE() range
   " If already in aichat, just show the UI and bail
   if expand('%:t') ==# 'aichat'
@@ -749,10 +809,10 @@ function! AIChatAppendVisualAndALE() range
   let start = min([s, e])
   let finish = max([s, e])
 
-  " Find first ALE item in that range
+  " Find first diagnostic item in that range
   let item = s:FirstALEItemInRange(start, finish)
 
-  " If we found one, capture EXACT preview content; else []
+  " If we found one, capture preview content; else []
   let preview_lines = []
   if !empty(item)
     let preview_lines = s:GetALEPreviewLinesAt(item.lnum, get(item,'col',1))
@@ -771,35 +831,83 @@ function! AIChatAppendVisualAndALE() range
   normal! G
 endfunction
 
-" --- NORMAL: open chat; append current line's ALE preview (exact) if present ---
+" --- NORMAL: open chat; append current line's diagnostic preview if present ---
 function! AIChatOpenWithALE()
   " Do nothing if already in aichat
   if expand('%:t') ==# 'aichat'
     return
   endif
 
-  " Find ALE item on the current line
+  " Find diagnostic item on the current line
   let item = s:FirstALEItemInRange(line('.'), line('.'))
   let preview_lines = []
+  let context_lines = []
+  let error_line = ''
+
   if !empty(item)
-    let preview_lines = s:GetALEPreviewLinesAt(item.lnum, get(item,'col',1))
+    " Diagnostic preview text
+    let preview_lines = s:GetALEPreviewLinesAt(item.lnum, get(item, 'col', 1))
+
+    " Exact line containing the error
+    let error_line = getline(item.lnum)
+
+    " +/- 10 lines context
+    let start_lnum = max([1, item.lnum - 10])
+    let end_lnum   = min([line('$'), item.lnum + 10])
+    let context_lines = getline(start_lnum, end_lnum)
   endif
 
-  " Open/focus chat
+  " Open/focus chat window
   call s:FocusAIChatHalfWidth()
 
-  " Append preview text if any and ready a new line
-  if !empty(preview_lines)
+  " Append information to chat
+  if !empty(preview_lines) || !empty(context_lines)
     normal! G
-    call append(line('$'), preview_lines)
-    normal! G | normal! o
+    let last = line('$')
+
+    " --- main diagnostic prompt ---
+    call append(last, '')
+    let last += 1
+    call append(last, '--- Explain reason for this error and provide code fix for the line with the error and surrounding errors in markdown code block with language ---')
+    let last += 1
+
+    " diagnostic text
+    if !empty(preview_lines)
+      call append(last, preview_lines)
+      let last += len(preview_lines)
+    endif
+
+    " --- error line ---
+    if !empty(error_line)
+      call append(last, '')
+      let last += 1
+      call append(last, '--- Here is the line with the error ---')
+      let last += 1
+      call append(last, error_line)
+      let last += 1
+    endif
+
+    " --- context block ---
+    if !empty(context_lines)
+      call append(last, '')
+      let last += 1
+      call append(last, '--- code context (+/- 10 lines) ---')
+      let last += 1
+      call append(last, context_lines)
+      let last += len(context_lines)
+    endif
+
+    " go to bottom & start a new prompt line
+    normal! G
+    normal! o
   endif
 endfunction
 
+
 " --- mappings ---
-" Visual: selection + exact ALE preview
+" Visual: selection + exact diagnostic preview
 xnoremap <silent> <leader>w :<C-u>call AIChatAppendVisualAndALE()<CR>
-" Normal: open chat + exact current-line ALE preview
+" Normal: open chat + exact current-line diagnostic preview
 nnoremap <silent> <leader>w :<C-u>call AIChatOpenWithALE()<CR>
 
 " Scratch buffer operations  
@@ -889,3 +997,51 @@ xnoremap <silent> <leader>a :<C-u>call AppendScratchFromVisual()<CR>
 nnoremap <silent> <leader>a :<C-u>call ClearScratchBuffer()<CR>
 nnoremap <silent> <leader>p :<C-u>call PasteScratchBuffer()<CR>
 nnoremap <silent> <leader>t :<C-u>call ToggleScratchBuffer()<CR>
+
+" --- Python formatter chain to mimic ALE fixers (autoflake + isort + autopep8/yapf + whitespace) ---
+
+function! s:FormatPythonBuffer()
+  " Run autoflake
+  if executable('autoflake')
+    silent execute '%!autoflake --ignore-init-module-imports --remove-all-unused-imports --ignore-pass-after-docstring -'
+  endif
+
+  " Run isort
+  if executable('isort')
+    silent execute '%!isort -'
+  endif
+
+  " Run autopep8 with your old options
+  if executable('autopep8')
+    silent execute '%!autopep8 --ignore F811,W503,W504,E731,E125 -'
+  endif
+
+  " Optionally run yapf if installed (last in chain, like another style pass)
+  if executable('yapf')
+    silent execute '%!yapf'
+  endif
+
+  " Trim trailing whitespace (ALE trim_whitespace)
+  silent keepjumps %s/\s\+$//e
+
+  " Remove trailing blank lines at EOF (ALE remove_trailing_lines)
+  silent keepjumps %s/\n\+\%$//e
+endfunction
+
+" --- Format on save for key languages (Python/Rust/TS/JS/HTML/etc) ---
+
+augroup FormatOnSave
+  autocmd!
+  " Python: use our explicit chain to mirror ALE fixers
+  autocmd BufWritePre *.py call s:FormatPythonBuffer()
+
+  " Rust: use Coc LSP formatting (rust-analyzer → rustfmt)
+  autocmd BufWritePre *.rs silent! call CocAction('format')
+
+  " TypeScript/JavaScript/JSON: LSP formatting (tsserver, json)
+  autocmd BufWritePre *.ts,*.tsx,*.js,*.jsx,*.json silent! call CocAction('format')
+
+  " HTML/CSS/YAML/SH: LSP formatting where supported
+  autocmd BufWritePre *.html,*.htm,*.css,*.scss,*.yaml,*.yml,*.sh silent! call CocAction('format')
+augroup END
+
