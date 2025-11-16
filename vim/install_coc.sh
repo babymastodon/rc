@@ -116,6 +116,7 @@ echo
 ### coc-pyright -> Pyright (npm)
 echo ">>> Installing Pyright for coc-pyright (npm preferred)"
 if command -v npm >/dev/null 2>&1; then
+  npm config set prefix "${HOME}/.npm-global"
   npm install -g pyright
 else
   echo "npm not found; Pyright not installed."
