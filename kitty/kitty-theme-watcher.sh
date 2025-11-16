@@ -2,8 +2,8 @@
 # ~/.local/bin/kitty-theme-watcher.sh
 # Watches GNOME color-scheme and switches all Kitty instances under /tmp/kitty-*
 
-LIGHT_THEME="$HOME/.config/kitty/themes/MonokaiProLight.conf"
-DARK_THEME="$HOME/.config/kitty/themes/MonokaiPro.conf"
+LIGHT_THEME="$HOME/.config/kitty/themes/MonokaiCustomLight.conf"
+DARK_THEME="$HOME/.config/kitty/themes/MonokaiCustom.conf"
 
 apply_theme() {
   local mode="$1"

@@ -171,6 +171,35 @@ noremap = :cnext<CR>
 " nnoremap = <Plug>(coc-diagnostic-next)
 :nnoremap + :lnext<CR>
 :nnoremap _ :lprev<CR>
+function! s:UpdateCocLoclistAll() abort
+  " Get all diagnostics from coc.nvim
+  let diagnostics = CocAction('diagnosticList')
+  let items = []
+
+  for d in diagnostics
+    let sev = get(d, 'severity', '')
+    let type = sev ==# 'Error' ? 'E'
+          \ : sev ==# 'Warning' ? 'W'
+          \ : 'I'
+
+    call add(items, {
+          \ 'filename': d.file,
+          \ 'lnum': d.lnum,
+          \ 'col': d.col + 1,
+          \ 'text': d.message,
+          \ 'type': type,
+          \ })
+  endfor
+
+  " Replace location list contents without opening any window
+  call setloclist(0, items, 'r')
+endfunction
+
+augroup CocLoclistAll
+  autocmd!
+  autocmd User CocDiagnosticChange call s:UpdateCocLoclistAll()
+augroup END
+
 
 " resize
 " nnoremap + :exe "resize " . (winheight(0) * 3/2)<CR>
@@ -466,13 +495,13 @@ syntax on
 
 " custom colors
 colorscheme default
-highlight Comment                      ctermfg=8
+highlight Comment                      ctermfg=7
 highlight TabLine      cterm=underline ctermfg=7  ctermbg=NONE
 highlight TabLineSel   cterm=NONE      ctermfg=0  ctermbg=2
 highlight TabLineFill  cterm=underline ctermfg=7  ctermbg=NONE
 highlight TabCap       cterm=NONE      ctermfg=2  ctermbg=NONE
-highlight TabLineMod   cterm=NONE      ctermfg=15 ctermbg=8
-highlight TabCapMod    cterm=NONE      ctermfg=8  ctermbg=NONE
+highlight TabLineMod   cterm=NONE      ctermfg=7 ctermbg=8
+highlight TabCapMod    cterm=NONE      ctermfg=7  ctermbg=NONE
 highlight StatusLine   cterm=underline,bold ctermfg=2  ctermbg=None
 highlight StatusCap    cterm=underline ctermfg=2  ctermbg=0
 highlight StatusLineNC cterm=underline ctermfg=7  ctermbg=NONE
@@ -484,18 +513,18 @@ highlight DiffChange   cterm=NONE      ctermfg=NONE ctermbg=NONE
 highlight DiffDelete   cterm=reverse   ctermfg=9   ctermbg=NONE
 highlight DiffText     cterm=underline,italic ctermfg=4   ctermbg=NONE
 " Inline type hints (inlay hints)
-highlight CocInlayHint cterm=italic    ctermfg=8  ctermbg=NONE
+highlight CocInlayHint cterm=italic    ctermfg=7  ctermbg=NONE
 " Dropdown (completion menu)
 highlight NormalFloat        cterm=NONE ctermbg=NONE ctermfg=NONE
 highlight SignColumn ctermbg=NONE ctermfg=NONE
 function! OverrideCocFloats() abort
-  hi! NormalFloat        cterm=NONE ctermbg=NONE ctermfg=NONE
-  hi! CocFloating        cterm=NONE ctermbg=NONE ctermfg=NONE
+  hi! NormalFloat        cterm=NONE ctermbg=8 ctermfg=NONE
+  hi! CocFloating        cterm=NONE ctermbg=8 ctermfg=NONE
   hi! CocMenuSel         cterm=NONE ctermbg=8    ctermfg=NONE
-  hi! FgCocErrorFloatBgCocFloating      cterm=NONE ctermbg=NONE ctermfg=9
-  hi! FgCocWarningFloatBgCocFloating    cterm=NONE ctermbg=NONE ctermfg=11
-  hi! FgCocInfoFloatBgCocFloating       cterm=NONE ctermbg=NONE ctermfg=12
-  hi! FgCocHintFloatBgCocFloating       cterm=NONE ctermbg=NONE ctermfg=8
+  hi! FgCocErrorFloatBgCocFloating      cterm=NONE ctermbg=8 ctermfg=9
+  hi! FgCocWarningFloatBgCocFloating    cterm=NONE ctermbg=8 ctermfg=11
+  hi! FgCocInfoFloatBgCocFloating       cterm=NONE ctermbg=8 ctermfg=12
+  hi! FgCocHintFloatBgCocFloating       cterm=NONE ctermbg=8 ctermfg=15
 endfunction
 augroup CocFloatOverride
   autocmd!
