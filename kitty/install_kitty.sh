@@ -54,8 +54,8 @@ fi
 log "Linking Kitty configuration…"
 mkdir -p "$HOME/.config/kitty/" "$HOME/.config/kitty/themes/"
 maybe_link "$PWD/kitty.conf"              "$HOME/.config/kitty/kitty.conf"
-maybe_link "$PWD/MonokaiPro.conf"         "$HOME/.config/kitty/themes/MonokaiPro.conf"
-maybe_link "$PWD/MonokaiProLight.conf"    "$HOME/.config/kitty/themes/MonokaiProLight.conf"
+maybe_link "$PWD/MonokaiCustom.conf"         "$HOME/.config/kitty/themes/MonokaiCustom.conf"
+maybe_link "$PWD/MonokaiCustomLight.conf"    "$HOME/.config/kitty/themes/MonokaiCustomLight.conf"
 
 # ----- install watcher script into ~/bin and ensure it's executable -----
 log "Installing theme watcher script…"
