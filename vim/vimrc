@@ -443,21 +443,13 @@ vmap <leader>c <Plug>OSCYankVisual
 " Packages
 call plug#begin('~/.vim/plugged')
 
-Plug 'jnwhiteh/vim-golang'
-Plug 'vim-scripts/Cpp11-Syntax-Support'
-Plug 'nvie/vim-flake8'
-Plug 'hynek/vim-python-pep8-indent'
 Plug 'tpope/vim-fugitive'
-Plug 'pangloss/vim-javascript'
-Plug 'fatih/vim-go'
 Plug 'majutsushi/tagbar'
 Plug 'Valloric/ListToggle'
 Plug 'chrisbra/csv.vim'
 Plug 'ctrlpvim/ctrlp.vim'
 Plug 'powerman/vim-plugin-AnsiEsc'
-Plug 'heavenshell/vim-pydocstring'
 Plug 'rhysd/conflict-marker.vim'
-Plug 'pedrohdz/vim-yaml-folds'
 Plug 'sheerun/vim-polyglot'
 Plug 'ojroques/vim-oscyank'
 Plug 'madox2/vim-ai'
