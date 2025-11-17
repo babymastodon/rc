@@ -176,34 +176,6 @@ maybe_link "$PWD/yazi.desktop" "$HOME/.local/share/applications/yazi.desktop"
 if [[ "$GNOME_DESKTOP" -eq 1 ]]; then
   log "Setting up GNOME desktop integration for Yazi…"
 
-  # Ensure ImageMagick (magick) is present
-  if ! command -v magick >/dev/null 2>&1; then
-    log "Installing ImageMagick (for webp->png)…"
-    case "$PKG_MGR" in
-      dnf)
-        install_pkgs ImageMagick || {
-          err "Failed to install ImageMagick (dnf)."
-          exit 1
-        }
-        ;;
-      apt)
-        install_pkgs imagemagick || {
-          err "Failed to install ImageMagick (apt)."
-          exit 1
-        }
-        ;;
-      brew)
-        # Normally GNOME + brew is unusual, but handle it anyway
-        install_pkgs imagemagick || {
-          err "Failed to install ImageMagick (brew)."
-          exit 1
-        }
-        ;;
-    esac
-  else
-    log "ImageMagick already present: $(magick -version | head -n1)"
-  fi
-
   # desktop-file-utils for update-desktop-database (Linux-only)
   if [[ "$OS" == "linux" && "$PKG_MGR" != "brew" ]]; then
     if ! command -v update-desktop-database >/dev/null 2>&1; then
@@ -215,11 +187,8 @@ if [[ "$GNOME_DESKTOP" -eq 1 ]]; then
   # Icon install
   log "Installing Yazi icon…"
   ICON_DIR="$HOME/.local/share/icons/hicolor/256x256/apps"
-  ICON_TMP="$(mktemp)"
   mkdir -p "$ICON_DIR"
-  curl -fsSL "https://yazi-rs.github.io/webp/logo.webp" -o "$ICON_TMP"
-  magick "$ICON_TMP" -resize 256x256 "$ICON_DIR/yazi.png"
-  rm -f "$ICON_TMP"
+  cp $PWD/yazi.png "$ICON_TMP/yazi.png"
 
   gtk-update-icon-cache "$HOME/.local/share/icons/hicolor" -f 2>/dev/null || true
   log "✅ Installed: $ICON_DIR/yazi.png (use Icon=yazi in your .desktop)"

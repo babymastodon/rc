@@ -116,11 +116,10 @@ maybe_link "$PWD/rmpc.desktop" "$HOME/.local/share/applications/rmpc.desktop"
 
 # ----- icon install -----
 log "Installing rmpc icon…"
-ICON_SRC="rmpc.svg"
 ICON_DIR="$HOME/.local/share/icons/hicolor/scalable/apps"
 ICON_PATH="$ICON_DIR/rmpc.svg"
 mkdir -p "$ICON_DIR"
-cp "$ICON_SRC" "$ICON_PATH"
+cp $PWD/rmpc.svg "$ICON_PATH"
 gtk-update-icon-cache "$HOME/.local/share/icons/hicolor" -f 2>/dev/null || true
 log "✅ Installed icon at $ICON_PATH"
 
