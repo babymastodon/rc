@@ -22,10 +22,11 @@ add_to_path() {
     esac
 }
 
-add_to_path "$HOME/bin"
+export GOPATH="$HOME/.local/share/go"
+
 add_to_path "$HOME/.local/bin"
 add_to_path "$HOME/.npm-global/bin"
-add_to_path "$HOME/go/bin"
+add_to_path "$GOPATH/bin"
 add_to_path "${KREW_ROOT:-$HOME/.krew}/bin"
 add_to_path "$HOME/.cargo/bin"
 

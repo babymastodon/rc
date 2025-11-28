@@ -57,15 +57,15 @@ maybe_link "$PWD/kitty.conf"              "$HOME/.config/kitty/kitty.conf"
 maybe_link "$PWD/MonokaiCustom.conf"         "$HOME/.config/kitty/themes/MonokaiCustom.conf"
 maybe_link "$PWD/MonokaiCustomLight.conf"    "$HOME/.config/kitty/themes/MonokaiCustomLight.conf"
 
-# ----- install watcher script into ~/bin and ensure it's executable -----
+# ----- install watcher script into ~/.local/bin and ensure it's executable -----
 log "Installing theme watcher script…"
-mkdir -p "$HOME/bin"
-maybe_link "$PWD/kitty-theme-watcher.sh"  "$HOME/bin/kitty-theme-watcher.sh"
-chmod +x "$HOME/bin/kitty-theme-watcher.sh" || true
+mkdir -p "$HOME/.local/bin"
+maybe_link "$PWD/kitty-theme-watcher.sh"  "$HOME/.local/bin/kitty-theme-watcher.sh"
+chmod +x "$HOME/.local/bin/kitty-theme-watcher.sh" || true
 
-# Ensure ~/bin is in PATH for future sessions (best-effort)
-if [[ ":${PATH}:" != *":${HOME}/bin:"* ]]; then
-  warn "~/bin is not in PATH for this session. Consider adding: 'export PATH=\$HOME/bin:\$PATH' to your shell rc."
+# Ensure ~/.local/bin is in PATH for future sessions (best-effort)
+if [[ ":${PATH}:" != *":${HOME}/.local/bin:"* ]]; then
+  warn "~/.local/bin is not in PATH for this session. Consider adding: 'export PATH=\$HOME/.local/bin:\$PATH' to your shell rc."
 fi
 
 # ----- install and enable user systemd service (via maybe_link) -----
