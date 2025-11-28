@@ -454,7 +454,6 @@ let g:coc_global_extensions = [
       \ 'coc-java',
       \ 'coc-clangd',
       \ 'coc-tsserver',
-      \ 'coc-json',
       \ 'coc-html',
       \ 'coc-css',
       \ 'coc-yaml',
