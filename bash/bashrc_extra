@@ -95,8 +95,10 @@ if [ -f ~/.git-completion.bash ]; then
   . ~/.git-completion.bash
 fi
 
-# disable scroll lock
-stty -ixon
+# disable scroll lock (only when stdin is a terminal)
+if [ -t 0 ]; then
+  stty -ixon
+fi
 
 # use vim
 export VISUAL=vim
