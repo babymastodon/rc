@@ -458,12 +458,14 @@ let g:coc_global_extensions = [
       \ 'coc-css',
       \ 'coc-yaml',
       \ 'coc-sh',
-      \ 'coc-snippets'
+      \ 'coc-snippets',
+      \ 'coc-css'
       \ ]
 let g:coc_user_config = {
 \ 'pyright.enable': v:true,
 \ 'pyright.disableOrganizeImports': v:false,
 \ 'coc.preferences.codeActionOnSave': ['source.organizeImports'],
+\ 'css.lint.unknownProperties': 'ignore',
 \}
 " \ 'diagnostic.virtualTextCurrentLineOnly': v:false, 
 " \ 'diagnostic.virtualText': v:true,
