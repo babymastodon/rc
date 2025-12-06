@@ -6,6 +6,7 @@ function parse_git_branch () {
             || git rev-parse --short HEAD 2>/dev/null | sed -E 's/(.*)/(󰜘 \1)/'
 }
 
+CLICOLOR_FORCE=1
 RED="\[\033[0;31m\]"
 YELLOW="\[\033[0;33m\]"
 GREEN="\[\033[0;32m\]"
