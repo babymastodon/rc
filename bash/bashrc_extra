@@ -6,7 +6,6 @@ function parse_git_branch () {
             || git rev-parse --short HEAD 2>/dev/null | sed -E 's/(.*)/(󰜘 \1)/'
 }
 
-CLICOLOR_FORCE=1
 RED="\[\033[0;31m\]"
 YELLOW="\[\033[0;33m\]"
 GREEN="\[\033[0;32m\]"
@@ -108,6 +107,9 @@ export EDITOR=vim
 # use utf8
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
+
+# Force ANSII colors
+export CLICOLOR_FORCE=1
 
 # configure NPM
 NPM_CONFIG_PREFIX="$HOME/.npm-global"
