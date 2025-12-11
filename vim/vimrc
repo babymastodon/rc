@@ -459,7 +459,7 @@ let g:coc_global_extensions = [
       \ 'coc-yaml',
       \ 'coc-sh',
       \ 'coc-snippets',
-      \ 'coc-css'
+      \ 'coc-css',
       \ 'coc-prettier'
       \ ]
 let g:coc_user_config = {
