@@ -11,13 +11,10 @@ set -euo pipefail
 # - Installs Dropbox daemon (headless)
 # - Installs CLI
 # - Links this machine (interactive)
-# - Configures selective sync so ONLY "<DropboxRoot>/Documents" is synced
-#   by excluding every other top-level folder.
+# - Leaves selective sync configuration to a separate helper script.
 #
 # NOTE:
 # - Dropbox itself still uses ~/.dropbox and ~/Dropbox internally.
-# - Selective sync is exclude-based; this script excludes all top-level
-#   folders except "Documents" at the time it runs.
 # ============================================================
 
 # ----- helpers -----
@@ -27,6 +24,8 @@ err()   { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
 
 need_sudo() { if [[ $EUID -ne 0 ]]; then echo "sudo"; fi; }
 SUDO="$(need_sudo || true)"
+
+DROPBOX_TMPDIR=""
 
 maybe_link() {
   local src="$1" dest="$2"
@@ -130,7 +129,8 @@ install_dropbox_daemon() {
 
   local tmpdir
   tmpdir="$(mktemp -d)"
-  trap 'rm -rf "$tmpdir"' EXIT
+  DROPBOX_TMPDIR="$tmpdir"
+  trap '[[ -n "${DROPBOX_TMPDIR:-}" ]] && rm -rf "$DROPBOX_TMPDIR"' EXIT
 
   if ! wget -O "$tmpdir/dropbox.tgz" "https://www.dropbox.com/download?plat=lnx.x86_64"; then
     err "Failed to download Dropbox daemon archive."
@@ -233,68 +233,6 @@ EOF
   fi
 }
 
-ensure_daemon_running_via_cli() {
-  if ! "$dropbox_cli_path" running >/dev/null 2>&1; then
-    log "Starting Dropbox daemon via CLI…"
-    if ! "$dropbox_cli_path" start -i; then
-      warn "Failed to start Dropbox daemon via CLI. Continuing, but commands may fail."
-    fi
-  else
-    log "Dropbox daemon already running."
-  fi
-}
-
-# ----- selective sync: only Documents -----
-
-configure_selective_sync_documents_only() {
-  local root
-  root="$(get_dropbox_root)"
-
-  log "Using Dropbox root: $root"
-
-  if [[ ! -d "$root" ]]; then
-    warn "Dropbox root directory '$root' does not exist yet."
-    warn "Creating it locally so Documents can be synced…"
-    mkdir -p "$root"
-  fi
-
-  mkdir -p "$root/Documents"
-  log "Ensured '$root/Documents' exists."
-
-  pushd "$root" >/dev/null
-
-  ensure_daemon_running_via_cli
-
-  log "Configuring selective sync: excluding all top-level folders except 'Documents'…"
-  mapfile -t top_dirs < <(find . -mindepth 1 -maxdepth 1 -type d -printf '%P\n' | sort)
-
-  if ((${#top_dirs[@]} == 0)); then
-    warn "No top-level folders found in '$root' yet (maybe still syncing?)."
-  fi
-
-  for d in "${top_dirs[@]}"; do
-    if [[ "$d" == "Documents" ]]; then
-      log "Keeping folder synced: $root/$d"
-      continue
-    fi
-
-    if [[ "$d" == ".dropbox.cache" ]]; then
-      log "Skipping internal folder: $root/$d"
-      continue
-    fi
-
-    log "Excluding folder from sync: $root/$d"
-    if ! "$dropbox_cli_path" exclude add "$root/$d"; then
-      warn "Failed to exclude '$root/$d' (command returned non-zero)."
-    fi
-  done
-
-  log "Current exclusion list (for verification):"
-  "$dropbox_cli_path" exclude list || warn "Could not list exclusions."
-
-  popd >/dev/null
-}
-
 # ----- systemd user service (XDG_CONFIG_HOME) -----
 
 install_systemd_user_service() {
@@ -345,15 +283,13 @@ log "=== Dropbox headless + CLI setup (Fedora, XDG-aware) ==="
 install_dropbox_daemon
 install_dropbox_cli
 link_dropbox_if_needed
-configure_selective_sync_documents_only
 install_systemd_user_service
 
 log "All done.
 - Dropbox daemon installed in: $dropbox_daemon_dir
 - CLI installed as         : $dropbox_cli_path
 - Machine linked (if you completed the browser step).
-- Selective sync: ONLY 'Documents' (top-level) kept in sync.
 - User systemd service: dropbox.service at $XDG_CONFIG_HOME/systemd/user."
+log "Selective sync is NOT configured by this installer. Manage selective sync with: ./selective-sync.sh"
 
 exit 0
-
