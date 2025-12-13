@@ -75,6 +75,9 @@ load_excluded_map() {
     line="${line%"${line##*[![:space:]]}"}"
     [[ -z "$line" ]] && continue
     [[ "$line" =~ ^[Ee]xcluded:?$ ]] && continue
+    [[ "$line" =~ ^No[[:space:]]+directories[[:space:]]+are[[:space:]]+being[[:space:]]+ignored\.?$ ]] && continue
+    # Heuristic: skip anything that doesn't contain a slash (the CLI prints paths like ../../../Dropbox/foo or /path/foo)
+    [[ "$line" != */* ]] && continue
 
     local abs=""
     if [[ "$line" == /* ]]; then
@@ -100,10 +103,7 @@ load_excluded_map() {
     excluded_map["$abs"]=1
   done <<<"$output"
 
-  if ((${#excluded_map[@]} == 0)); then
-    err "No exclusions found from 'dropbox exclude list'. Ensure daemon is running and exclusions are set."
-    exit 1
-  fi
+  # Empty exclusion list is allowed; we still proceed and show folders.
 }
 
 collect_top_level() {
