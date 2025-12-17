@@ -13,15 +13,14 @@ palette = 5=#ab9df2
 palette = 6=#78dce8
 palette = 7=#a1a19f
 palette = 8=#4b464d
-palette = 9=#ff6188
-palette = 10=#a9dc76
-palette = 11=#ffd866
-palette = 12=#fc9867
-palette = 13=#ab9df2
-palette = 14=#78dce8
+palette = 9=#ffa9cb
+palette = 10=#d8ffb8
+palette = 11=#fff5c3
+palette = 12=#ffccae
+palette = 13=#dfd0ff
+palette = 14=#c0f9ff
 palette = 15=#fcfcfa
 
 selection-background = #5b595c
 selection-foreground = #fcfcfa
 bold-color = #78dce8
-
