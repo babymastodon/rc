@@ -1,4 +1,4 @@
-i#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 # ----- helpers -----
@@ -188,7 +188,7 @@ if [[ "$GNOME_DESKTOP" -eq 1 ]]; then
   log "Installing Yazi icon…"
   ICON_DIR="$HOME/.local/share/icons/hicolor/256x256/apps"
   mkdir -p "$ICON_DIR"
-  cp $PWD/yazi.png "$ICON_TMP/yazi.png"
+  cp "$PWD/yazi.png" "$ICON_DIR/yazi.png"
 
   gtk-update-icon-cache "$HOME/.local/share/icons/hicolor" -f 2>/dev/null || true
   log "✅ Installed: $ICON_DIR/yazi.png (use Icon=yazi in your .desktop)"
@@ -199,4 +199,3 @@ else
 fi
 
 log "Done."
-
