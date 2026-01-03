@@ -16,8 +16,8 @@ set -euo pipefail
 #   Example: "org.gnome.shell.keybindings|toggle-overview|<Super>slash"
 GNOME_SHORTCUTS=(
   "org.gnome.shell.keybindings|toggle-overview|<Super>slash"
-  # "org.gnome.desktop.wm.keybindings|switch-to-workspace-left|<Super>Left"
-  # "org.gnome.desktop.wm.keybindings|switch-to-workspace-right|<Super>Right"
+  "org.gnome.desktop.wm.keybindings|switch-to-workspace-left|Back"
+  "org.gnome.desktop.wm.keybindings|switch-to-workspace-right|Forward"
 )
 
 # Custom shortcuts (Name|Command|Accelerator)
