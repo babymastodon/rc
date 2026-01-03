@@ -60,7 +60,7 @@ done
 
 if $need_group; then
   log "Installing build tools (@development-tools)…"
-  $SUDO dnf -y groupinstall @development-tools
+  $SUDO dnf -y install @development-tools
 else
   log "Build tools already present."
 fi

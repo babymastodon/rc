@@ -25,7 +25,11 @@ maybe_link() {
         log "Fixed link: $dest -> $src"
       fi
     else
-      warn "Exists and not a link: $dest (skipping)"
+      local backup="${dest}.bak"
+      warn "Exists and not a link: $dest (backing up to $backup and replacing)"
+      mv -f "$dest" "$backup"
+      ln -s "$src" "$dest"
+      log "Linked: $dest -> $src"
     fi
   else
     ln -s "$src" "$dest"
@@ -53,24 +57,31 @@ fi
 # Make sure ~/.cargo/bin is in PATH for this session
 export PATH="$HOME/.cargo/bin:$PATH"
 
-# ----- enable RPM Fusion if missing -----
+# ----- install MPD if missing -----
 is_rpmfusion_enabled() {
   dnf repolist --enabled 2>/dev/null | grep -qi 'rpmfusion'
 }
 
-if ! is_rpmfusion_enabled; then
-  log "Enabling RPM Fusion (free + nonfree)…"
-  FEDVER="$($SUDO rpm -E %fedora)"
-  $SUDO dnf -y install \
-    "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-${FEDVER}.noarch.rpm" \
-    "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-${FEDVER}.noarch.rpm"
-  $SUDO dnf -y makecache
-else
-  log "RPM Fusion already enabled."
-fi
+is_rpmfusion_free_enabled() {
+  dnf repolist --enabled 2>/dev/null | grep -qi 'rpmfusion-free'
+}
 
-# ----- install MPD if missing -----
+mpd_available() {
+  dnf -q list --available mpd >/dev/null 2>&1
+}
+
 if ! command -v mpd >/dev/null 2>&1 && ! rpm -q mpd >/dev/null 2>&1; then
+  if ! mpd_available; then
+    FEDVER="$($SUDO rpm -E %fedora)"
+    if ! is_rpmfusion_free_enabled; then
+      log "Enabling RPM Fusion Free…"
+      $SUDO dnf -y install \
+        "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-${FEDVER}.noarch.rpm"
+      $SUDO dnf -y makecache
+    else
+      log "RPM Fusion Free already enabled."
+    fi
+  fi
   log "Installing MPD…"
   $SUDO dnf -y install mpd || {
     err "Failed to install MPD via DNF."
@@ -91,18 +102,6 @@ else
   log "rmpc already installed: $(echo 'version lookup skipped')"
 fi
 
-# ----- systemd user service (AFTER mpd install) -----
-if systemctl --user 2>/dev/null >/dev/null; then
-  log "Enabling & starting user mpd.service…"
-  systemctl --user daemon-reload || true
-  systemctl --user enable mpd.service
-  systemctl --user start mpd.service
-else
-  warn "systemd user instance not detected. If needed, run:
-    loginctl enable-linger \"$USER\"
-  and re-run this script (or start mpd manually)."
-fi
-
 # ----- link configs -----
 log "Linking configs…"
 mkdir -p "$HOME/.config/mpd/" "$HOME/.local/share/mpd/"
@@ -113,6 +112,18 @@ maybe_link "$PWD/config.ron" "$HOME/.config/rmpc/config.ron"
 
 mkdir -p "$HOME/.local/share/applications/"
 maybe_link "$PWD/rmpc.desktop" "$HOME/.local/share/applications/rmpc.desktop"
+
+# ----- systemd user service (AFTER linking configs) -----
+if systemctl --user 2>/dev/null >/dev/null; then
+  log "Enabling & starting user mpd.service…"
+  systemctl --user daemon-reload || warn "systemctl --user daemon-reload failed."
+  systemctl --user enable mpd.service || warn "Failed to enable user mpd.service."
+  systemctl --user start mpd.service || warn "Failed to start user mpd.service."
+else
+  warn "systemd user instance not detected. If needed, run:
+    loginctl enable-linger \"$USER\"
+  and re-run this script (or start mpd manually)."
+fi
 
 # ----- icon install -----
 log "Installing rmpc icon…"
@@ -126,4 +137,3 @@ log "✅ Installed icon at $ICON_PATH"
 # ----- desktop DB update -----
 update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
 log "Done."
-
