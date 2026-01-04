@@ -21,7 +21,26 @@ fi
 wg_conf_file="$(basename "${wg_conf_path}")"
 wg_iface="${wg_conf_file%.conf}"
 
-read -r -p "VPN hostname (example.com or x.x.x.x): " vpn_hostname
+default_vpn_hostname="$(
+  awk '
+    BEGIN { in_iface = 0 }
+    /^\s*\[Interface\]\s*$/ { in_iface = 1; next }
+    /^\s*\[/ { if (in_iface) { exit } }
+    in_iface && /^\s*#\s*Host\s*:/ {
+      line = $0
+      sub(/^[[:space:]]*#[[:space:]]*Host[[:space:]]*:[[:space:]]*/, "", line)
+      sub(/[[:space:]]*$/, "", line)
+      if (line != "") { print line; exit }
+    }
+  ' "${wg_conf_path}"
+)"
+
+if [[ -n "${default_vpn_hostname}" ]]; then
+  read -r -p "VPN hostname (example.com or x.x.x.x) [${default_vpn_hostname}]: " vpn_hostname
+  vpn_hostname="${vpn_hostname:-${default_vpn_hostname}}"
+else
+  read -r -p "VPN hostname (example.com or x.x.x.x): " vpn_hostname
+fi
 if [[ -z "${vpn_hostname}" ]]; then
   echo "Hostname is required." >&2
   exit 1
