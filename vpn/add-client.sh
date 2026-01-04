@@ -35,9 +35,23 @@ default_vpn_hostname="$(
   ' "${wg_conf_path}"
 )"
 
+default_subnetwork="$(
+  awk '
+    BEGIN { in_iface = 0 }
+    /^\s*\[Interface\]\s*$/ { in_iface = 1; next }
+    /^\s*\[/ { if (in_iface) { exit } }
+    in_iface && /^\s*#\s*Subnetwork\s*:/ {
+      line = $0
+      sub(/^[[:space:]]*#[[:space:]]*Subnetwork[[:space:]]*:[[:space:]]*/, "", line)
+      sub(/[[:space:]]*$/, "", line)
+      if (line != "") { print line; exit }
+    }
+  ' "${wg_conf_path}"
+)"
+default_subnetwork="${default_subnetwork:-0.0.0.0/0, ::/0}"
+
 if [[ -n "${default_vpn_hostname}" ]]; then
-  read -r -p "VPN hostname (example.com or x.x.x.x) [${default_vpn_hostname}]: " vpn_hostname
-  vpn_hostname="${vpn_hostname:-${default_vpn_hostname}}"
+  vpn_hostname="${default_vpn_hostname}"
 else
   read -r -p "VPN hostname (example.com or x.x.x.x): " vpn_hostname
 fi
@@ -154,6 +168,7 @@ client_private_key_esc="$(escape_sed_repl "${client_private_key}")"
 new_ip_esc="$(escape_sed_repl "${new_ip}")"
 server_public_key_esc="$(escape_sed_repl "${server_public_key}")"
 vpn_hostname_esc="$(escape_sed_repl "${vpn_hostname}")"
+subnetwork_esc="$(escape_sed_repl "${default_subnetwork}")"
 
 client_config="$(
   sed \
@@ -161,6 +176,7 @@ client_config="$(
     -e "s|ADDRESS|${new_ip_esc}|" \
     -e "s|SERVER_PUBLIC_KEY|${server_public_key_esc}|" \
     -e "s|HOSTNAME|${vpn_hostname_esc}|" \
+    -e "s|SUBNETWORK|${subnetwork_esc}|" \
     "${template_path}"
 )"
 
