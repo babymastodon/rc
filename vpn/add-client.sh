@@ -39,6 +39,7 @@ if [[ -z "${server_address_line}" ]]; then
   exit 1
 fi
 
+server_address_line="${server_address_line%%,*}"
 server_ip="${server_address_line%%/*}"
 prefix_len="${server_address_line##*/}"
 if [[ "${prefix_len}" != "24" ]]; then
@@ -53,12 +54,37 @@ if [[ -z "${o1}" || -z "${o2}" || -z "${o3}" || -z "${o4}" ]]; then
 fi
 
 declare -A used_ips=()
-used_ips["${server_ip}"]=1
 
-while IFS= read -r ip; do
-  ip="${ip%%/*}"
-  [[ -n "${ip}" ]] && used_ips["${ip}"]=1
+add_used_ip() {
+  local ip="$1"
+  [[ -z "${ip}" ]] && return 0
+  IFS='.' read -r a b c d <<< "${ip}"
+  if [[ "${a}" == "${o1}" && "${b}" == "${o2}" && "${c}" == "${o3}" ]]; then
+    used_ips["${ip}"]=1
+  fi
+}
+
+add_ips_from_list() {
+  local list="$1"
+  local item=""
+  list="${list//,/ }"
+  for item in ${list}; do
+    item="${item%%/*}"
+    add_used_ip "${item}"
+  done
+}
+
+add_used_ip "${server_ip}"
+
+while IFS= read -r line; do
+  add_ips_from_list "${line}"
 done < <(awk -F'=' '/^\s*AllowedIPs\s*=/{print $2}' "${wg_conf_path}" | tr -d '[:space:]')
+
+if wg show "${wg_iface}" >/dev/null 2>&1; then
+  while IFS= read -r line; do
+    add_ips_from_list "${line#*$'\t'}"
+  done < <(wg show "${wg_iface}" allowed-ips 2>/dev/null || true)
+fi
 
 new_ip=""
 for last in $(seq 2 254); do
@@ -77,12 +103,22 @@ fi
 client_private_key="$(wg genkey)"
 client_public_key="$(printf '%s' "${client_private_key}" | wg pubkey)"
 
-server_private_key="$(awk -F'=' '/^\s*PrivateKey\s*=/{print $2; exit}' "${wg_conf_path}" | tr -d '[:space:]')"
-if [[ -z "${server_private_key}" ]]; then
-  echo "Unable to find server PrivateKey in ${wg_conf_path}." >&2
-  exit 1
+server_public_key=""
+if wg show "${wg_iface}" >/dev/null 2>&1; then
+  server_public_key="$(wg show "${wg_iface}" public-key 2>/dev/null || true)"
 fi
-server_public_key="$(printf '%s' "${server_private_key}" | wg pubkey)"
+
+if [[ -z "${server_public_key}" ]]; then
+  server_private_key="$(awk -F'=' '/^\s*PrivateKey\s*=/{print $2; exit}' "${wg_conf_path}" | tr -d '[:space:]')"
+  if [[ -z "${server_private_key}" ]]; then
+    echo "Unable to find server PrivateKey in ${wg_conf_path}." >&2
+    exit 1
+  fi
+  if ! server_public_key="$(printf '%s' "${server_private_key}" | wg pubkey 2>/dev/null)"; then
+    echo "Server PrivateKey in ${wg_conf_path} is not valid; check its format or ensure ${wg_iface} is up." >&2
+    exit 1
+  fi
+fi
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 template_path="${script_dir}/example.conf"
@@ -91,12 +127,21 @@ if [[ ! -f "${template_path}" ]]; then
   exit 1
 fi
 
+escape_sed_repl() {
+  printf '%s' "$1" | sed -e 's/[&|\\]/\\&/g'
+}
+
+client_private_key_esc="$(escape_sed_repl "${client_private_key}")"
+new_ip_esc="$(escape_sed_repl "${new_ip}")"
+server_public_key_esc="$(escape_sed_repl "${server_public_key}")"
+vpn_hostname_esc="$(escape_sed_repl "${vpn_hostname}")"
+
 client_config="$(
   sed \
-    -e "s/CLIENT_PRIVATE_KEY/${client_private_key}/" \
-    -e "s/ADDRESS/${new_ip}/" \
-    -e "s/SERVER_PUBLIC_KEY/${server_public_key}/" \
-    -e "s/HOSTNAME/${vpn_hostname}/" \
+    -e "s|CLIENT_PRIVATE_KEY|${client_private_key_esc}|" \
+    -e "s|ADDRESS|${new_ip_esc}|" \
+    -e "s|SERVER_PUBLIC_KEY|${server_public_key_esc}|" \
+    -e "s|HOSTNAME|${vpn_hostname_esc}|" \
     "${template_path}"
 )"
 
