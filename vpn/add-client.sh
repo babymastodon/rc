@@ -12,6 +12,33 @@ if [[ "${EUID}" -ne 0 ]]; then
   exit 1
 fi
 
+ensure_qrencode() {
+  if command -v qrencode >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if [[ -r /etc/os-release ]]; then
+    . /etc/os-release
+  fi
+
+  if [[ "${ID:-}" == "ubuntu" || "${ID_LIKE:-}" == *ubuntu* || "${ID_LIKE:-}" == *debian* ]]; then
+    apt-get update -y
+    apt-get install -y qrencode
+    return 0
+  fi
+
+  if [[ "${ID:-}" == "fedora" || "${ID_LIKE:-}" == *fedora* ]]; then
+    dnf install -y qrencode
+    return 0
+  fi
+
+  echo "qrencode is required but could not be installed automatically for this distro." >&2
+  echo "Install qrencode and re-run this script." >&2
+  exit 1
+}
+
+ensure_qrencode
+
 wg_conf_path="$(ls /etc/wireguard/*.conf 2>/dev/null | head -n1 || true)"
 if [[ -z "${wg_conf_path}" ]]; then
   echo "No WireGuard config found in /etc/wireguard/." >&2
