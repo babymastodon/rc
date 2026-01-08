@@ -56,16 +56,35 @@ install_pkg() {
   esac
 }
 
+install_rustup() {
+  if command -v rustup >/dev/null 2>&1; then
+    echo "rustup already installed."
+    return 0
+  fi
+
+  if command -v rustc >/dev/null 2>&1; then
+    echo "rustc already installed; skipping rustup."
+    return 0
+  fi
+
+  if ! command -v curl >/dev/null 2>&1; then
+    install_pkg curl
+  fi
+
+  echo "Installing Rust via rustup (no PATH modification)."
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
+}
+
 #############################
 # Core runtimes / toolchains
 #############################
 
-echo ">>> Installing core runtimes (via system package manager only)"
+echo ">>> Installing core runtimes (system package manager + rustup for Rust)"
 
 case "$PM" in
   apt)
     command -v node  >/dev/null 2>&1 || install_pkg nodejs npm
-    command -v rustc >/dev/null 2>&1 || install_pkg rustc cargo
+    install_rustup
     command -v go    >/dev/null 2>&1 || install_pkg golang
     command -v java  >/dev/null 2>&1 || install_pkg default-jdk
     command -v clang >/dev/null 2>&1 || install_pkg clang
@@ -73,7 +92,7 @@ case "$PM" in
     ;;
   pacman)
     command -v node  >/dev/null 2>&1 || install_pkg nodejs npm
-    command -v rustc >/dev/null 2>&1 || install_pkg rust
+    install_rustup
     command -v go    >/dev/null 2>&1 || install_pkg go
     command -v java  >/devnull 2>&1 || install_pkg jdk-openjdk || true
     command -v clang >/dev/null 2>&1 || install_pkg clang
@@ -81,7 +100,7 @@ case "$PM" in
     ;;
   dnf|yum)
     command -v node  >/dev/null 2>&1 || install_pkg nodejs npm
-    command -v rustc >/dev/null 2>&1 || install_pkg rust cargo
+    install_rustup
     command -v go    >/dev/null 2>&1 || install_pkg golang
     command -v java  >/dev/null 2>&1 || install_pkg java-17-openjdk-devel || install_pkg java-11-openjdk-devel
     command -v clang >/dev/null 2>&1 || install_pkg clang
@@ -89,7 +108,7 @@ case "$PM" in
     ;;
   brew)
     command -v node  >/dev/null 2>&1 || install_pkg node
-    command -v rustc >/dev/null 2>&1 || install_pkg rust
+    install_rustup
     command -v go    >/dev/null 2>&1 || install_pkg go
     command -v java  >/dev/null 2>&1 || install_pkg openjdk
     if ! command -v clang >/dev/null 2>&1 || ! command -v clangd >/dev/null 2>&1; then
@@ -215,4 +234,3 @@ echo
 echo "=== Done ==="
 echo "Runtimes came from the package manager; language servers came from npm/go/cargo where possible."
 echo "Ensure your global npm bin, Go bin, and Cargo bin dirs are on PATH."
-
