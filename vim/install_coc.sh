@@ -82,7 +82,7 @@ install_fnm() {
   if ! command -v node >/dev/null 2>&1; then
     echo "Installing latest Node.js via fnm..."
     fnm install --latest
-    LATEST_NODE="$(fnm list --installed | tail -n 1)"
+    LATEST_NODE="$(fnm list | sed -E 's/^[* ]+//' | tail -n 1)"
     if [ -n "$LATEST_NODE" ]; then
       fnm use "$LATEST_NODE"
       fnm default "$LATEST_NODE"
