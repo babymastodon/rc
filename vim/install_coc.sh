@@ -67,10 +67,11 @@ install_fnm() {
       install_pkg unzip
     fi
     echo "Installing fnm (Node.js version manager) to \$HOME..."
-    curl -fsSL https://fnm.vercel.app/install | bash
+    export FNM_DIR="$HOME/.local/share/fnm"
+    curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell
   fi
 
-  export FNM_DIR="$HOME/.fnm"
+  export FNM_DIR="$HOME/.local/share/fnm"
   if [ -d "$FNM_DIR" ]; then
     export PATH="$FNM_DIR:$PATH"
   fi
