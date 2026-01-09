@@ -63,6 +63,9 @@ install_fnm() {
     if ! command -v curl >/dev/null 2>&1; then
       install_pkg curl
     fi
+    if ! command -v unzip >/dev/null 2>&1; then
+      install_pkg unzip
+    fi
     echo "Installing fnm (Node.js version manager) to \$HOME..."
     curl -fsSL https://fnm.vercel.app/install | bash
   fi
