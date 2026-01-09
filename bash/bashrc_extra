@@ -29,6 +29,11 @@ add_to_path "$HOME/.npm-global/bin"
 add_to_path "$GOPATH/bin"
 add_to_path "${KREW_ROOT:-$HOME/.krew}/bin"
 add_to_path "$HOME/.cargo/bin"
+export FNM_DIR="$HOME/.fnm"
+if [ -d "$FNM_DIR" ]; then
+  export PATH="$FNM_DIR:$PATH"
+  eval "$(fnm env --shell=bash)"
+fi
 
 export PATH
 

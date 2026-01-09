@@ -56,6 +56,36 @@ install_pkg() {
   esac
 }
 
+install_fnm() {
+  if command -v fnm >/dev/null 2>&1; then
+    echo "fnm already installed."
+  else
+    if ! command -v curl >/dev/null 2>&1; then
+      install_pkg curl
+    fi
+    echo "Installing fnm (Node.js version manager) to \$HOME..."
+    curl -fsSL https://fnm.vercel.app/install | bash
+  fi
+
+  export FNM_DIR="$HOME/.fnm"
+  if [ -d "$FNM_DIR" ]; then
+    export PATH="$FNM_DIR:$PATH"
+  fi
+  if command -v fnm >/dev/null 2>&1; then
+    eval "$(fnm env --shell=bash)"
+  fi
+
+  if ! command -v node >/dev/null 2>&1; then
+    echo "Installing latest Node.js via fnm..."
+    fnm install --latest
+    LATEST_NODE="$(fnm list --installed | tail -n 1)"
+    if [ -n "$LATEST_NODE" ]; then
+      fnm use "$LATEST_NODE"
+      fnm default "$LATEST_NODE"
+    fi
+  fi
+}
+
 install_rustup() {
   if command -v rustup >/dev/null 2>&1; then
     echo "rustup already installed."
@@ -83,7 +113,7 @@ echo ">>> Installing core runtimes (system package manager + rustup for Rust)"
 
 case "$PM" in
   apt)
-    command -v node  >/dev/null 2>&1 || install_pkg nodejs npm
+    install_fnm
     install_rustup
     command -v go    >/dev/null 2>&1 || install_pkg golang
     command -v java  >/dev/null 2>&1 || install_pkg default-jdk
@@ -91,7 +121,7 @@ case "$PM" in
     command -v clangd >/dev/null 2>&1 || install_pkg clangd || true
     ;;
   pacman)
-    command -v node  >/dev/null 2>&1 || install_pkg nodejs npm
+    install_fnm
     install_rustup
     command -v go    >/dev/null 2>&1 || install_pkg go
     command -v java  >/devnull 2>&1 || install_pkg jdk-openjdk || true
@@ -99,7 +129,7 @@ case "$PM" in
     command -v clangd >/dev/null 2>&1 || install_pkg clang
     ;;
   dnf|yum)
-    command -v node  >/dev/null 2>&1 || install_pkg nodejs npm
+    install_fnm
     install_rustup
     command -v go    >/dev/null 2>&1 || install_pkg golang
     command -v java  >/dev/null 2>&1 || install_pkg java-17-openjdk-devel || install_pkg java-11-openjdk-devel
@@ -107,7 +137,7 @@ case "$PM" in
     command -v clangd >/dev/null 2>&1 || install_pkg clang-tools-extra || install_pkg clangd || true
     ;;
   brew)
-    command -v node  >/dev/null 2>&1 || install_pkg node
+    install_fnm
     install_rustup
     command -v go    >/dev/null 2>&1 || install_pkg go
     command -v java  >/dev/null 2>&1 || install_pkg openjdk
@@ -144,6 +174,9 @@ echo
 
 ### coc-rust-analyzer -> rust-analyzer (prefer cargo, fallback pkg)
 echo ">>> Installing rust-analyzer for coc-rust-analyzer (cargo preferred)"
+if [ -d "$HOME/.cargo/bin" ]; then
+  export PATH="$HOME/.cargo/bin:$PATH"
+fi
 if command -v rust-analyzer >/dev/null 2>&1; then
   echo "rust-analyzer already installed."
 else
