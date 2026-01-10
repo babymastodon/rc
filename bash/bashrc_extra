@@ -15,7 +15,6 @@ PS1="$GREEN\u@\h$NO_COLOUR:\w$YELLOW \$(parse_git_branch)$NO_COLOUR\$ "
 
 add_to_path() {
     dir=${1%/}
-    [ -d "$dir" ] || return
     case ":$PATH:" in
         *":$dir:"*) ;;  # already in PATH
         *) PATH="$dir${PATH:+:$PATH}" ;;
