@@ -56,37 +56,64 @@ install_pkg() {
   esac
 }
 
-install_fnm() {
-  if command -v fnm >/dev/null 2>&1; then
-    echo "fnm already installed."
-  else
-    if ! command -v curl >/dev/null 2>&1; then
-      install_pkg curl
-    fi
-    if ! command -v unzip >/dev/null 2>&1; then
-      install_pkg unzip
-    fi
-    echo "Installing fnm (Node.js version manager) to \$HOME..."
-    export FNM_DIR="$HOME/.local/share/fnm"
-    curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell
+install_node_tarball() {
+  if command -v node >/dev/null 2>&1; then
+    echo "Node.js already installed."
+    return 0
   fi
 
-  export FNM_DIR="$HOME/.local/share/fnm"
-  if [ -d "$FNM_DIR" ]; then
-    export PATH="$FNM_DIR:$PATH"
-  fi
-  if command -v fnm >/dev/null 2>&1; then
-    eval "$(fnm env --shell=bash)"
+  if ! command -v curl >/dev/null 2>&1; then
+    install_pkg curl
   fi
 
-  if ! command -v node >/dev/null 2>&1; then
-    echo "Installing latest Node.js via fnm..."
-    fnm install --latest
-    LATEST_NODE="$(fnm list | sed -E 's/^[* ]+//' | tail -n 1)"
-    if [ -n "$LATEST_NODE" ]; then
-      fnm use "$LATEST_NODE"
-      fnm default "$LATEST_NODE"
-    fi
+  ARCH="$(uname -m)"
+  case "$OS" in
+    Darwin)
+      PLATFORM="darwin"
+      EXT="tar.gz"
+      ;;
+    *)
+      PLATFORM="linux"
+      EXT="tar.xz"
+      ;;
+  esac
+
+  case "$ARCH" in
+    x86_64|amd64) ARCH_TAG="x64" ;;
+    arm64|aarch64) ARCH_TAG="arm64" ;;
+    *)
+      echo "Unsupported arch for Node.js tarball: $ARCH"
+      return 1
+      ;;
+  esac
+
+  NODE_PLATFORM="${PLATFORM}-${ARCH_TAG}"
+  NODE_DIST="$(curl -fsSL https://nodejs.org/dist/latest/SHASUMS256.txt | awk -v p="$NODE_PLATFORM" -v e="$EXT" '$2 ~ ("node-v[0-9]+\\.[0-9]+\\.[0-9]+-" p "\\." e "$") {print $2; exit}')"
+  if [ -z "$NODE_DIST" ]; then
+    echo "Failed to determine latest Node.js tarball for ${NODE_PLATFORM}."
+    return 1
+  fi
+
+  NODE_VERSION="$(echo "$NODE_DIST" | sed -E 's/^node-v([0-9]+\.[0-9]+\.[0-9]+)-.*$/\1/')"
+  NODE_INSTALL_ROOT="$HOME/.local/share/nodejs"
+  NODE_DIR="$NODE_INSTALL_ROOT/node-v${NODE_VERSION}-${NODE_PLATFORM}"
+
+  mkdir -p "$NODE_INSTALL_ROOT" "$HOME/.local/bin"
+
+  if [ ! -d "$NODE_DIR" ]; then
+    TMP_TARBALL="$(mktemp -t nodejs.XXXXXX.$EXT)"
+    echo "Downloading Node.js ${NODE_VERSION} (${NODE_PLATFORM})..."
+    curl -fsSL "https://nodejs.org/dist/latest/$NODE_DIST" -o "$TMP_TARBALL"
+    tar -xf "$TMP_TARBALL" -C "$NODE_INSTALL_ROOT"
+    rm -f "$TMP_TARBALL"
+  fi
+
+  ln -sf "$NODE_DIR" "$NODE_INSTALL_ROOT/current"
+  ln -sf "$NODE_INSTALL_ROOT/current/bin/node" "$HOME/.local/bin/node"
+  ln -sf "$NODE_INSTALL_ROOT/current/bin/npm" "$HOME/.local/bin/npm"
+  ln -sf "$NODE_INSTALL_ROOT/current/bin/npx" "$HOME/.local/bin/npx"
+  if [ -x "$NODE_INSTALL_ROOT/current/bin/corepack" ]; then
+    ln -sf "$NODE_INSTALL_ROOT/current/bin/corepack" "$HOME/.local/bin/corepack"
   fi
 }
 
@@ -117,7 +144,7 @@ echo ">>> Installing core runtimes (system package manager + rustup for Rust)"
 
 case "$PM" in
   apt)
-    install_fnm
+    install_node_tarball
     install_rustup
     command -v go    >/dev/null 2>&1 || install_pkg golang
     command -v java  >/dev/null 2>&1 || install_pkg default-jdk
@@ -125,7 +152,7 @@ case "$PM" in
     command -v clangd >/dev/null 2>&1 || install_pkg clangd || true
     ;;
   pacman)
-    install_fnm
+    install_node_tarball
     install_rustup
     command -v go    >/dev/null 2>&1 || install_pkg go
     command -v java  >/devnull 2>&1 || install_pkg jdk-openjdk || true
@@ -133,7 +160,7 @@ case "$PM" in
     command -v clangd >/dev/null 2>&1 || install_pkg clang
     ;;
   dnf|yum)
-    install_fnm
+    install_node_tarball
     install_rustup
     command -v go    >/dev/null 2>&1 || install_pkg golang
     command -v java  >/dev/null 2>&1 || install_pkg java-17-openjdk-devel || install_pkg java-11-openjdk-devel
@@ -141,7 +168,7 @@ case "$PM" in
     command -v clangd >/dev/null 2>&1 || install_pkg clang-tools-extra || install_pkg clangd || true
     ;;
   brew)
-    install_fnm
+    install_node_tarball
     install_rustup
     command -v go    >/dev/null 2>&1 || install_pkg go
     command -v java  >/dev/null 2>&1 || install_pkg openjdk

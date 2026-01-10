@@ -23,17 +23,13 @@ add_to_path() {
 }
 
 export GOPATH="$HOME/.local/share/go"
+export NODEJS_HOME="$HOME/.local/share/nodejs/current"
 
 add_to_path "$HOME/.local/bin"
 add_to_path "$HOME/.npm-global/bin"
 add_to_path "$GOPATH/bin"
 add_to_path "${KREW_ROOT:-$HOME/.krew}/bin"
 add_to_path "$HOME/.cargo/bin"
-export FNM_DIR="$HOME/.local/share/fnm"
-if [ -d "$FNM_DIR" ]; then
-  export PATH="$FNM_DIR:$PATH"
-  eval "$(fnm env --shell=bash)"
-fi
 
 export PATH
 
