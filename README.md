@@ -43,6 +43,7 @@ new tab: Ctrl-t
 close tab: :q
 open current directory: Ctrl-d
 go to definition: gd
+undo go to definition: Ctrl-o
 save: :w
 copy: \\c
 ```
