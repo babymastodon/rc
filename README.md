@@ -18,36 +18,15 @@ source ~/.bashrc
 
 ## Ghostty
 
-Install Ghostty with your package manager, then link the config in this repo:
-
-```bash
-# Fedora
-sudo dnf install -y ghostty
-
-# Debian/Ubuntu
-sudo apt-get install -y ghostty
-
-# macOS (Homebrew)
-brew install --cask ghostty
-
-./ghostty/install_ghostty.sh
-```
+Get Ghostty here: https://ghostty.org
 
 ## Vim
 
-Install Vim, then use the repo's config:
+Install coc.nvim tooling for Vim:
 
 ```bash
-# Fedora
-sudo dnf install -y vim
-
-# Debian/Ubuntu
-sudo apt-get install -y vim
-
-# macOS (Homebrew)
-brew install vim
-
-./install.sh
+cd vim
+./install_coc.sh
 ```
 
 If you want plugins, open Vim and run:
