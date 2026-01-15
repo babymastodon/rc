@@ -1,6 +1,6 @@
 # rc
 
-Personal dotfiles and setup scripts.
+Personal dotfiles and setup scripts for a desktop environment that uses tmux for window management, Vim for code editing, and works well over SSH. Supports macOS and Linux.
 
 ## Getting started
 
@@ -18,7 +18,7 @@ source ~/.bashrc
 
 ## Ghostty
 
-Get Ghostty here: https://ghostty.org
+Get Ghostty here: https://ghostty.org (install on the laptop). Kitty configs are also available.
 
 After install, link the config from this repo:
 
@@ -29,11 +29,22 @@ cd ghostty
 
 ## Vim
 
-Install coc.nvim tooling for Vim:
+Install coc.nvim tooling for Vim (autocompleter support for multiple languages):
 
 ```bash
 cd vim
 ./install_coc.sh
+```
+
+Key shortcuts:
+
+```text
+new tab: Ctrl-t
+close tab: :q
+open current directory: Ctrl-d
+go to definition: gd
+save: :w
+copy: \\c
 ```
 
 If you want plugins, open Vim and run:
@@ -44,7 +55,7 @@ If you want plugins, open Vim and run:
 
 ## tmux sessions
 
-After `source ~/.bashrc`, use the aliases from `bash/bashrc_extra`:
+After `source ~/.bashrc`, the first thing after SSHing into your VM should be to create a new tmux session using the aliases from `bash/bashrc_extra`:
 
 ```bash
 # init a new session named "moo"
