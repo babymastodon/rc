@@ -81,3 +81,16 @@ ph='git push --force-with-lease'
 mg='git fetch && git merge origin/master --no-edit'
 br='git log --graph --oneline --decorate --all'
 ```
+
+## Keyboard remaps
+
+Recommended: map Right Cmd/Alt to Control, and Caps Lock to Escape.
+
+Linux (keyd):
+
+```bash
+cd keyd
+./install_keyd.sh
+```
+
+macOS (Karabiner-Elements): https://karabiner-elements.pqrs.org
