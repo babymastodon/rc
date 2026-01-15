@@ -66,5 +66,21 @@ newmoo
 
 # resume the session
 moo
+```
 
+## Git shortcuts
+
+After `source ~/.bashrc`, these aliases are available:
+
+```bash
+g='git'
+ga='git add .'
+st='git status && git diff --stat'
+gd='git diff'
+gs='git -c color.status=always status -s && ...'
+cm='git-commit-all'
+pl='git pull'
+ph='git push --force-with-lease'
+mg='git fetch && git merge origin/master --no-edit'
+br='git log --graph --oneline --decorate --all'
 ```
