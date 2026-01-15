@@ -20,6 +20,13 @@ source ~/.bashrc
 
 Get Ghostty here: https://ghostty.org
 
+After install, link the config from this repo:
+
+```bash
+cd ghostty
+./install_ghostty.sh
+```
+
 ## Vim
 
 Install coc.nvim tooling for Vim:
