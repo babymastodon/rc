@@ -39,6 +39,8 @@ cd vim
 Key shortcuts:
 
 ```text
+move: hjkl
+move a lot: Shift-hjkl
 new tab: Ctrl-t
 close tab: :q
 open current directory: Ctrl-d
