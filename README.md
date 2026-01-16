@@ -27,22 +27,6 @@ cd ghostty
 ./install_ghostty.sh
 ```
 
-## Codex
-
-Install the Codex CLI:
-
-```bash
-npm i -g @openai/codex
-```
-
-Log in with ChatGPT. If the login prompt opens in a browser on the VM, SSH tunnel the port to your laptop:
-
-```bash
-ssh -L 1455:localhost:1455 you@your-vm
-```
-
-Then open the localhost URL that the login prompt prints in your laptop browser.
-
 ## Vim
 
 Install coc.nvim tooling for Vim (autocompleter support for multiple languages):
@@ -121,3 +105,19 @@ cd keyd
 ```
 
 macOS (Karabiner-Elements): https://karabiner-elements.pqrs.org
+
+## Codex
+
+Install the Codex CLI:
+
+```bash
+npm i -g @openai/codex
+```
+
+Log in with ChatGPT. If the login prompt opens in a browser on the VM, SSH tunnel the port to your laptop:
+
+```bash
+ssh -L 1455:localhost:1455 you@your-vm
+```
+
+Then open the localhost URL that the login prompt prints in your laptop browser.
