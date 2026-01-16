@@ -58,7 +58,7 @@ If you want plugins, open Vim and run:
 
 ## tmux sessions
 
-After `source ~/.bashrc`, the first thing after SSHing into your VM should be to create a new tmux session using the aliases from `bash/bashrc_extra`:
+The install script sets up these aliases to start or resume a tmux session:
 
 ```bash
 # init a new session named "moo"
