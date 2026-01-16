@@ -18,7 +18,7 @@ source ~/.bashrc
 
 ## Ghostty
 
-Get Ghostty here: https://ghostty.org (install on the laptop). It's a GPU-accelerated, customizable terminal. Kitty configs are also available.
+Get Ghostty here: https://ghostty.org (install on the laptop). It's a GPU-accelerated terminal that matches your OS light/dark theme. Kitty configs are also available.
 
 After install, link the config from this repo:
 
