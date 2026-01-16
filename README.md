@@ -78,7 +78,7 @@ close window: Ctrl-d
 
 ## Git shortcuts
 
-After `source ~/.bashrc`, these aliases are available:
+The install script sets up these aliases:
 
 ```bash
 g='git'
