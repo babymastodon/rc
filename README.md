@@ -95,7 +95,7 @@ br='git log --graph --oneline --decorate --all'
 
 ## Keyboard remaps
 
-Recommended: map Right Cmd/Alt to Control, and Caps Lock to Escape.
+Recommended to reduce wrist strain: map Right Cmd/Alt to Control, and Caps Lock to Escape.
 
 Linux (keyd):
 
