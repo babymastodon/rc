@@ -86,7 +86,7 @@ noremap <C-j> 15<C-e>
 noremap <C-k> 15<C-y>
 
 " Map open directory to ctrl-d
-nnoremap <C-d> :e .<CR>
+nnoremap <C-e> :e .<CR>
 
 " Splits open on the right
 set splitright
