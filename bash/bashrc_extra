@@ -117,3 +117,12 @@ NPM_CONFIG_PREFIX="$HOME/.npm-global"
 # load tokens (if present)
 export OPENAI_API_KEY="$(cat $HOME/.config/openai.token 2> /dev/null)"
 export OPENROUTER_API_KEY="$(cat $HOME/.config/openrouter.token 2> /dev/null)"
+
+# Disable xterm mouse reporting so clicks/scrolls don't paste control sequences at the Bash prompt
+__disable_mouse_reporting() {
+  # Turn off common mouse modes: 1000/1002/1003/1005/1006 + highlight tracking
+  printf '\e[?1000l\e[?1002l\e[?1003l\e[?1005l\e[?1006l\e[?1015l\e[?1004l'
+}
+
+# Run it every time Bash is about to display PS1
+PROMPT_COMMAND="__disable_mouse_reporting${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
