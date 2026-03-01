@@ -50,6 +50,10 @@ else
   log "Kitty already installed: $(kitty --version 2>/dev/null | head -n1 || echo 'version lookup skipped')"
 fi
 
+# ----- install Nerd Fonts for Kitty icons -----
+log "Installing Nerd Fonts for Kitty…"
+"$PWD/../fonts/install_nerdfonts.sh"
+
 # ----- link configs (via maybe_link) -----
 log "Linking Kitty configuration…"
 mkdir -p "$HOME/.config/kitty/" "$HOME/.config/kitty/themes/"
