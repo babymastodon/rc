@@ -13,7 +13,7 @@ now=${EPOCHSECONDS:-$(date +%s)}
 ttl=60
 cache_version=6
 
-ICON_TERMINAL=""
+ICON_TERMINAL=$'\ue795'
 ICON_AGENT="󰚩"
 ICON_VIM=$'\U000f022e'
 ICON_SSH="󰱠"
