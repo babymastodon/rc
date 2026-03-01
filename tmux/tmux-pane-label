@@ -11,7 +11,7 @@ pane_cmd="${4:-}"
 cache="/tmp/tmux-badge-label${key//\//-}"
 now=${EPOCHSECONDS:-$(date +%s)}
 ttl=60
-cache_version=3
+cache_version=4
 
 ICON_TERMINAL=""
 ICON_AGENT="󰚩"
@@ -225,6 +225,11 @@ if [[ -n "$pane_pid" ]]; then
 
   if [[ -n "$pane_tpgid" ]]; then
     rows="$(ps -g "$pane_tpgid" -ww -o pid= -o stat= -o comm= -o args= 2>/dev/null || true)"
+    # Linux procps: `-g` selects session/effective group, not process group.
+    # Fallback to filtering by PGID so we still scan the foreground job group.
+    if [[ -z "$rows" ]]; then
+      rows="$(ps -eo pid= -o pgid= -o stat= -o comm= -o args= 2>/dev/null | awk -v pgid="$pane_tpgid" '$2 == pgid {printf "%s %s %s", $1, $3, $4; for (i = 5; i <= NF; i++) printf " %s", $i; printf "\n"}' || true)"
+    fi
     if [[ -n "$rows" ]]; then
       best_pid=0
       best_comm=""
@@ -288,6 +293,17 @@ if [[ -n "$pane_pid" ]]; then
       fi
     fi
   fi
+fi
+
+if [[ "$label" == "${ICON_TERMINAL} ${path_base}" && -n "$pane_cmd" ]]; then
+  pane_cmd_norm="$(normalize_comm "$pane_cmd")"
+  case "$pane_cmd_norm" in
+    bash|zsh|sh|fish|"")
+      ;;
+    *)
+      label="$(classify_label "$pane_cmd_norm" "$pane_cmd_norm" "$path_base")"
+      ;;
+  esac
 fi
 
 label="$(sanitize_label "$label")"
