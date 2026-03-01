@@ -11,7 +11,7 @@ pane_cmd="${4:-}"
 cache="/tmp/tmux-badge-label${key//\//-}"
 now=${EPOCHSECONDS:-$(date +%s)}
 ttl=60
-cache_version=4
+cache_version=5
 
 ICON_TERMINAL=""
 ICON_AGENT="󰚩"
@@ -60,6 +60,14 @@ normalize_comm() {
   comm="${comm##*/}"
   comm="${comm#-}"
   printf '%s\n' "$comm"
+}
+
+is_coding_agent() {
+  local comm="$1" args="$2"
+  comm="$(normalize_comm "$comm")"
+  [[ "$comm" =~ ^(codex|claude|aider|cursor-agent|gemini|opencode)$ ]] && return 0
+  [[ "$args" =~ (^|[[:space:]/:_-])(codex|claude|aider|cursor-agent|gemini|opencode)([[:space:]/:_-]|$) ]] && return 0
+  return 1
 }
 
 ssh_host_from_args() {
@@ -133,7 +141,7 @@ classify_label() {
   shopt -s nocasematch
 
   # Highest-priority contexts first.
-  if [[ "$args" =~ (^|[[:space:]/:_-])codex([[:space:]/:_-]|$) ]]; then
+  if is_coding_agent "$comm" "$args"; then
     icon="$ICON_AGENT"
   elif [[ "$comm" == "ssh" || "$comm" == "mosh-client" || "$args" =~ (^|[[:space:]])(ssh|mosh-client)([[:space:]]|$) ]]; then
     host="$(ssh_host_from_args "$args")"
