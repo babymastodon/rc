@@ -116,8 +116,7 @@ icon_for_program() {
   local comm="$1"
   comm="$(normalize_comm "$comm")"
   case "$comm" in
-    btop) printf '%s\n' $'\uf0e4' ;;
-    htop|top) printf '%s\n' "$ICON_MONITOR" ;;
+    atop|bashtop|bpytop|btop|btm|glances|gotop|htop|nvtop|powertop|top) printf '%s\n' $'\uf0e4' ;;
     yazi) printf '%s\n' "$ICON_YAZI" ;;
     docker|docker-compose|lazydocker|buildx) printf '%s\n' "$ICON_DOCKER" ;;
     kubectl|k9s|kubectx|kubens|helm) printf '%s\n' "$ICON_K8S" ;;
