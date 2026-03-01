@@ -11,7 +11,7 @@ pane_cmd="${4:-}"
 cache="/tmp/tmux-badge-label${key//\//-}"
 now=${EPOCHSECONDS:-$(date +%s)}
 ttl=60
-cache_version=5
+cache_version=6
 
 ICON_TERMINAL=""
 ICON_AGENT="󰚩"
@@ -60,6 +60,11 @@ normalize_comm() {
   comm="${comm##*/}"
   comm="${comm#-}"
   printf '%s\n' "$comm"
+}
+
+is_stopped_stat() {
+  local stat="$1"
+  [[ "$stat" == *T* ]]
 }
 
 is_coding_agent() {
@@ -262,6 +267,10 @@ if [[ -n "$pane_pid" ]]; then
         rest="${rest#"$comm"}"
         args="${rest#"${rest%%[![:space:]]*}"}"
         comm="$(normalize_comm "$comm")"
+
+        if is_stopped_stat "$stat"; then
+          continue
+        fi
 
         case "$comm" in
           bash|zsh|sh|fish|login|tmux|sudo|env|script|scriptreplay|reattach-to-user-namespace)
