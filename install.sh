@@ -99,6 +99,7 @@ mkdir -p "$HOME/.local/bin"
 maybe_link "$PWD/bash/git-commit-all" "$HOME/.local/bin/git-commit-all"
 maybe_link "$PWD/tmux/tmux-git-badge" "$HOME/.local/bin/tmux-git-badge"
 maybe_link "$PWD/tmux/tmux-ssh-host"  "$HOME/.local/bin/tmux-ssh-host"
+maybe_link "$PWD/tmux/tmux-pane-label" "$HOME/.local/bin/tmux-pane-label"
 
 # ----- create GOPATH directory ~/.local/share/go (only if missing) -----
 mkdir -p "$HOME/.local/share/go"

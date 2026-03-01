@@ -1,0 +1,305 @@
+#!/usr/bin/env bash
+# tmux-pane-label — infer a useful window label from pane foreground process.
+# usage: tmux-pane-label [pane_pid] [pane_current_path] [cache_key] [pane_current_command]
+
+set -euo pipefail
+
+pane_pid="${1:-}"
+pane_path="${2:-$PWD}"
+key="${3:-default}"
+pane_cmd="${4:-}"
+cache="/tmp/tmux-badge-label${key//\//-}"
+now=${EPOCHSECONDS:-$(date +%s)}
+ttl=60
+cache_version=3
+
+ICON_TERMINAL=""
+ICON_AGENT="󰚩"
+ICON_VIM=$'\U000f022e'
+ICON_SSH="󰱠"
+ICON_GIT=""
+ICON_JS=""
+ICON_PY=""
+ICON_GO=""
+ICON_RUST=""
+ICON_DOCKER=""
+ICON_K8S="󱃾"
+ICON_MONITOR=""
+ICON_PROC_DEFAULT=""
+ICON_INFRA=""
+ICON_BUILD="󰨞"
+ICON_NIX=""
+ICON_DB=""
+ICON_YAZI=$'\U000f01e5'
+
+basename_fast() {
+  local p="$1"
+  p="${p%/}"
+  printf '%s\n' "${p##*/}"
+}
+
+fallback_label() {
+  local b
+  b="$(basename_fast "$pane_path")"
+  [[ -n "$b" ]] || b="shell"
+  printf '%s %s\n' "$ICON_TERMINAL" "$b"
+}
+
+sanitize_label() {
+  local s="$1"
+  s="${s//$'\n'/ }"
+  s="${s//$'\r'/ }"
+  s="${s#"${s%%[![:space:]]*}"}"
+  s="${s%"${s##*[![:space:]]}"}"
+  [[ -n "$s" ]] || s="$(fallback_label)"
+  printf '%s\n' "$s"
+}
+
+normalize_comm() {
+  local comm="$1"
+  comm="${comm##*/}"
+  comm="${comm#-}"
+  printf '%s\n' "$comm"
+}
+
+ssh_host_from_args() {
+  local args="$1" host tok
+  local -a av
+  local i=1
+  read -r -a av <<<"$args"
+
+  while (( i < ${#av[@]} )); do
+    tok="${av[i]}"
+    ((i++))
+    case "$tok" in
+      --)
+        host="${av[i]:-}"
+        break
+        ;;
+      -\#)
+        host="${av[i]:-}"
+        break
+        ;;
+      -l|-p|-i|-F|-J|-S|-W|-b|-c|-D|-E|-e|-I|-L|-m|-O|-o|-Q|-R|-w)
+        ((i++))
+        ;;
+      -*|'|')
+        ;;
+      *)
+        host="$tok"
+        break
+        ;;
+    esac
+  done
+
+  host="${host##*@}"
+  host="${host#[}"
+  host="${host%]}"
+  host="${host%%[:|]*}"
+  printf '%s\n' "${host:-ssh}"
+}
+
+icon_for_program() {
+  local comm="$1"
+  comm="$(normalize_comm "$comm")"
+  case "$comm" in
+    btop|htop|top) printf '%s\n' "$ICON_MONITOR" ;;
+    yazi) printf '%s\n' "$ICON_YAZI" ;;
+    docker|docker-compose|lazydocker|buildx) printf '%s\n' "$ICON_DOCKER" ;;
+    kubectl|k9s|kubectx|kubens|helm) printf '%s\n' "$ICON_K8S" ;;
+    terraform|tofu|terragrunt|ansible|ansible-playbook) printf '%s\n' "$ICON_INFRA" ;;
+    nix|nix-env|nix-shell|nixos-rebuild|home-manager) printf '%s\n' "$ICON_NIX" ;;
+    make|gmake|just|task) printf '%s\n' "$ICON_BUILD" ;;
+    psql|redis-cli|mongosh|mysql|sqlite3) printf '%s\n' "$ICON_DB" ;;
+    node|nodejs|bun|deno|npm|pnpm|yarn) printf '%s\n' "$ICON_JS" ;;
+    python|python3|uv|poetry|pip|pipx|ipython|jupyter|pytest) printf '%s\n' "$ICON_PY" ;;
+    go|gofmt) printf '%s\n' "$ICON_GO" ;;
+    cargo|rustc) printf '%s\n' "$ICON_RUST" ;;
+    git|lazygit|tig|gitui|gh) printf '%s\n' "$ICON_GIT" ;;
+    vim|nvim|vi|view|vimdiff|emacs|hx|helix) printf '%s\n' "$ICON_VIM" ;;
+    ssh|mosh-client) printf '%s\n' "$ICON_SSH" ;;
+    watch|entr) printf '%s\n' "$ICON_MONITOR" ;;
+    *) printf '%s\n' "$ICON_PROC_DEFAULT" ;;
+  esac
+}
+
+classify_label() {
+  local comm="$1" args="$2" path_base="$3"
+  comm="$(normalize_comm "$comm")"
+  local icon="$ICON_TERMINAL"
+  local host
+  local nocase_was_on=0
+  shopt -q nocasematch && nocase_was_on=1
+  shopt -s nocasematch
+
+  # Highest-priority contexts first.
+  if [[ "$args" =~ (^|[[:space:]/:_-])codex([[:space:]/:_-]|$) ]]; then
+    icon="$ICON_AGENT"
+  elif [[ "$comm" == "ssh" || "$comm" == "mosh-client" || "$args" =~ (^|[[:space:]])(ssh|mosh-client)([[:space:]]|$) ]]; then
+    host="$(ssh_host_from_args "$args")"
+    (( nocase_was_on )) || shopt -u nocasematch
+    printf '%s %s\n' "$ICON_SSH" "$host"
+    return
+  elif [[ "$comm" =~ ^(vim|nvim|vi|view|vimdiff|emacs|hx|helix)$ || "$args" =~ (^|[[:space:]/])((n?vim|vimdiff|emacs|hx|helix))([[:space:]]|$) ]]; then
+    icon="$ICON_VIM"
+  elif [[ "$comm" =~ ^(lazygit|tig)$ || "$args" =~ (^|[[:space:]])(lazygit|tig)([[:space:]]|$) ]]; then
+    icon="$ICON_GIT"
+  elif [[ "$comm" =~ ^(kubectl|k9s)$ || "$args" =~ (^|[[:space:]])(kubectl|k9s)([[:space:]]|$) ]]; then
+    icon="$ICON_K8S"
+  elif [[ "$comm" =~ ^(kubectx|kubens|helm)$ || "$args" =~ (^|[[:space:]])(kubectx|kubens|helm)([[:space:]]|$) ]]; then
+    icon="$ICON_K8S"
+  elif [[ "$comm" =~ ^(docker|docker-compose|lazydocker)$ || "$args" =~ (^|[[:space:]])(docker|docker-compose|lazydocker|buildx)([[:space:]]|$) ]]; then
+    icon="$ICON_DOCKER"
+  elif [[ "$comm" =~ ^(terraform|tofu|terragrunt|ansible|ansible-playbook)$ || "$args" =~ (^|[[:space:]])(terraform|tofu|terragrunt|ansible|ansible-playbook)([[:space:]]|$) ]]; then
+    icon="$ICON_INFRA"
+  elif [[ "$comm" =~ ^(nix|nix-env|nix-shell|nixos-rebuild|home-manager)$ || "$args" =~ (^|[[:space:]])(nix|nix-env|nix-shell|nixos-rebuild|home-manager)([[:space:]]|$) ]]; then
+    icon="$ICON_NIX"
+  elif [[ "$comm" =~ ^(make|gmake|just|task)$ || "$args" =~ (^|[[:space:]])(make|gmake|just|task)([[:space:]]|$) ]]; then
+    icon="$ICON_BUILD"
+  elif [[ "$comm" == "yazi" || "$args" =~ (^|[[:space:]])yazi([[:space:]]|$) ]]; then
+    icon="$ICON_YAZI"
+  elif [[ "$args" =~ (^|[[:space:]])(pytest|go[[:space:]]+test|cargo[[:space:]]+test|jest|vitest|bun[[:space:]]+test)([[:space:]]|$) ]]; then
+    icon="$ICON_AGENT"
+  elif [[ "$comm" =~ ^(node|nodejs|bun|deno|npm|pnpm|yarn)$ || "$args" =~ (^|[[:space:]])(npm|pnpm|yarn|node|bun|deno)([[:space:]]|$) ]]; then
+    icon="$ICON_JS"
+  elif [[ "$comm" =~ ^(python|python3|uv|poetry|pip|pipx|ipython|jupyter)$ || "$args" =~ (^|[[:space:]])(python|python3|uv|poetry|pipx|ipython|jupyter|pytest)([[:space:]]|$) ]]; then
+    icon="$ICON_PY"
+  elif [[ "$args" =~ (^|[[:space:]])(python|python3)([[:space:]]|$) && "$args" =~ (\.py([[:space:]]|$)|[[:space:]]-m[[:space:]]) ]]; then
+    icon="$ICON_PY"
+  elif [[ "$comm" =~ ^(uv|poetry)$ && "$args" =~ ([[:space:]]run[[:space:]].*(python|python3|pytest|ipython|jupyter)|[[:space:]]python[[:space:]]) ]]; then
+    icon="$ICON_PY"
+  elif [[ "$comm" =~ ^(go|gofmt)$ || "$args" =~ (^|[[:space:]])go([[:space:]]|$) ]]; then
+    icon="$ICON_GO"
+  elif [[ "$comm" =~ ^(cargo|rustc)$ || "$args" =~ (^|[[:space:]])(cargo|rustc)([[:space:]]|$) ]]; then
+    icon="$ICON_RUST"
+  elif [[ "$comm" =~ ^(bash|zsh|sh|fish)$ ]]; then
+    icon="$ICON_TERMINAL"
+  else
+    icon="$(icon_for_program "$comm")"
+    (( nocase_was_on )) || shopt -u nocasematch
+    printf '%s %s\n' "$icon" "$comm"
+    return
+  fi
+
+  (( nocase_was_on )) || shopt -u nocasematch
+  printf '%s %s\n' "$icon" "$path_base"
+}
+
+icon_for_proc() {
+  local comm="$1" args="$2" path_base="$3"
+  local out icon
+  out="$(classify_label "$comm" "$args" "$path_base")"
+  icon="${out%% *}"
+  printf '%s\n' "$icon"
+}
+
+# FAST PATH
+if [[ -r "$cache" ]] && exec 9<"$cache"; then
+  IFS= read -r ts <&9 || true
+  IFS= read -r cached_pid <&9 || true
+  IFS= read -r cached_cmd <&9 || true
+  IFS= read -r cached_path <&9 || true
+  IFS= read -r cached_ver <&9 || true
+  IFS= read -r cached_label <&9 || true
+  exec 9<&-
+  ts="${ts:-0}"
+  cached_pid="${cached_pid:-}"
+  cached_cmd="${cached_cmd:-}"
+  cached_path="${cached_path:-}"
+  cached_ver="${cached_ver:-0}"
+  cached_label="${cached_label:-}"
+  if [[ "$cached_pid" == "$pane_pid" && "$cached_cmd" == "$pane_cmd" && "$cached_path" == "$pane_path" && "$cached_ver" == "$cache_version" ]] && (( now - ts < ttl )); then
+    printf '%s\n' "$cached_label"
+    exit 0
+  fi
+fi
+
+path_base="$(basename_fast "$pane_path")"
+label="${ICON_TERMINAL} ${path_base}"
+
+if [[ -n "$pane_pid" ]]; then
+  # SLOW PATH (narrow process group scan)
+  pane_tpgid="$(ps -o tpgid= -p "$pane_pid" 2>/dev/null || true)"
+  pane_tpgid="${pane_tpgid#"${pane_tpgid%%[![:space:]]*}"}"
+  pane_tpgid="${pane_tpgid%"${pane_tpgid##*[![:space:]]}"}"
+
+  if [[ -n "$pane_tpgid" ]]; then
+    rows="$(ps -g "$pane_tpgid" -ww -o pid= -o stat= -o comm= -o args= 2>/dev/null || true)"
+    if [[ -n "$rows" ]]; then
+      best_pid=0
+      best_comm=""
+      best_args=""
+      best_fg=0
+      found_icon=""
+      found_prio=0
+      found_label=""
+
+      while IFS= read -r line; do
+        [[ -n "$line" ]] || continue
+        line="${line#"${line%%[![:space:]]*}"}"
+
+        pid="${line%% *}"
+        rest="${line#"$pid"}"
+        rest="${rest#"${rest%%[![:space:]]*}"}"
+        stat="${rest%% *}"
+        rest="${rest#"$stat"}"
+        rest="${rest#"${rest%%[![:space:]]*}"}"
+        comm="${rest%% *}"
+        rest="${rest#"$comm"}"
+        args="${rest#"${rest%%[![:space:]]*}"}"
+        comm="$(normalize_comm "$comm")"
+
+        case "$comm" in
+          bash|zsh|sh|fish|login|tmux|sudo|env|script|scriptreplay|reattach-to-user-namespace)
+            ;;
+          *)
+            icon="$(icon_for_proc "$comm" "$args" "$path_base")"
+            prio=1
+            [[ "$icon" == "$ICON_SSH" ]] && prio=100
+            [[ "$icon" == "$ICON_AGENT" ]] && prio=90
+            [[ "$icon" == "$ICON_VIM" ]] && prio=80
+            [[ "$icon" == "$ICON_GIT" ]] && prio=70
+            [[ "$icon" == "$ICON_K8S" || "$icon" == "$ICON_DOCKER" ]] && prio=60
+            [[ "$icon" == "$ICON_JS" || "$icon" == "$ICON_PY" || "$icon" == "$ICON_GO" || "$icon" == "$ICON_RUST" ]] && prio=50
+            [[ "$icon" == "$ICON_MONITOR" ]] && prio=0
+            [[ "$icon" == "$ICON_PROC_DEFAULT" ]] && prio=0
+            if (( prio > found_prio )); then
+              found_prio=$prio
+              found_icon="$icon"
+              found_label="$(classify_label "$comm" "$args" "$path_base")"
+            fi
+
+            fg=0
+            [[ "$stat" == *"+"* ]] && fg=1
+            if (( fg > best_fg || (fg == best_fg && pid > best_pid) )); then
+              best_fg=$fg
+              best_pid=$pid
+              best_comm="$comm"
+              best_args="$args"
+            fi
+            ;;
+        esac
+      done <<<"$rows"
+
+      if [[ -n "$found_label" && "$found_icon" != "$ICON_TERMINAL" ]]; then
+        label="$found_label"
+      elif [[ -n "$best_comm" ]]; then
+        label="$(classify_label "$best_comm" "$best_args" "$path_base")"
+      fi
+    fi
+  fi
+fi
+
+label="$(sanitize_label "$label")"
+tmp="${cache}.tmp.$$"
+{
+  printf '%s\n' "$now"
+  printf '%s\n' "$pane_pid"
+  printf '%s\n' "$pane_cmd"
+  printf '%s\n' "$pane_path"
+  printf '%s\n' "$cache_version"
+  printf '%s\n' "$label"
+} >"$tmp"
+mv "$tmp" "$cache"
+
+printf '%s\n' "$label"
