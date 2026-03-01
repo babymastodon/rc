@@ -248,6 +248,18 @@ augroup TmuxGitBadgeCleanup
   autocmd BufWritePost * silent! call system('rm -f /tmp/tmux-badge-git*')
 augroup END
 
+function! TmuxPaneTitle() abort
+  let l:name = expand('%:t')
+  if empty(l:name)
+    return fnamemodify(getcwd(), ':t')
+  endif
+  return l:name
+endfunction
+
+set title
+set titleold=
+set titlestring=%{TmuxPaneTitle()}
+
 " fix bug in go-vim syntax file
 let go_highlight_trailing_whitespace_error = 0
 

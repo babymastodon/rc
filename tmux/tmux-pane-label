@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # tmux-pane-label — infer a useful window label from pane foreground process.
-# usage: tmux-pane-label [pane_pid] [pane_current_path] [cache_key] [pane_current_command]
+# usage: tmux-pane-label [pane_pid] [pane_current_path] [cache_key] [pane_current_command] [pane_title]
 
 set -euo pipefail
 
@@ -8,10 +8,11 @@ pane_pid="${1:-}"
 pane_path="${2:-$PWD}"
 key="${3:-default}"
 pane_cmd="${4:-}"
+pane_title="${5:-}"
 cache="/tmp/tmux-badge-label${key//\//-}"
 now=${EPOCHSECONDS:-$(date +%s)}
 ttl=60
-cache_version=6
+cache_version=8
 
 ICON_TERMINAL=$'\ue795'
 ICON_AGENT="󰚩"
@@ -52,6 +53,15 @@ sanitize_label() {
   s="${s#"${s%%[![:space:]]*}"}"
   s="${s%"${s##*[![:space:]]}"}"
   [[ -n "$s" ]] || s="$(fallback_label)"
+  printf '%s\n' "$s"
+}
+
+sanitize_pane_title() {
+  local s="$1"
+  s="${s//$'\n'/ }"
+  s="${s//$'\r'/ }"
+  s="${s#"${s%%[![:space:]]*}"}"
+  s="${s%"${s##*[![:space:]]}"}"
   printf '%s\n' "$s"
 }
 
@@ -212,6 +222,7 @@ if [[ -r "$cache" ]] && exec 9<"$cache"; then
   IFS= read -r cached_pid <&9 || true
   IFS= read -r cached_cmd <&9 || true
   IFS= read -r cached_path <&9 || true
+  IFS= read -r cached_title <&9 || true
   IFS= read -r cached_ver <&9 || true
   IFS= read -r cached_label <&9 || true
   exec 9<&-
@@ -219,15 +230,17 @@ if [[ -r "$cache" ]] && exec 9<"$cache"; then
   cached_pid="${cached_pid:-}"
   cached_cmd="${cached_cmd:-}"
   cached_path="${cached_path:-}"
+  cached_title="${cached_title:-}"
   cached_ver="${cached_ver:-0}"
   cached_label="${cached_label:-}"
-  if [[ "$cached_pid" == "$pane_pid" && "$cached_cmd" == "$pane_cmd" && "$cached_path" == "$pane_path" && "$cached_ver" == "$cache_version" ]] && (( now - ts < ttl )); then
+  if [[ "$cached_pid" == "$pane_pid" && "$cached_cmd" == "$pane_cmd" && "$cached_path" == "$pane_path" && "$cached_title" == "$pane_title" && "$cached_ver" == "$cache_version" ]] && (( now - ts < ttl )); then
     printf '%s\n' "$cached_label"
     exit 0
   fi
 fi
 
 path_base="$(basename_fast "$pane_path")"
+pane_title="$(sanitize_pane_title "$pane_title")"
 label="${ICON_TERMINAL} ${path_base}"
 
 if [[ -n "$pane_pid" ]]; then
@@ -312,6 +325,15 @@ if [[ -n "$pane_pid" ]]; then
   fi
 fi
 
+if [[ -n "$pane_title" ]]; then
+  pane_cmd_norm="$(normalize_comm "$pane_cmd")"
+  case "$pane_cmd_norm" in
+    vim|nvim|vi|view|vimdiff|emacs|hx|helix)
+      label="${ICON_VIM} ${pane_title}"
+      ;;
+  esac
+fi
+
 if [[ "$label" == "${ICON_TERMINAL} ${path_base}" && -n "$pane_cmd" ]]; then
   pane_cmd_norm="$(normalize_comm "$pane_cmd")"
   case "$pane_cmd_norm" in
@@ -330,6 +352,7 @@ tmp="${cache}.tmp.$$"
   printf '%s\n' "$pane_pid"
   printf '%s\n' "$pane_cmd"
   printf '%s\n' "$pane_path"
+  printf '%s\n' "$pane_title"
   printf '%s\n' "$cache_version"
   printf '%s\n' "$label"
 } >"$tmp"
