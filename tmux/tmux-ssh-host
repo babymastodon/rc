@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# tmux-ssh-host — print "󰱠 <hostname>" for an SSH pane, cached 60s.
+# tmux-ssh-host — print the SSH icon and hostname for an SSH pane, cached 60s.
 # usage: tmux-ssh-host [pane_pid] [cache_key]
 
 set -euo pipefail
@@ -7,6 +7,7 @@ set -euo pipefail
 key=${2:-default}
 cache="/tmp/tmux-badge-ssh${key//\//-}"
 now=${EPOCHSECONDS:-$(date +%s)}
+icon_ssh=$'\U000f08a9'
 
 # ---------- FAST PATH (no forks) ----------
 if { exec {fd}<"$cache"; } 2>/dev/null; then
@@ -71,5 +72,4 @@ while IFS= read -r cmd; do
 done < <(ps -o command= -p "$tpgid" -ww 2>/dev/null || true)
 
 [[ -n "$host" ]] || exit 0
-print_and_cache "󰱠 $host"
-
+print_and_cache "${icon_ssh} ${host}"
