@@ -106,6 +106,11 @@ cd keyd
 
 macOS (Karabiner-Elements): https://karabiner-elements.pqrs.org
 
+```bash
+cd karabiner
+./install_karabiner.sh
+```
+
 ## Codex
 
 Install the Codex CLI:
