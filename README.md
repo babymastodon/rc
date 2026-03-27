@@ -126,3 +126,25 @@ ssh -L 1455:localhost:1455 you@your-vm
 ```
 
 Then open the localhost URL that the login prompt prints in your laptop browser.
+
+## System Monitor
+
+Use `btop` to monitor resource usage with a terminal UI.
+
+```bash
+cd btop
+./install.sh
+```
+
+If the colors look odd, open the btop options menu and make sure the `TTY` theme is selected.
+
+## File Explorer
+
+Use `yazi` to easily navigate the filesystem and change directories with a TUI.
+
+```bash
+cd yazi
+./install_yazi.sh
+```
+
+Type the alias `y` to open (configured in bashrc_extra).
