@@ -144,6 +144,15 @@ SSH_PUB="$SSH_KEY.pub"
 mkdir -p "$SSH_DIR"
 chmod 700 "$SSH_DIR" || true
 
+# Get name from current git config, or prompt
+git_name="$(git config --global --get user.name || true)"
+if [[ -z "${git_name:-}" ]]; then
+  read -rp "Enter Git user name: " git_name
+  while [[ -z "${git_name// }" ]]; do
+    read -rp "Name cannot be empty. Enter Git user name: " git_name
+  done
+fi
+
 # Get email from current git config, or from SSH pubkey comment, or prompt
 git_email="$(git config --global --get user.email || true)"
 if [[ -z "${git_email:-}" && -f "$SSH_PUB" ]]; then
@@ -176,7 +185,7 @@ fi
 # ======================================================================
 # Git defaults (now we have name/email)
 # ======================================================================
-git config --global user.name "Zachary Drach"
+git config --global user.name "$git_name"
 git config --global user.email "$git_email"
 git config --global core.editor "vim"
 git config --global core.excludesfile "$HOME/.gitignore_global"
