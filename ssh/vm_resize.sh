@@ -129,9 +129,11 @@ aws_family() {
 
 gcp_family() {
   local base="${1##*/}"
-  while [[ "$base" =~ -[0-9]+$ ]]; do
-    base="${base%-*}"
-  done
+  base="${base%-lssd}"
+  base="${base%-metal}"
+  if [[ "$base" =~ ^(.+)-[0-9]+$ ]]; then
+    base="${BASH_REMATCH[1]}"
+  fi
   printf '%s\n' "$base"
 }
 
@@ -147,8 +149,8 @@ list_gcp_family_types() {
   local family="$1" zone="$2"
   gcloud compute machine-types list \
     --zones="$zone" \
-    --filter="name ~ ^${family}-" \
-    --format='value(name,memoryMb)' 2>/dev/null | sort -k2,2nr | awk '{printf "%-20s %6.1f GiB\n", $1, $2/1024}'
+    --filter="name ~ '^${family}-'" \
+    --format='value(name,memoryMb)' 2>/dev/null | sort -k2,2nr | awk '{printf "%-20s %6.1f GiB\n", $1, $2}'
 }
 
 print_eligible_types() {
