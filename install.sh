@@ -121,6 +121,8 @@ else
   log "Running on a VM; skipping install of SSH helper scripts on this machine."
 fi
 
+"$PWD/ssh/check_vm_auto_shutdown.sh" || warn "VM auto-shutdown check did not complete."
+
 # ----- create GOPATH directory ~/.local/share/go (only if missing) -----
 mkdir -p "$HOME/.local/share/go"
 
