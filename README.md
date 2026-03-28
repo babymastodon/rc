@@ -162,6 +162,4 @@ cd yazi
 ./install_yazi.sh
 ```
 
-If `cargo` is missing, the installer will ask you to run `vim/install_coc.sh` first.
-
-Type the alias `y` to open (configured in bashrc_extra).
+Type the alias `y` to open the file explorer from anywhere.
