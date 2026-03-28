@@ -122,8 +122,6 @@ cd codex
 
 Then run `codex` and log in with ChatGPT, not an API key.
 
-If you are on a VM, the install script prints the SSH tunnel command to run on your laptop for Codex auth.
-
 ## SSH
 
 Use `add_ssh_host.sh` to add a VM alias, then `vm <alias>` to start and connect:
