@@ -43,6 +43,20 @@ maybe_copy() {
   fi
 }
 
+is_vm() {
+  if command -v systemd-detect-virt >/dev/null 2>&1; then
+    systemd-detect-virt --quiet
+    return $?
+  fi
+
+  if [[ -f /sys/class/dmi/id/product_name ]]; then
+    grep -Eiq '(virtual|kvm|vmware|virtualbox|qemu|hyper-v|parallels)' /sys/class/dmi/id/product_name
+    return $?
+  fi
+
+  return 1
+}
+
 ensure_source_in_file() {
   local src="$1" file="$2"
   local name="$(basename "$src")"
@@ -100,6 +114,12 @@ maybe_link "$PWD/bash/git-commit-all" "$HOME/.local/bin/git-commit-all"
 maybe_link "$PWD/tmux/tmux-git-badge" "$HOME/.local/bin/tmux-git-badge"
 maybe_link "$PWD/tmux/tmux-ssh-host"  "$HOME/.local/bin/tmux-ssh-host"
 maybe_link "$PWD/tmux/tmux-pane-label" "$HOME/.local/bin/tmux-pane-label"
+if ! is_vm; then
+  maybe_link "$PWD/ssh/vm_start.sh" "$HOME/.local/bin/vm_start.sh"
+  maybe_link "$PWD/ssh/add_ssh_host.sh" "$HOME/.local/bin/add_ssh_host.sh"
+else
+  log "Running on a VM; skipping install of SSH helper scripts on this machine."
+fi
 
 # ----- create GOPATH directory ~/.local/share/go (only if missing) -----
 mkdir -p "$HOME/.local/share/go"

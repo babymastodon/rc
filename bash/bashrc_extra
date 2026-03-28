@@ -84,6 +84,7 @@ alias br='git log --graph --oneline --decorate --all'
 alias src='source ~/.bashrc'
 alias rc='cd ~/code/rc'
 alias activate='source venv/bin/activate'
+alias vm='vm_start.sh'
 
 # enable bash completion
 if [ -f /etc/bash_completion ] && ! shopt -oq posix; then
