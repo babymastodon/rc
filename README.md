@@ -133,6 +133,15 @@ add_ssh_host.sh
 vm devserver
 ```
 
+To mount a VM home directory on macOS, install MacFUSE and `sshfs` first:
+https://macfuse.github.io/
+
+Then use:
+
+```bash
+vmfs devserver
+```
+
 Setup details and config examples are in `ssh/README.md`.
 
 ## System Monitor

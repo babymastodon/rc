@@ -4,7 +4,9 @@
 
 - `add_ssh_host.sh`
 - `vm_start.sh`
+- `vm_mount.sh`
 - `vm`, a shell alias for `vm_start.sh`
+- `vmfs`, a shell alias for `vm_mount.sh`
 
 ## Prepare The VM User
 

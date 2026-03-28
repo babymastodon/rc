@@ -85,6 +85,7 @@ alias src='source ~/.bashrc'
 alias rc='cd ~/code/rc'
 alias activate='source venv/bin/activate'
 alias vm='vm_start.sh'
+alias vmfs='vm_mount.sh'
 
 # enable bash completion
 if [ -f /etc/bash_completion ] && ! shopt -oq posix; then

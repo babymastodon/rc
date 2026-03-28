@@ -116,6 +116,7 @@ maybe_link "$PWD/tmux/tmux-ssh-host"  "$HOME/.local/bin/tmux-ssh-host"
 maybe_link "$PWD/tmux/tmux-pane-label" "$HOME/.local/bin/tmux-pane-label"
 if ! is_vm; then
   maybe_link "$PWD/ssh/vm_start.sh" "$HOME/.local/bin/vm_start.sh"
+  maybe_link "$PWD/ssh/vm_mount.sh" "$HOME/.local/bin/vm_mount.sh"
   maybe_link "$PWD/ssh/add_ssh_host.sh" "$HOME/.local/bin/add_ssh_host.sh"
 else
   log "Running on a VM; skipping install of SSH helper scripts on this machine."
