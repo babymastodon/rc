@@ -85,6 +85,7 @@ alias src='source ~/.bashrc'
 alias rc='cd ~/code/rc'
 alias activate='source venv/bin/activate'
 alias vm='vm_start.sh'
+alias vmadd='add_ssh_host.sh'
 alias vmresize='vm_resize.sh'
 alias vmfs='vm_mount.sh'
 

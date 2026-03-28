@@ -124,10 +124,10 @@ Then run `codex` and log in with ChatGPT, not an API key.
 
 ## SSH
 
-Use `add_ssh_host.sh` to add a VM alias, then `vm <alias>` to start and connect:
+Use `vmadd` to add a VM alias, then `vm <alias>` to start and connect:
 
 ```bash
-add_ssh_host.sh
+vmadd
 vm devserver
 ```
 

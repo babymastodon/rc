@@ -66,7 +66,7 @@ After running the `cat >> ...authorized_keys` command, paste the contents of you
 Back on your laptop:
 
 ```bash
-add_ssh_host.sh
+vmadd
 ```
 
 This opens a short wizard and writes the SSH alias to `~/.ssh/config`.

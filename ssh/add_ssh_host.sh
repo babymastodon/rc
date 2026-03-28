@@ -7,6 +7,7 @@ err()  { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
 
 CONFIG_FILE="${SSH_CONFIG_FILE:-$HOME/.ssh/config}"
 SSH_DIR="$(dirname "$CONFIG_FILE")"
+INITIAL_ALIAS="${1:-}"
 
 install_hint() {
   local tool="$1"
@@ -201,15 +202,21 @@ alias_exists() {
 }
 
 prompt_alias_name() {
-  local value
+  local value="${INITIAL_ALIAS:-}"
   while true; do
-    value="$(prompt_with_default "SSH alias" "devserver")"
+    if [[ -n "${value:-}" ]]; then
+      log "Using SSH alias: $value"
+    else
+      value="$(prompt_with_default "SSH alias" "devserver")"
+    fi
     if [[ -z "${value// }" ]]; then
       warn "SSH alias cannot be empty."
+      value=""
       continue
     fi
     if alias_exists "$value"; then
       warn "SSH alias '$value' already exists in $CONFIG_FILE."
+      value=""
       continue
     fi
     printf '%s\n' "$value"
