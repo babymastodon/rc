@@ -150,7 +150,7 @@ Use `btop` to monitor resource usage with a terminal UI.
 
 ```bash
 cd btop
-./install.sh
+./install_btop.sh
 ```
 
 If the colors look odd, open the btop options menu and make sure the `TTY` theme is selected.
