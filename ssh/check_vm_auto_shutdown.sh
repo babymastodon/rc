@@ -179,7 +179,7 @@ esac
 
 timezone_name="$(get_timezone)"
 printf 'VM timezone: %s\n' "$timezone_name"
-if [[ "$timezone_name" == "UTC" ]]; then
+if [[ "$timezone_name" == *UTC* ]]; then
   printf '\n'
   print_utc_reference_table
   printf '\n'
