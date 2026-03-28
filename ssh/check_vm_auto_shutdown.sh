@@ -55,6 +55,21 @@ get_timezone() {
   printf '%s\n' "$tz"
 }
 
+print_utc_reference_table() {
+  cat <<'EOF'
+UTC reference for local midnight:
+
+Timezone                 Midnight local = UTC
+US Pacific               08:00 UTC
+US Mountain              07:00 UTC
+US Central               06:00 UTC
+US Eastern               05:00 UTC
+UK                       00:00 UTC
+Central Europe           23:00 UTC
+Eastern Europe           22:00 UTC
+EOF
+}
+
 has_disabled_marker() {
   grep -Fqx "$DISABLED_COMMENT" <<<"$1"
 }
@@ -142,7 +157,6 @@ fi
 
 if has_shutdown_schedule "$current_crontab"; then
   log "A shutdown cron entry already exists in root crontab."
-  printf '%s\n' "$current_crontab" | grep -En '(^|[[:space:]])(shutdown|/sbin/shutdown)([[:space:]]|$)|rc-vm-auto-shutdown' || true
   exit 0
 fi
 
@@ -165,6 +179,11 @@ esac
 
 timezone_name="$(get_timezone)"
 printf 'VM timezone: %s\n' "$timezone_name"
+if [[ "$timezone_name" == "UTC" ]]; then
+  printf '\n'
+  print_utc_reference_table
+  printf '\n'
+fi
 
 shutdown_hour="$(prompt_hour)"
 managed_block="$(cat <<EOF
