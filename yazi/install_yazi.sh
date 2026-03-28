@@ -115,20 +115,9 @@ detect_gnome
 
 # ----- ensure cargo (and rustc) -----
 if ! command -v cargo >/dev/null 2>&1; then
-  if [[ "$OS" == "linux" ]]; then
-    log "Installing Cargo (and Rust toolchain)…"
-    install_pkgs cargo rustc || {
-      err "Failed to install cargo/rustc."
-      exit 1
-    }
-  else
-    # macOS: use brew's Rust (includes cargo)
-    log "Installing Rust (with cargo) via Homebrew…"
-    install_pkgs rust || {
-      err "Failed to install Rust/cargo via Homebrew."
-      exit 1
-    }
-  fi
+  err "Cargo is required for Yazi."
+  printf 'Run `cd ../vim && ./install_coc.sh` first to install the shared language tooling, then rerun this script.\n' >&2
+  exit 1
 else
   log "Cargo already present: $(cargo --version 2>/dev/null || echo 'version unknown')"
 fi

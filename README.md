@@ -113,19 +113,16 @@ cd karabiner
 
 ## Codex
 
-Install the Codex CLI:
+Install and link the Codex config from this repo:
 
 ```bash
-npm i -g @openai/codex
+cd codex
+./install_codex.sh
 ```
 
-Log in with ChatGPT. If the login prompt opens in a browser on the VM, SSH tunnel the port to your laptop:
+Then run `codex` and log in with ChatGPT, not an API key.
 
-```bash
-ssh -L 1455:localhost:1455 you@your-vm
-```
-
-Then open the localhost URL that the login prompt prints in your laptop browser.
+If you are on a VM, the install script prints the SSH tunnel command to run on your laptop for Codex auth.
 
 ## System Monitor
 
@@ -146,5 +143,7 @@ Use `yazi` to easily navigate the filesystem and change directories with a TUI.
 cd yazi
 ./install_yazi.sh
 ```
+
+If `cargo` is missing, the installer will ask you to run `vim/install_coc.sh` first.
 
 Type the alias `y` to open (configured in bashrc_extra).

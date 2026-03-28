@@ -45,11 +45,9 @@ fi
 
 # ----- ensure cargo (and rustc) -----
 if ! command -v cargo >/dev/null 2>&1; then
-  log "Installing Cargo (and Rust toolchain) via DNF…"
-  $SUDO dnf -y install cargo rustc || {
-    err "Failed to install cargo/rustc via DNF."
-    exit 1
-  }
+  err "Cargo is required for rmpc."
+  printf 'Run `cd ../vim && ./install_coc.sh` first to install the shared language tooling, then rerun this script.\n' >&2
+  exit 1
 else
   log "Cargo already present: $(cargo --version)"
 fi
