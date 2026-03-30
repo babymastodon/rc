@@ -173,6 +173,12 @@ have_yazi() {
   command -v yazi >/dev/null 2>&1 || command -v yazi-fm >/dev/null 2>&1
 }
 
+log "Installing Yazi build helper via cargo (crate: yazi-build)…"
+cargo install --force yazi-build --locked || {
+  err "cargo install yazi-build failed."
+  exit 1
+}
+
 if ! have_yazi; then
   log "Installing Yazi via cargo (crate: yazi-fm)…"
   cargo install yazi-fm --locked || {
