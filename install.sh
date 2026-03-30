@@ -195,8 +195,10 @@ if [[ -z "${git_email:-}" ]]; then
   done
 fi
 
-# Create ed25519 key if missing
-if [[ ! -f "$SSH_KEY" || ! -f "$SSH_PUB" ]]; then
+# Create ed25519 key if missing, unless running inside a VM
+if is_vm; then
+  log "Running on a VM; skipping SSH key creation on this machine."
+elif [[ ! -f "$SSH_KEY" || ! -f "$SSH_PUB" ]]; then
   log "Creating ed25519 SSH key…"
   ssh-keygen -t ed25519 -a 100 -C "$git_email" -f "$SSH_KEY" -N ""
   chmod 600 "$SSH_KEY" || true

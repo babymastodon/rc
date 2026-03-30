@@ -47,9 +47,14 @@ prompt_with_default() {
 }
 
 prompt_yes_no() {
-  local prompt="$1" default="$2" value normalized
+  local prompt="$1" default="$2" value normalized prompt_suffix
+  case "$default" in
+    yes) prompt_suffix="[Y/n]" ;;
+    no) prompt_suffix="[y/N]" ;;
+    *) err "prompt_yes_no default must be yes or no."; exit 1 ;;
+  esac
   while true; do
-    read -r -p "$prompt [$default]: " value
+    read -r -p "$prompt $prompt_suffix: " value
     normalized="${value:-$default}"
     normalized="$(printf '%s' "$normalized" | tr '[:upper:]' '[:lower:]')"
     case "$normalized" in
@@ -233,9 +238,11 @@ validate_aws_instance() {
     --output text 2>&1)"; then
     log "AWS validation succeeded."
     printf 'Validation: %s\n' "$output"
+    return 0
   else
     warn "AWS validation failed."
     printf 'Validation error: %s\n' "$output"
+    return 1
   fi
 }
 
@@ -247,9 +254,11 @@ validate_gcp_instance() {
     --format='value(name,status,zone)' 2>&1)"; then
     log "GCP validation succeeded."
     printf 'Validation: %s\n' "$output"
+    return 0
   else
     warn "GCP validation failed."
     printf 'Validation error: %s\n' "$output"
+    return 1
   fi
 }
 
@@ -317,13 +326,27 @@ printf '\nProposed SSH config entry:\n\n'
 printf '%s\n' "$config_block"
 printf '\n'
 
+validation_ok=no
 case "$provider" in
-  aws) validate_aws_instance ;;
-  gcp) validate_gcp_instance ;;
+  aws)
+    if validate_aws_instance; then
+      validation_ok=yes
+    fi
+    ;;
+  gcp)
+    if validate_gcp_instance; then
+      validation_ok=yes
+    fi
+    ;;
 esac
 printf '\n'
 
-confirm_write="$(prompt_yes_no "Append this entry to $CONFIG_FILE" "no")"
+confirm_default=no
+if [[ "$validation_ok" == "yes" ]]; then
+  confirm_default=yes
+fi
+
+confirm_write="$(prompt_yes_no "Prepend this entry to $CONFIG_FILE" "$confirm_default")"
 if [[ "$confirm_write" != "yes" ]]; then
   log "Aborted without writing."
   exit 0
@@ -334,9 +357,16 @@ chmod 700 "$SSH_DIR" || true
 touch "$CONFIG_FILE"
 chmod 600 "$CONFIG_FILE" || true
 
+tmp_config="$(mktemp)"
 if [[ -s "$CONFIG_FILE" ]]; then
-  printf '\n' >> "$CONFIG_FILE"
+  {
+    printf '%s\n\n' "$config_block"
+    cat "$CONFIG_FILE"
+  } > "$tmp_config"
+else
+  printf '%s\n' "$config_block" > "$tmp_config"
 fi
-printf '%s\n' "$config_block" >> "$CONFIG_FILE"
+mv "$tmp_config" "$CONFIG_FILE"
 
-log "Appended Host $alias_name to $CONFIG_FILE"
+log "Prepended Host $alias_name to $CONFIG_FILE"
+printf 'Next step: launch and SSH in with:\n\n  vm %s\n\nTo mount the filesystem, run:\n\n  vmfs %s\n' "$alias_name" "$alias_name"
