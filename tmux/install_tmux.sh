@@ -179,7 +179,7 @@ install_tmux_from_tarball() {
   archive="${tmpdir}/tmux-${FALLBACK_VERSION}-${arch}.tar.gz"
   install_dir="${LINUX_INSTALL_ROOT}/tmux-${FALLBACK_VERSION}-${arch}"
 
-  trap 'rm -rf "$tmpdir"' EXIT
+  trap "rm -rf -- '$tmpdir'" EXIT
 
   log "Downloading tmux ${FALLBACK_VERSION} for ${arch} from GitHub..."
   download_file "$url" "$archive"
@@ -207,6 +207,8 @@ install_tmux_from_tarball() {
   fi
 
   log "Installed tmux ${FALLBACK_VERSION} into ${LINUX_BIN_DIR}/tmux"
+  rm -rf -- "$tmpdir"
+  trap - EXIT
 }
 
 install_macos() {
