@@ -78,3 +78,12 @@ vm <alias>
 ```
 
 `<alias>` is the SSH alias name you selected in step 6.
+
+To forward ports while connecting, add them after the alias:
+
+```bash
+vm <alias> 8080 3000
+```
+
+This forwards `localhost:8080` and `localhost:3000` on your laptop to the same
+ports on the VM.

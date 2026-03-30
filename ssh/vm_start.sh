@@ -12,19 +12,26 @@ SSH_RETRY_TIMEOUT_SEC="${SSH_RETRY_TIMEOUT_SEC:-120}"
 
 usage() {
   cat <<'EOF' >&2
-Usage: vm_start.sh <ssh-alias>
+Usage: vm_start.sh <ssh-alias> [port...]
 
 Starts the VM behind an SSH alias defined in ~/.ssh/config, waits for it to
 become reachable, then SSHes into it.
+
+Each optional port adds local forwarding with the same local and remote port:
+  vm_start.sh devserver 8080 3000
+is equivalent to:
+  ssh -L 8080:localhost:8080 -L 3000:localhost:3000 devserver
 EOF
   exit 1
 }
 
-if [[ $# -ne 1 ]]; then
+if [[ $# -lt 1 ]]; then
   usage
 fi
 
 alias_name="$1"
+shift
+forwarded_ports=("$@")
 
 if ! command -v ssh >/dev/null 2>&1; then
   err "ssh is required."
@@ -40,6 +47,19 @@ get_ssh_value() {
   local key="$1"
   printf '%s\n' "$resolved" | awk -v wanted="$key" '$1 == wanted { $1=""; sub(/^ /, ""); print; exit }'
 }
+
+validate_port() {
+  local port="$1"
+  [[ "$port" =~ ^[0-9]+$ ]] || return 1
+  (( port >= 1 && port <= 65535 ))
+}
+
+for port in "${forwarded_ports[@]}"; do
+  if ! validate_port "$port"; then
+    err "Invalid port: $port. Ports must be integers between 1 and 65535."
+    exit 1
+  fi
+done
 
 hostname_value="$(get_ssh_value hostname)"
 proxycommand_value="$(get_ssh_value proxycommand)"
@@ -222,11 +242,17 @@ start_gcp_vm() {
 }
 
 retry_ssh() {
-  local ssh_start_ts now
+  local ssh_start_ts now ssh_args=()
   ssh_start_ts="$(date +%s)"
 
+  for port in "${forwarded_ports[@]}"; do
+    ssh_args+=(-L "${port}:localhost:${port}")
+  done
+
+  ssh_args+=("$alias_name")
+
   while true; do
-    if ssh "$alias_name"; then
+    if ssh "${ssh_args[@]}"; then
       exit 0
     fi
     now="$(date +%s)"
@@ -239,6 +265,10 @@ retry_ssh() {
 }
 
 log "Resolved $alias_name to $cloud host $hostname_value${user_value:+ as $user_value}."
+
+if [[ ${#forwarded_ports[@]} -gt 0 ]]; then
+  log "Forwarding local ports: ${forwarded_ports[*]}"
+fi
 
 case "$cloud" in
   aws) start_aws_vm ;;
