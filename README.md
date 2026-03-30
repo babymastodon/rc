@@ -143,8 +143,12 @@ Use `vmresize <alias>` to change a VM size within the same instance family.
 
 Setup details and config examples are in `ssh/README.md`.
 
-To mount a VM home directory on macOS, install MacFUSE and `sshfs`:
-https://macfuse.github.io/
+To mount a VM home directory on macOS, install `fuse-t` and `sshfs`:
+
+```bash
+cd ssh
+./install_sshfs.sh
+```
 
 Then use `vm <alias>` to mount:
 

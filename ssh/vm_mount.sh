@@ -10,7 +10,7 @@ usage() {
 Usage: vm_mount.sh <ssh-alias>
 
 Mounts /home/<remote-user> for the SSH alias at ~/vmfs/<ssh-alias> on macOS
-using sshfs + MacFUSE. If the mountpoint is already mounted, it is unmounted
+using sshfs + fuse-t. If the mountpoint is already mounted, it is unmounted
 and mounted again.
 EOF
 }
@@ -33,7 +33,7 @@ if ! command -v ssh >/dev/null 2>&1; then
 fi
 
 if ! command -v sshfs >/dev/null 2>&1; then
-  err "sshfs is required. Install sshfs after installing MacFUSE: https://macfuse.github.io/"
+  err "sshfs is required. Install it with ./install_sshfs.sh from the ssh directory."
   exit 1
 fi
 
