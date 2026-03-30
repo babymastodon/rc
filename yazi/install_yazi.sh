@@ -141,15 +141,15 @@ else
   log "curl already present."
 fi
 
-# ----- install yazi if missing (via cargo, crate: yazi-build) -----
+# ----- install yazi if missing (via cargo, crate: yazi-fm) -----
 have_yazi() {
   command -v yazi >/dev/null 2>&1 || command -v yazi-fm >/dev/null 2>&1
 }
 
 if ! have_yazi; then
-  log "Installing Yazi via cargo (crate: yazi-build)…"
-  cargo install yazi-build --locked || {
-    err "cargo install yazi-build failed."
+  log "Installing Yazi via cargo (crate: yazi-fm, version 25.5.31)…"
+  cargo install yazi-fm --locked --version 25.5.31 || {
+    err "cargo install yazi-fm 25.5.31 failed."
     exit 1
   }
 else
