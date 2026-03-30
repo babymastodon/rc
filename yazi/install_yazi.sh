@@ -168,26 +168,20 @@ else
   log "curl already present."
 fi
 
-# ----- install yazi if missing (via cargo, crate: yazi-fm) -----
+# ----- install yazi -----
 have_yazi() {
-  command -v yazi >/dev/null 2>&1 || command -v yazi-fm >/dev/null 2>&1
-}
-
-log "Installing Yazi build helper via cargo (crate: yazi-build)…"
-cargo install --force yazi-build --locked || {
-  err "cargo install yazi-build failed."
-  exit 1
+  command -v yazi >/dev/null 2>&1
 }
 
 if ! have_yazi; then
-  log "Installing Yazi via cargo (crate: yazi-fm)…"
-  cargo install yazi-fm --locked || {
-    err "cargo install yazi-fm failed."
+  log "Installing Yazi via cargo (crate: yazi-fm, version 25.5.31)…"
+  cargo install --force yazi-fm --locked --version 25.5.31 || {
+    err "cargo install yazi 25.5.31 failed."
     exit 1
   }
 else
   log "Yazi already installed: $(
-    (yazi --version 2>/dev/null || yazi-fm --version 2>/dev/null || echo 'version lookup skipped') | head -n1
+    (yazi --version 2>/dev/null || echo 'version lookup skipped') | head -n1
   )"
 fi
 
