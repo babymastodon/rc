@@ -24,7 +24,7 @@ detect_os() {
       PKG_MGR="brew"
       SUDO=""   # NEVER use sudo with brew
       if ! command -v brew >/dev/null 2>&1; then
-        err "Homebrew not found. Install from https://brew.sh first."
+        err "Homebrew not found. Install Homebrew first: https://brew.sh/"
         exit 1
       fi
       ;;

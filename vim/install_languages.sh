@@ -6,6 +6,11 @@ echo "=== Setting up runtimes + CoC language servers (Linux & macOS) ==="
 
 OS="$(uname -s)"
 
+if [[ "$OS" == "Darwin" ]] && ! command -v brew >/dev/null 2>&1; then
+  echo "Homebrew not found. Install Homebrew first: https://brew.sh/" >&2
+  exit 1
+fi
+
 print_shell_setup_guidance() {
   echo "Run \`./install.sh\` from the repo root, then \`source ~/.bashrc\`, then rerun this script." >&2
 }
