@@ -130,6 +130,33 @@ fi
 # Make sure ~/.cargo/bin is in PATH for this session
 export PATH="$HOME/.cargo/bin:$PATH"
 
+# ----- ensure native build tools required by cargo dependencies -----
+if ! command -v make >/dev/null 2>&1; then
+  log "Installing native build tools for cargo dependencies…"
+  case "$PKG_MGR" in
+    apt)
+      install_pkgs build-essential pkg-config || {
+        err "Failed to install native build tools."
+        exit 1
+      }
+      ;;
+    dnf)
+      install_pkgs make gcc pkgconf-pkg-config || {
+        err "Failed to install native build tools."
+        exit 1
+      }
+      ;;
+    brew)
+      install_pkgs make pkg-config || {
+        err "Failed to install native build tools."
+        exit 1
+      }
+      ;;
+  esac
+else
+  log "Native build tools already present."
+fi
+
 # ----- ensure curl -----
 if ! command -v curl >/dev/null 2>&1; then
   log "Installing curl…"
@@ -147,9 +174,9 @@ have_yazi() {
 }
 
 if ! have_yazi; then
-  log "Installing Yazi via cargo (crate: yazi-fm, version 25.5.31)…"
-  cargo install yazi-fm --locked --version 25.5.31 || {
-    err "cargo install yazi-fm 25.5.31 failed."
+  log "Installing Yazi via cargo (crate: yazi-fm)…"
+  cargo install yazi-fm --locked || {
+    err "cargo install yazi-fm failed."
     exit 1
   }
 else
