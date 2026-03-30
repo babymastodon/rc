@@ -7,6 +7,10 @@ warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
 err()   { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
 need_sudo() { if [[ $EUID -ne 0 ]]; then echo "sudo"; fi; }
 
+print_shell_setup_guidance() {
+  printf 'Run `./install.sh` from the repo root, then `source ~/.bashrc`, then rerun this script.\n' >&2
+}
+
 OS=""
 PKG_MGR=""
 SUDO=""
@@ -116,7 +120,8 @@ detect_gnome
 # ----- ensure cargo (and rustc) -----
 if ! command -v cargo >/dev/null 2>&1; then
   err "Cargo is required for Yazi."
-  printf 'Run `cd ../vim && ./install_coc.sh` first to install the shared language tooling, then rerun this script.\n' >&2
+  print_shell_setup_guidance
+  printf 'Then run `cd ../vim && ./install_languages.sh` first to install the shared language tooling, then rerun this script.\n' >&2
   exit 1
 else
   log "Cargo already present: $(cargo --version 2>/dev/null || echo 'version unknown')"

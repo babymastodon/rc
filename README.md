@@ -29,11 +29,18 @@ cd ghostty
 
 ## Vim
 
-Install coc.nvim tooling for Vim (autocompleter support for multiple languages):
+Install Vim and the development tools for Rust, Go, Node, and Python:
 
 ```bash
 cd vim
-./install_coc.sh
+./install_vim.sh
+./install_languages.sh
+```
+
+If you want plugins, open `vim` and run:
+
+```vim
+:PlugInstall
 ```
 
 Key shortcuts:
@@ -50,13 +57,14 @@ save: :w
 copy: \\c
 ```
 
-If you want plugins, open Vim and run:
-
-```vim
-:PlugInstall
-```
-
 ## tmux sessions
+
+Install tmux:
+
+```bash
+cd tmux
+./install_tmux.sh
+```
 
 The install script sets up these aliases to start or resume a tmux session:
 

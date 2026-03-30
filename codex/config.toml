@@ -1,3 +1,0 @@
-# Use the basic ANSI theme because Codex's TUI is still hard to read in light-theme terminals:
-# https://github.com/openai/codex/issues/2020
-theme = "ansi"

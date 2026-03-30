@@ -21,12 +21,19 @@ add_to_path() {
     esac
 }
 
-export GOPATH="$HOME/.local/share/go"
+export GOROOT="$HOME/.local/share/go"
+export GOPATH="$HOME/.local/state/go"
+export GOBIN="$HOME/.local/bin"
 export NODEJS_HOME="$HOME/.local/share/nodejs/current"
+export NPM_CONFIG_PREFIX="$HOME/.local"
+export XDG_DATA_HOME="$HOME/.local/share"
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_STATE_HOME="$HOME/.local/state"
 
 add_to_path "$HOME/.local/bin"
-add_to_path "$HOME/.npm-global/bin"
-add_to_path "$GOPATH/bin"
+add_to_path "$GOROOT/bin"
+add_to_path "$GOBIN"
+add_to_path "$NODEJS_HOME/bin"
 add_to_path "${KREW_ROOT:-$HOME/.krew}/bin"
 add_to_path "$HOME/.cargo/bin"
 
@@ -114,9 +121,6 @@ export LC_ALL=en_US.UTF-8
 
 # Force ANSII colors
 export CLICOLOR_FORCE=1
-
-# configure NPM
-NPM_CONFIG_PREFIX="$HOME/.npm-global"
 
 # Disable xterm mouse reporting so clicks/scrolls don't paste control sequences at the Bash prompt
 __disable_mouse_reporting() {

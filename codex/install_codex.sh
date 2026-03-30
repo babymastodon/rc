@@ -7,32 +7,88 @@ err()  { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
 
 AUTH_PORT="${CODEX_AUTH_PORT:-1455}"
 
-maybe_link() {
-  local src="$1" dest="$2"
+print_shell_setup_guidance() {
+  printf 'Run `./install.sh` from the repo root, then `source ~/.bashrc`, then rerun this script.\n' >&2
+}
 
-  if [[ -e "$dest" || -L "$dest" ]]; then
-    if [[ -L "$dest" ]]; then
-      local target
-      target="$(readlink "$dest")"
-      if [[ "$target" == "$src" ]]; then
-        log "Link already correct: $dest -> $src"
-      else
-        warn "Link exists but wrong target ($target), fixing..."
-        rm -f "$dest"
-        ln -s "$src" "$dest"
-        log "Fixed link: $dest -> $src"
-      fi
-    else
-      local backup="${dest}.bak"
-      warn "Exists and not a link: $dest (backing up to $backup and replacing)"
-      mv -f "$dest" "$backup"
-      ln -s "$src" "$dest"
-      log "Linked: $dest -> $src"
+require_env_vars() {
+  local missing=() var
+  for var in "$@"; do
+    if [[ -z "${!var:-}" ]]; then
+      missing+=("$var")
     fi
-  else
-    ln -s "$src" "$dest"
-    log "Linked: $dest -> $src"
+  done
+
+  if (( ${#missing[@]} > 0 )); then
+    err "Missing required environment variable(s): ${missing[*]}"
+    print_shell_setup_guidance
+    exit 1
   fi
+}
+
+ensure_ansi_theme_comment() {
+  local dest="$1" tmp
+
+  mkdir -p "$(dirname "$dest")"
+  tmp="$(mktemp)"
+
+  if [[ -f "$dest" ]]; then
+    awk '
+      BEGIN { theme_done=0; header_done=0; url_done=0 }
+      /^# Use the basic ANSI theme because Codex'\''s TUI is still hard to read in light-theme terminals:/ {
+        if (!header_done) {
+          print "# Use the basic ANSI theme because Codex'\''s TUI is still hard to read in light-theme terminals:"
+          header_done=1
+        }
+        next
+      }
+      /^# https:\/\/github\.com\/openai\/codex\/issues\/2020$/ {
+        if (!header_done) {
+          print "# Use the basic ANSI theme because Codex'\''s TUI is still hard to read in light-theme terminals:"
+          header_done=1
+        }
+        if (!url_done) {
+          print "# https://github.com/openai/codex/issues/2020"
+          url_done=1
+        }
+        next
+      }
+      /^theme[[:space:]]*=/ {
+        if (!header_done) {
+          print "# Use the basic ANSI theme because Codex'\''s TUI is still hard to read in light-theme terminals:"
+          header_done=1
+        }
+        if (!url_done) {
+          print "# https://github.com/openai/codex/issues/2020"
+          url_done=1
+        }
+        print "theme = \"ansi\""
+        theme_done=1
+        next
+      }
+      { print }
+      END {
+        if (!header_done) {
+          print "# Use the basic ANSI theme because Codex'\''s TUI is still hard to read in light-theme terminals:"
+        }
+        if (!url_done) {
+          print "# https://github.com/openai/codex/issues/2020"
+        }
+        if (!theme_done) {
+          print "theme = \"ansi\""
+        }
+      }
+    ' "$dest" > "$tmp"
+  else
+    cat > "$tmp" <<'EOF'
+# Use the basic ANSI theme because Codex's TUI is still hard to read in light-theme terminals:
+# https://github.com/openai/codex/issues/2020
+theme = "ansi"
+EOF
+  fi
+
+  mv "$tmp" "$dest"
+  log "Updated $dest"
 }
 
 is_vm() {
@@ -63,9 +119,13 @@ print_vm_instructions() {
 
 if ! command -v npm >/dev/null 2>&1; then
   err "npm is required to install Codex."
-  printf 'Run `cd ../vim && ./install_coc.sh` first to install the shared language tooling, then rerun this script.\n' >&2
+  print_shell_setup_guidance
+  printf 'Then run `cd ../vim && ./install_languages.sh` first to install the shared language tooling, then rerun this script.\n' >&2
   exit 1
 fi
+
+require_env_vars NODEJS_HOME NPM_CONFIG_PREFIX
+export PATH="${NODEJS_HOME}/bin:${NPM_CONFIG_PREFIX}/bin:$PATH"
 
 if command -v codex >/dev/null 2>&1; then
   log "Codex already installed: $(codex --version 2>/dev/null | head -n1 || echo 'version lookup skipped')"
@@ -74,8 +134,7 @@ else
   npm install -g @openai/codex
 fi
 
-mkdir -p "$HOME/.codex"
-maybe_link "$PWD/config.toml" "$HOME/.codex/config.toml"
+ensure_ansi_theme_comment "$HOME/.codex/config.toml"
 
 if command -v codex >/dev/null 2>&1; then
   log "Codex installed: $(codex --version 2>/dev/null | head -n1 || echo 'version lookup skipped')"

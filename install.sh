@@ -125,8 +125,8 @@ fi
 
 "$PWD/ssh/check_vm_auto_shutdown.sh" || warn "VM auto-shutdown check did not complete."
 
-# ----- create GOPATH directory ~/.local/share/go (only if missing) -----
-mkdir -p "$HOME/.local/share/go"
+# ----- create GOPATH directory ~/.local/state/go (only if missing) -----
+mkdir -p "$HOME/.local/state/go"
 
 # ----- install vim-plug (only if missing) -----
 if [[ ! -f "$HOME/.vim/autoload/plug.vim" ]]; then
