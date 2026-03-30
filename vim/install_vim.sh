@@ -15,7 +15,13 @@ have() {
 
 version_ge() {
   local left="$1" right="$2"
-  [[ "$(printf '%s\n%s\n' "$right" "$left" | sort -V | tail -n1)" == "$left" ]]
+  if [[ "$left" == "$right" ]]; then
+    return 0
+  fi
+
+  local first
+  first="$(printf '%s\n%s\n' "$right" "$left" | sort -t. -k1,1n -k2,2n -k3,3n | head -n1)"
+  [[ "$first" == "$right" ]]
 }
 
 normalize_vim_version() {

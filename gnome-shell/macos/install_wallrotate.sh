@@ -50,7 +50,12 @@ pick_dir() {
   options="$(list_valid_dirs || true)"
   [[ -n "$options" ]] || err "No folders with images found under: $BASE_DIR"
 
-  mapfile -t PICK_OPTS <<<"$options"
+  PICK_OPTS=()
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && PICK_OPTS+=("$line")
+  done <<EOF
+$options
+EOF
   [[ ${#PICK_OPTS[@]} -gt 0 ]] || err "No folders to select."
 
   exec 3>/dev/tty 4</dev/tty
