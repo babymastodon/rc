@@ -91,7 +91,6 @@ maybe_link "$PWD/vim/vimrc"         "$HOME/.vimrc"
 maybe_link "$PWD/vim/ideavimrc"     "$HOME/.ideavimrc"
 maybe_link "$PWD/tmux/tmux.conf"    "$HOME/.tmux.conf"
 maybe_link "$PWD/bash/bashrc_extra" "$HOME/.bashrc_extra"
-maybe_link "$PWD/gitignore_global"  "$HOME/.gitignore_global"
 
 mkdir -p "$HOME/.config/btop"
 maybe_copy "$PWD/btop/btop.conf" "$HOME/.config/btop/btop.conf"
@@ -214,7 +213,6 @@ fi
 git config --global user.name "$git_name"
 git config --global user.email "$git_email"
 git config --global core.editor "vim"
-git config --global core.excludesfile "$HOME/.gitignore_global"
 git config --global push.default "current"
 git config --global pull.rebase true
 log "Git identity and defaults configured."
