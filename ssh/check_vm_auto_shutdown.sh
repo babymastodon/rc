@@ -11,6 +11,26 @@ SERVICE_PATH="/etc/systemd/system/${SERVICE_NAME}"
 TIMER_PATH="/etc/systemd/system/${TIMER_NAME}"
 DISABLED_MARKER_PATH="/etc/systemd/system/rc-vm-auto-shutdown.disabled"
 SHUTDOWN_COMMAND="/sbin/shutdown -h now"
+MODE="${1:-check}"
+
+usage() {
+  cat <<'EOF' >&2
+Usage: check_vm_auto_shutdown.sh [check|edit]
+
+Modes:
+  check  Default. Only prompts when no auto-shutdown is configured yet.
+  edit   Reconfigure or disable the managed auto-shutdown timer.
+EOF
+  exit 1
+}
+
+case "$MODE" in
+  check|edit)
+    ;;
+  *)
+    usage
+    ;;
+esac
 
 is_vm() {
   if command -v systemd-detect-virt >/dev/null 2>&1; then
@@ -164,6 +184,12 @@ timer_is_active() {
   sudo systemctl is-active --quiet "$TIMER_NAME"
 }
 
+read_timer_setting() {
+  local key="$1" value
+  value="$(sudo systemctl cat "$TIMER_NAME" 2>/dev/null | awk -F= -v key="$key" '$1 == key {print $2; exit}')"
+  printf '%s\n' "$value"
+}
+
 cleanup_managed_units() {
   sudo systemctl disable --now "$TIMER_NAME" >/dev/null 2>&1 || true
   sudo rm -f "$SERVICE_PATH" "$TIMER_PATH"
@@ -224,7 +250,8 @@ EOF
 
 print_timer_edit_hint() {
   printf 'Inspect later with: sudo systemctl status %s\n' "$TIMER_NAME"
-  printf 'Edit later with: sudoedit %s %s && sudo systemctl daemon-reload && sudo systemctl restart %s\n' \
+  printf 'Reconfigure later with: %s edit\n' "$0"
+  printf 'Manual edit: sudoedit %s %s && sudo systemctl daemon-reload && sudo systemctl restart %s\n' \
     "$SERVICE_PATH" "$TIMER_PATH" "$TIMER_NAME"
 }
 
@@ -236,17 +263,36 @@ fi
 require_sudo
 require_systemd
 
-if disabled_marker_exists; then
+if [[ "$MODE" == "check" ]] && disabled_marker_exists; then
   log "Auto-shutdown is explicitly disabled."
   exit 0
 fi
 
-if timer_unit_exists || service_unit_exists || timer_is_enabled || timer_is_active; then
+if [[ "$MODE" == "check" ]] && ( timer_unit_exists || service_unit_exists || timer_is_enabled || timer_is_active ); then
   log "A systemd auto-shutdown timer already exists."
+  print_timer_edit_hint
   exit 0
 fi
 
-warn "This VM does not have any auto-shutdown configured. Leaving it on can lead to hundreds of dollars of increased cost."
+if [[ "$MODE" == "edit" ]]; then
+  if disabled_marker_exists; then
+    log "Auto-shutdown is currently disabled."
+  elif timer_unit_exists || service_unit_exists || timer_is_enabled || timer_is_active; then
+    current_timezone="$(read_timer_setting Timezone)"
+    current_calendar="$(read_timer_setting OnCalendar)"
+    log "Editing existing systemd auto-shutdown timer."
+    if [[ -n "$current_timezone" ]]; then
+      printf 'Current schedule timezone: %s\n' "$current_timezone"
+    fi
+    if [[ -n "$current_calendar" ]]; then
+      printf 'Current timer schedule: %s\n' "$current_calendar"
+    fi
+  else
+    warn "No existing auto-shutdown timer found. Edit mode will create one."
+  fi
+else
+  warn "This VM does not have any auto-shutdown configured. Leaving it on can lead to hundreds of dollars of increased cost."
+fi
 
 choice="$(prompt_choice)"
 case "$choice" in

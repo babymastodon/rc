@@ -113,6 +113,7 @@ maybe_link "$PWD/bash/git-commit-all" "$HOME/.local/bin/git-commit-all"
 maybe_link "$PWD/tmux/tmux-git-badge" "$HOME/.local/bin/tmux-git-badge"
 maybe_link "$PWD/tmux/tmux-ssh-host"  "$HOME/.local/bin/tmux-ssh-host"
 maybe_link "$PWD/tmux/tmux-pane-label" "$HOME/.local/bin/tmux-pane-label"
+maybe_link "$PWD/ssh/check_vm_auto_shutdown.sh" "$HOME/.local/bin/check_vm_auto_shutdown.sh"
 if ! is_vm; then
   maybe_link "$PWD/ssh/vm_start.sh" "$HOME/.local/bin/vm_start.sh"
   maybe_link "$PWD/ssh/vm_resize.sh" "$HOME/.local/bin/vm_resize.sh"

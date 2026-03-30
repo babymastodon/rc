@@ -87,3 +87,16 @@ vm <alias> 8080 3000
 
 This forwards `localhost:8080` and `localhost:3000` on your laptop to the same
 ports on the VM.
+
+## VM Auto-Shutdown
+
+When `./install.sh` runs on a VM, it checks whether daily auto-shutdown is configured.
+
+To reconfigure that timer later, run:
+
+```bash
+~/.local/bin/check_vm_auto_shutdown.sh edit
+```
+
+Edit mode interactively re-prompts for the shutdown timezone and hour, or lets
+you disable the managed timer.
