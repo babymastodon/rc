@@ -5,8 +5,11 @@ log()  { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
 warn() { printf "\033[1;33m[!]\033[0m %s\n" "$*" >&2; }
 err()  { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
 
-DISABLED_COMMENT="# rc-vm-auto-shutdown: disabled"
-MANAGED_COMMENT="# rc-vm-auto-shutdown: enabled"
+SERVICE_NAME="rc-vm-auto-shutdown.service"
+TIMER_NAME="rc-vm-auto-shutdown.timer"
+SERVICE_PATH="/etc/systemd/system/${SERVICE_NAME}"
+TIMER_PATH="/etc/systemd/system/${TIMER_NAME}"
+DISABLED_MARKER_PATH="/etc/systemd/system/rc-vm-auto-shutdown.disabled"
 SHUTDOWN_COMMAND="/sbin/shutdown -h now"
 
 is_vm() {
@@ -25,7 +28,7 @@ is_vm() {
 
 require_sudo() {
   if ! command -v sudo >/dev/null 2>&1; then
-    err "sudo is required to inspect and edit the shutdown crontab."
+    err "sudo is required to inspect and edit the auto-shutdown systemd timer."
     exit 1
   fi
 
@@ -33,12 +36,15 @@ require_sudo() {
     return 0
   fi
 
-  warn "This script needs sudo access to inspect the root crontab."
+  warn "This script needs sudo access to inspect and edit the auto-shutdown systemd timer."
   sudo true
 }
 
-get_root_crontab() {
-  sudo crontab -l 2>/dev/null || true
+require_systemd() {
+  if ! command -v systemctl >/dev/null 2>&1; then
+    err "systemctl is required to manage the auto-shutdown timer."
+    exit 1
+  fi
 }
 
 get_timezone() {
@@ -55,6 +61,17 @@ get_timezone() {
   printf '%s\n' "$tz"
 }
 
+timezone_exists() {
+  local tz="$1"
+
+  if command -v timedatectl >/dev/null 2>&1; then
+    timedatectl list-timezones 2>/dev/null | grep -Fxq "$tz"
+    return $?
+  fi
+
+  [[ -f "/usr/share/zoneinfo/$tz" ]]
+}
+
 print_utc_reference_table() {
   cat <<'EOF'
 UTC reference for local midnight:
@@ -68,15 +85,6 @@ UK                       00:00 UTC
 Central Europe           23:00 UTC
 Eastern Europe           22:00 UTC
 EOF
-}
-
-has_disabled_marker() {
-  grep -Fqx "$DISABLED_COMMENT" <<<"$1"
-}
-
-has_shutdown_schedule() {
-  local crontab_text="$1"
-  grep -Eq '(^|[[:space:]])(shutdown|/sbin/shutdown)([[:space:]]|$)' <<<"$crontab_text"
 }
 
 prompt_choice() {
@@ -114,31 +122,110 @@ prompt_hour() {
   done
 }
 
-install_root_crontab() {
-  local content="$1" tmp
+prompt_timezone() {
+  local default_tz="$1" value
+  while true; do
+    read -r -p "Timezone for shutdown schedule [$default_tz]: " value
+    value="${value:-$default_tz}"
+    if [[ -z "$value" ]]; then
+      warn "Timezone cannot be empty."
+      continue
+    fi
+    if timezone_exists "$value"; then
+      printf '%s\n' "$value"
+      return 0
+    fi
+    warn "Timezone not found: $value"
+    if command -v timedatectl >/dev/null 2>&1; then
+      printf 'Try a value from: timedatectl list-timezones\n' >&2
+    else
+      printf 'Try a value like: UTC or America/Los_Angeles\n' >&2
+    fi
+  done
+}
+
+disabled_marker_exists() {
+  sudo test -f "$DISABLED_MARKER_PATH"
+}
+
+timer_unit_exists() {
+  sudo test -f "$TIMER_PATH"
+}
+
+service_unit_exists() {
+  sudo test -f "$SERVICE_PATH"
+}
+
+timer_is_enabled() {
+  sudo systemctl is-enabled --quiet "$TIMER_NAME"
+}
+
+timer_is_active() {
+  sudo systemctl is-active --quiet "$TIMER_NAME"
+}
+
+cleanup_managed_units() {
+  sudo systemctl disable --now "$TIMER_NAME" >/dev/null 2>&1 || true
+  sudo rm -f "$SERVICE_PATH" "$TIMER_PATH"
+  sudo systemctl daemon-reload
+}
+
+write_root_file() {
+  local path="$1" content="$2" tmp
   tmp="$(mktemp)"
-  printf '%s\n' "$content" > "$tmp"
-  sudo crontab "$tmp"
+  printf '%s' "$content" > "$tmp"
+  sudo install -m 0644 "$tmp" "$path"
   rm -f "$tmp"
 }
 
-strip_managed_lines() {
-  local current="$1"
-  printf '%s\n' "$current" | awk -v disabled="$DISABLED_COMMENT" -v enabled="$MANAGED_COMMENT" -v cmd="$SHUTDOWN_COMMAND" '
-    $0 == disabled { next }
-    $0 == enabled { next }
-    index($0, cmd) > 0 { next }
-    { print }
-  '
+write_disabled_marker() {
+  cleanup_managed_units
+  write_root_file "$DISABLED_MARKER_PATH" "disabled\n"
 }
 
-append_entry() {
-  local base="$1" extra="$2"
-  if [[ -n "$base" ]]; then
-    printf '%s\n%s\n' "$base" "$extra"
-  else
-    printf '%s\n' "$extra"
-  fi
+remove_disabled_marker() {
+  sudo rm -f "$DISABLED_MARKER_PATH"
+}
+
+install_timer_units() {
+  local shutdown_hour="$1" schedule_timezone="$2"
+  local service_unit timer_unit
+
+  service_unit="$(cat <<EOF
+[Unit]
+Description=Shut down VM
+
+[Service]
+Type=oneshot
+ExecStart=${SHUTDOWN_COMMAND}
+EOF
+)"
+
+  timer_unit="$(cat <<EOF
+[Unit]
+Description=Daily VM auto-shutdown
+
+[Timer]
+Timezone=${schedule_timezone}
+OnCalendar=*-*-* $(printf '%02d' "$shutdown_hour"):00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+)"
+
+  remove_disabled_marker
+  write_root_file "$SERVICE_PATH" "$service_unit"
+  write_root_file "$TIMER_PATH" "$timer_unit"
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now "$TIMER_NAME" >/dev/null
+}
+
+print_timer_edit_hint() {
+  printf 'Inspect later with: sudo systemctl status %s\n' "$TIMER_NAME"
+  printf 'Edit later with: sudoedit %s %s && sudo systemctl daemon-reload && sudo systemctl restart %s\n' \
+    "$SERVICE_PATH" "$TIMER_PATH" "$TIMER_NAME"
 }
 
 if ! is_vm; then
@@ -147,16 +234,15 @@ if ! is_vm; then
 fi
 
 require_sudo
+require_systemd
 
-current_crontab="$(get_root_crontab)"
-
-if has_disabled_marker "$current_crontab"; then
-  log "Auto-shutdown is explicitly disabled in root crontab."
+if disabled_marker_exists; then
+  log "Auto-shutdown is explicitly disabled."
   exit 0
 fi
 
-if has_shutdown_schedule "$current_crontab"; then
-  log "A shutdown cron entry already exists in root crontab."
+if timer_unit_exists || service_unit_exists || timer_is_enabled || timer_is_active; then
+  log "A systemd auto-shutdown timer already exists."
   exit 0
 fi
 
@@ -169,10 +255,9 @@ case "$choice" in
     exit 0
     ;;
   "don't ask me again")
-    new_crontab="$(append_entry "$(strip_managed_lines "$current_crontab")" "$DISABLED_COMMENT")"
-    install_root_crontab "$new_crontab"
-    log "Wrote disabled marker to root crontab."
-    printf 'Edit later with: sudo crontab -e\n'
+    write_disabled_marker
+    log "Wrote auto-shutdown disabled marker."
+    print_timer_edit_hint
     exit 0
     ;;
 esac
@@ -185,15 +270,10 @@ if [[ "$timezone_name" == *UTC* ]]; then
   printf '\n'
 fi
 
+schedule_timezone="$(prompt_timezone "$timezone_name")"
+printf 'Shutdown schedule timezone: %s\n' "$schedule_timezone"
 shutdown_hour="$(prompt_hour)"
-managed_block="$(cat <<EOF
-$MANAGED_COMMENT
-0 $shutdown_hour * * * $SHUTDOWN_COMMAND
-EOF
-)"
+install_timer_units "$shutdown_hour" "$schedule_timezone"
 
-new_crontab="$(append_entry "$(strip_managed_lines "$current_crontab")" "$managed_block")"
-install_root_crontab "$new_crontab"
-
-log "Configured daily auto-shutdown at ${shutdown_hour}:00 in timezone $timezone_name."
-printf 'Edit later with: sudo crontab -e\n'
+log "Configured daily auto-shutdown at $(printf '%02d' "$shutdown_hour"):00 in timezone $schedule_timezone."
+print_timer_edit_hint
