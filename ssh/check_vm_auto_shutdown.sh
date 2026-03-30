@@ -72,18 +72,18 @@ timezone_exists() {
   [[ -f "/usr/share/zoneinfo/$tz" ]]
 }
 
-print_utc_reference_table() {
+print_common_timezone_examples() {
   cat <<'EOF'
-UTC reference for local midnight:
+Common timezone values to enter:
 
-Timezone                 Midnight local = UTC
-US Pacific               08:00 UTC
-US Mountain              07:00 UTC
-US Central               06:00 UTC
-US Eastern               05:00 UTC
-UK                       00:00 UTC
-Central Europe           23:00 UTC
-Eastern Europe           22:00 UTC
+US Pacific               America/Los_Angeles
+US Mountain              America/Denver
+US Central               America/Chicago
+US Eastern               America/New_York
+UK                       Europe/London
+Central Europe           Europe/Berlin
+Eastern Europe           Europe/Bucharest
+UTC                      UTC
 EOF
 }
 
@@ -266,7 +266,7 @@ timezone_name="$(get_timezone)"
 printf 'VM timezone: %s\n' "$timezone_name"
 if [[ "$timezone_name" == *UTC* ]]; then
   printf '\n'
-  print_utc_reference_table
+  print_common_timezone_examples
   printf '\n'
 fi
 
