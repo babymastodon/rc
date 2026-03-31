@@ -67,43 +67,18 @@ require_systemd() {
   fi
 }
 
-get_timezone() {
-  local tz=""
-  if command -v timedatectl >/dev/null 2>&1; then
-    tz="$(timedatectl show -p Timezone --value 2>/dev/null || true)"
-  fi
-  if [[ -z "$tz" && -f /etc/timezone ]]; then
-    tz="$(cat /etc/timezone 2>/dev/null || true)"
-  fi
-  if [[ -z "$tz" ]]; then
-    tz="$(date +%Z)"
-  fi
-  printf '%s\n' "$tz"
-}
-
-timezone_exists() {
-  local tz="$1"
-
-  if command -v timedatectl >/dev/null 2>&1; then
-    timedatectl list-timezones 2>/dev/null | grep -Fxq "$tz"
-    return $?
-  fi
-
-  [[ -f "/usr/share/zoneinfo/$tz" ]]
-}
-
-print_common_timezone_examples() {
+print_utc_reference_table() {
   cat <<'EOF'
-Common timezone values to enter:
+UTC reference for local midnight:
 
-US Pacific               America/Los_Angeles
-US Mountain              America/Denver
-US Central               America/Chicago
-US Eastern               America/New_York
-UK                       Europe/London
-Central Europe           Europe/Berlin
-Eastern Europe           Europe/Bucharest
-UTC                      UTC
+Timezone                 Midnight local = UTC
+US Pacific               08:00 UTC
+US Mountain              07:00 UTC
+US Central               06:00 UTC
+US Eastern               05:00 UTC
+UK                       00:00 UTC
+Central Europe           23:00 UTC
+Eastern Europe           22:00 UTC
 EOF
 }
 
@@ -128,9 +103,9 @@ prompt_choice() {
 prompt_hour() {
   local default_hour="${1:-}" value prompt
   if [[ -n "$default_hour" ]]; then
-    prompt="Hour of day for shutdown in local VM time [0-23] [$default_hour]: "
+    prompt="Hour of day for shutdown in UTC [0-23] [$default_hour]: "
   else
-    prompt="Hour of day for shutdown in local VM time [0-23]: "
+    prompt="Hour of day for shutdown in UTC [0-23]: "
   fi
 
   while true; do
@@ -146,28 +121,6 @@ prompt_hour() {
     fi
     printf '%s\n' "$value"
     return 0
-  done
-}
-
-prompt_timezone() {
-  local default_tz="$1" value
-  while true; do
-    read -r -p "Timezone for shutdown schedule [$default_tz]: " value
-    value="${value:-$default_tz}"
-    if [[ -z "$value" ]]; then
-      warn "Timezone cannot be empty."
-      continue
-    fi
-    if timezone_exists "$value"; then
-      printf '%s\n' "$value"
-      return 0
-    fi
-    warn "Timezone not found: $value"
-    if command -v timedatectl >/dev/null 2>&1; then
-      printf 'Try a value from: timedatectl list-timezones\n' >&2
-    else
-      printf 'Try a value like: UTC or America/Los_Angeles\n' >&2
-    fi
   done
 }
 
@@ -199,7 +152,7 @@ read_timer_setting() {
 
 extract_hour_from_calendar() {
   local calendar="$1"
-  if [[ "$calendar" =~ ([0-9]{2}):00:00$ ]]; then
+  if [[ "$calendar" =~ ([0-9]{2}):00:00([[:space:]]+UTC)?$ ]]; then
     printf '%s\n' "${BASH_REMATCH[1]#0}"
     return 0
   fi
@@ -230,7 +183,7 @@ remove_disabled_marker() {
 }
 
 install_timer_units() {
-  local shutdown_hour="$1" schedule_timezone="$2"
+  local shutdown_hour="$1"
   local service_unit timer_unit
 
   service_unit="$(cat <<EOF
@@ -248,8 +201,7 @@ EOF
 Description=Daily VM auto-shutdown
 
 [Timer]
-Timezone=${schedule_timezone}
-OnCalendar=*-*-* $(printf '%02d' "$shutdown_hour"):00:00
+OnCalendar=*-*-* $(printf '%02d' "$shutdown_hour"):00:00 UTC
 Persistent=true
 
 [Install]
@@ -294,13 +246,9 @@ if [[ "$MODE" == "edit" ]]; then
   if disabled_marker_exists; then
     log "Auto-shutdown is currently disabled."
   elif timer_unit_exists || service_unit_exists || timer_is_enabled || timer_is_active; then
-    current_timezone="$(read_timer_setting Timezone)"
     current_calendar="$(read_timer_setting OnCalendar)"
     current_hour="$(extract_hour_from_calendar "$current_calendar" || true)"
     log "Editing existing systemd auto-shutdown timer."
-    if [[ -n "$current_timezone" ]]; then
-      printf 'Current schedule timezone: %s\n' "$current_timezone"
-    fi
     if [[ -n "$current_calendar" ]]; then
       printf 'Current timer schedule: %s\n' "$current_calendar"
     fi
@@ -325,29 +273,20 @@ case "$choice" in
     ;;
 esac
 
-timezone_name="$(get_timezone)"
-printf 'VM timezone: %s\n' "$timezone_name"
-if [[ "$timezone_name" == *UTC* ]]; then
-  printf '\n'
-  print_common_timezone_examples
-  printf '\n'
-fi
+printf 'VM timezone: UTC\n'
+printf '\n'
+print_utc_reference_table
+printf '\n'
 
-timezone_default="$timezone_name"
 hour_default=""
 if [[ "$MODE" == "edit" ]]; then
-  if [[ -n "${current_timezone:-}" ]]; then
-    timezone_default="$current_timezone"
-  fi
   if [[ -n "${current_hour:-}" ]]; then
     hour_default="$current_hour"
   fi
 fi
 
-schedule_timezone="$(prompt_timezone "$timezone_default")"
-printf 'Shutdown schedule timezone: %s\n' "$schedule_timezone"
 shutdown_hour="$(prompt_hour "$hour_default")"
-install_timer_units "$shutdown_hour" "$schedule_timezone"
+install_timer_units "$shutdown_hour"
 
-log "Configured daily auto-shutdown at $(printf '%02d' "$shutdown_hour"):00 in timezone $schedule_timezone."
+log "Configured daily auto-shutdown at $(printf '%02d' "$shutdown_hour"):00 UTC."
 print_timer_edit_hint
