@@ -181,6 +181,7 @@ clear_legacy_runtime_env
 activate_mise
 configure_global_tooling
 install_repo_tooling
+activate_mise
 hash -r
 ensure_clang_tooling
 
