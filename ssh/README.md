@@ -95,7 +95,7 @@ When `./install.sh` runs on a VM, it checks whether daily auto-shutdown is confi
 To reconfigure that timer later, run:
 
 ```bash
-~/.local/bin/check_vm_auto_shutdown.sh edit
+~/.local/bin/install_vm_auto_shutdown.sh edit
 ```
 
 Edit mode interactively re-prompts for the shutdown timezone and hour, or lets

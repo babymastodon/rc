@@ -15,7 +15,7 @@ MODE="${1:-check}"
 
 usage() {
   cat <<'EOF' >&2
-Usage: check_vm_auto_shutdown.sh [check|edit]
+Usage: install_vm_auto_shutdown.sh [check|edit]
 
 Modes:
   check  Default. Only prompts when no auto-shutdown is configured yet.
@@ -126,9 +126,16 @@ prompt_choice() {
 }
 
 prompt_hour() {
-  local value
+  local default_hour="${1:-}" value prompt
+  if [[ -n "$default_hour" ]]; then
+    prompt="Hour of day for shutdown in local VM time [0-23] [$default_hour]: "
+  else
+    prompt="Hour of day for shutdown in local VM time [0-23]: "
+  fi
+
   while true; do
-    read -r -p "Hour of day for shutdown in local VM time [0-23]: " value
+    read -r -p "$prompt" value
+    value="${value:-$default_hour}"
     if [[ ! "$value" =~ ^[0-9]+$ ]]; then
       warn "Enter an integer hour between 0 and 23."
       continue
@@ -188,6 +195,15 @@ read_timer_setting() {
   local key="$1" value
   value="$(sudo systemctl cat "$TIMER_NAME" 2>/dev/null | awk -F= -v key="$key" '$1 == key {print $2; exit}')"
   printf '%s\n' "$value"
+}
+
+extract_hour_from_calendar() {
+  local calendar="$1"
+  if [[ "$calendar" =~ ([0-9]{2}):00:00$ ]]; then
+    printf '%s\n' "${BASH_REMATCH[1]#0}"
+    return 0
+  fi
+  return 1
 }
 
 cleanup_managed_units() {
@@ -280,6 +296,7 @@ if [[ "$MODE" == "edit" ]]; then
   elif timer_unit_exists || service_unit_exists || timer_is_enabled || timer_is_active; then
     current_timezone="$(read_timer_setting Timezone)"
     current_calendar="$(read_timer_setting OnCalendar)"
+    current_hour="$(extract_hour_from_calendar "$current_calendar" || true)"
     log "Editing existing systemd auto-shutdown timer."
     if [[ -n "$current_timezone" ]]; then
       printf 'Current schedule timezone: %s\n' "$current_timezone"
@@ -316,9 +333,20 @@ if [[ "$timezone_name" == *UTC* ]]; then
   printf '\n'
 fi
 
-schedule_timezone="$(prompt_timezone "$timezone_name")"
+timezone_default="$timezone_name"
+hour_default=""
+if [[ "$MODE" == "edit" ]]; then
+  if [[ -n "${current_timezone:-}" ]]; then
+    timezone_default="$current_timezone"
+  fi
+  if [[ -n "${current_hour:-}" ]]; then
+    hour_default="$current_hour"
+  fi
+fi
+
+schedule_timezone="$(prompt_timezone "$timezone_default")"
 printf 'Shutdown schedule timezone: %s\n' "$schedule_timezone"
-shutdown_hour="$(prompt_hour)"
+shutdown_hour="$(prompt_hour "$hour_default")"
 install_timer_units "$shutdown_hour" "$schedule_timezone"
 
 log "Configured daily auto-shutdown at $(printf '%02d' "$shutdown_hour"):00 in timezone $schedule_timezone."
