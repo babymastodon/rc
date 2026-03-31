@@ -246,3 +246,7 @@ if [[ -f "$RC_TARGET" ]]; then
   source "$RC_TARGET" || true
   log "Sourced $RC_TARGET"
 fi
+
+printf '\n'
+printf 'Run `source ~/.bashrc` before proceeding.\n'
+printf '\n'
