@@ -40,3 +40,5 @@ mkdir -p "$HOME/.config/ghostty/" "$HOME/.config/ghostty/themes/"
 maybe_link "$SCRIPT_DIR/ghostty.conf"              "$HOME/.config/ghostty/config"
 maybe_link "$SCRIPT_DIR/monokai-custom.theme"         "$HOME/.config/ghostty/themes/monokai-custom.theme"
 maybe_link "$SCRIPT_DIR/monokai-custom-light.theme"    "$HOME/.config/ghostty/themes/monokai-custom-light.theme"
+
+printf 'Install Ghostty from: https://ghostty.org/download\n'

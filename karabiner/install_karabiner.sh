@@ -56,3 +56,4 @@ mkdir -p "$(dirname "$CONF_DST")"
 maybe_link "$CONF_SRC" "$CONF_DST"
 
 log "Done."
+printf 'Install Karabiner-Elements from: https://karabiner-elements.pqrs.org\n'
