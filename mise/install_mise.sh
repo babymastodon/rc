@@ -144,6 +144,7 @@ clear_legacy_runtime_env() {
 configure_global_tooling() {
   echo "Linking global mise config to ${MISE_CONFIG_PATH}..."
   maybe_link "$MISE_CONFIG_PATH" "$MISE_GLOBAL_CONFIG_PATH"
+  mise trust "$MISE_GLOBAL_CONFIG_PATH"
 }
 
 install_repo_tooling() {
