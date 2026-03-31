@@ -242,18 +242,25 @@ start_gcp_vm() {
 }
 
 retry_ssh() {
-  local ssh_start_ts now ssh_args=()
+  local ssh_start_ts now ssh_args=() ssh_probe_args=()
   ssh_start_ts="$(date +%s)"
 
   for port in "${forwarded_ports[@]}"; do
     ssh_args+=(-L "${port}:localhost:${port}")
   done
 
+  ssh_probe_args+=(
+    -o BatchMode=yes
+    -o ConnectTimeout=5
+    -o RequestTTY=no
+    "$alias_name"
+    true
+  )
   ssh_args+=("$alias_name")
 
   while true; do
-    if ssh "${ssh_args[@]}"; then
-      exit 0
+    if ssh "${ssh_probe_args[@]}" >/dev/null 2>&1; then
+      break
     fi
     now="$(date +%s)"
     if (( now - ssh_start_ts > SSH_RETRY_TIMEOUT_SEC )); then
@@ -262,6 +269,8 @@ retry_ssh() {
     fi
     sleep "$SSH_RETRY_INTERVAL_SEC"
   done
+
+  exec ssh "${ssh_args[@]}"
 }
 
 log "Resolved $alias_name to $cloud host $hostname_value${user_value:+ as $user_value}."
