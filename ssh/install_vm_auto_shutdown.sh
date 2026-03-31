@@ -69,6 +69,11 @@ require_systemd() {
 
 print_utc_reference_table() {
   cat <<'EOF'
+This shutdown timer is scheduled in UTC.
+Use this table to translate a local shutdown time into the UTC hour to enter below.
+For example, if you want the VM to shut down at local midnight in US Pacific time,
+enter 08.
+
 UTC reference for local midnight:
 
 Timezone                 Midnight local = UTC
