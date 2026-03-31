@@ -2,7 +2,7 @@
 
 Personal dotfiles and setup scripts for a desktop environment that uses tmux for window management, Vim for code editing, and works well over SSH. Supports macOS and Linux.
 
-Legend: `💻` laptop, `🗄️` server
+This command should be run on: `💻` laptop, `🗄️` server
 
 ## Getting started&nbsp;`💻` `🗄️`
 
