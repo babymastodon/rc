@@ -47,6 +47,7 @@ Install the shared Rust, Go, Node, and Python toolchains via `mise`:
 
 ```bash
 ./mise/install_mise.sh
+source ~/.bashrc
 ```
 
 If you want plugins, open `vim` and run:
