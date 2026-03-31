@@ -10,9 +10,6 @@ MISE_CONFIG_PATH="${SCRIPT_DIR}/config.toml"
 MISE_GLOBAL_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/mise"
 MISE_GLOBAL_CONFIG_PATH="${MISE_GLOBAL_CONFIG_DIR}/config.toml"
 MISE_BIN="${HOME}/.local/bin/mise"
-GO_VERSION="1.26.1"
-NODE_VERSION="lts"
-RUST_VERSION="stable"
 
 if [[ "$OS" == "Darwin" ]] && ! command -v brew >/dev/null 2>&1; then
   echo "Homebrew not found. Install Homebrew first: https://brew.sh/" >&2
@@ -134,7 +131,14 @@ ensure_mise() {
 }
 
 activate_mise() {
-  eval "$(mise activate bash)"
+  eval "$(mise env -s bash)"
+  export PATH="${GOBIN}:${NPM_CONFIG_PREFIX}/bin:$PATH"
+  hash -r
+}
+
+clear_legacy_runtime_env() {
+  unset GOROOT
+  unset NODEJS_HOME
 }
 
 configure_global_tooling() {
@@ -172,9 +176,11 @@ ensure_clang_tooling() {
 }
 
 ensure_mise
+clear_legacy_runtime_env
 activate_mise
 configure_global_tooling
 install_repo_tooling
+hash -r
 ensure_clang_tooling
 
 echo
@@ -266,3 +272,6 @@ echo "=== Done ==="
 echo "Runtimes came from mise; language servers came from npm/go/cargo where appropriate."
 echo "Global defaults come from ${MISE_CONFIG_PATH}, linked at ${MISE_GLOBAL_CONFIG_PATH}."
 echo "Other repos can still override them with their own local mise.toml files."
+printf '\n'
+printf 'Run `source ~/.bashrc` before proceeding.\n'
+printf '\n'
