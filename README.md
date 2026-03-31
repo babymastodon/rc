@@ -23,8 +23,7 @@ Get Ghostty here: https://ghostty.org (install on the laptop). It's a GPU-accele
 After install, link the config from this repo:
 
 ```bash
-cd ghostty
-./install_ghostty.sh
+./ghostty/install_ghostty.sh
 ```
 
 ## Vim
@@ -32,15 +31,13 @@ cd ghostty
 Install Vim:
 
 ```bash
-cd vim
-./install_vim.sh
+./vim/install_vim.sh
 ```
 
 Install the shared Rust, Go, Node, and Python toolchains via `mise`:
 
 ```bash
-cd mise
-./install_mise.sh
+./mise/install_mise.sh
 ```
 
 If you want plugins, open `vim` and run:
@@ -68,8 +65,7 @@ copy: \\c
 Install tmux:
 
 ```bash
-cd tmux
-./install_tmux.sh
+./tmux/install_tmux.sh
 ```
 
 The install script sets up these aliases to start or resume a tmux session:
@@ -114,15 +110,13 @@ Recommended to reduce wrist strain: map Right Cmd/Alt to Control, and Caps Lock 
 Linux (keyd):
 
 ```bash
-cd keyd
-./install_keyd.sh
+./keyd/install_keyd.sh
 ```
 
 macOS (Karabiner-Elements): https://karabiner-elements.pqrs.org
 
 ```bash
-cd karabiner
-./install_karabiner.sh
+./karabiner/install_karabiner.sh
 ```
 
 ## Codex
@@ -130,8 +124,7 @@ cd karabiner
 Install and link the Codex config from this repo:
 
 ```bash
-cd codex
-./install_codex.sh
+./codex/install_codex.sh
 ```
 
 Then run `codex` and log in with ChatGPT, not an API key.
@@ -158,8 +151,7 @@ Setup details and config examples are in `ssh/README.md`.
 To mount a VM home directory on macOS, install `fuse-t` and `sshfs`:
 
 ```bash
-cd ssh
-./install_sshfs.sh
+./ssh/install_sshfs.sh
 ```
 
 Then use `vm <alias>` to mount:
@@ -173,8 +165,7 @@ vmfs devserver
 Use `btop` to monitor resource usage with a terminal UI.
 
 ```bash
-cd btop
-./install_btop.sh
+./btop/install_btop.sh
 ```
 
 If the colors look odd, open the btop options menu and make sure the `TTY` theme is selected.
@@ -184,8 +175,7 @@ If the colors look odd, open the btop options menu and make sure the `TTY` theme
 Use `yazi` to easily navigate the filesystem and change directories with a TUI.
 
 ```bash
-cd yazi
-./install_yazi.sh
+./yazi/install_yazi.sh
 ```
 
 Type the alias `y` to open the file explorer from anywhere.
