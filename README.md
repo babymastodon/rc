@@ -4,13 +4,22 @@ Personal dotfiles and setup scripts for a desktop environment that uses tmux for
 
 ## Getting started
 
-1) Install/link the files in this repo:
+1) Clone the repo:
+
+```bash
+mkdir -p ~/code
+cd ~/code
+git clone git@github.com:babymastodon/rc.git
+cd rc
+```
+
+2) Install/link the files in this repo:
 
 ```bash
 ./install.sh
 ```
 
-2) Reload your shell so the aliases/functions are available:
+3) Reload your shell so the aliases/functions are available:
 
 ```bash
 source ~/.bashrc
