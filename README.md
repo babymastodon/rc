@@ -4,7 +4,7 @@ Personal dotfiles and setup scripts for a desktop environment that uses tmux for
 
 Legend: `💻` laptop, `🗄️` server
 
-## Getting started `💻` `🗄️`
+## Getting started&nbsp;`💻` `🗄️`
 
 1) Clone the repo:
 
@@ -27,7 +27,7 @@ cd rc
 source ~/.bashrc
 ```
 
-## Ghostty `💻`
+## Ghostty&nbsp;`💻`
 
 Get Ghostty here: https://ghostty.org (install on the laptop). It's a GPU-accelerated terminal that matches your OS light/dark theme. Kitty configs are also available.
 
@@ -37,7 +37,7 @@ After install, link the config from this repo:
 ./ghostty/install_ghostty.sh
 ```
 
-## Vim `💻` `🗄️`
+## Vim&nbsp;`💻` `🗄️`
 
 Install Vim:
 
@@ -72,7 +72,7 @@ save: :w
 copy: \\c
 ```
 
-## tmux sessions `💻` `🗄️`
+## tmux sessions&nbsp;`💻` `🗄️`
 
 Install tmux:
 
@@ -98,7 +98,7 @@ new window: Ctrl-b c
 close window: Ctrl-d
 ```
 
-## Git shortcuts `💻` `🗄️`
+## Git shortcuts&nbsp;`💻` `🗄️`
 
 The install script sets up these aliases:
 
@@ -115,7 +115,7 @@ mg='git fetch && git merge origin/master --no-edit'
 br='git log --graph --oneline --decorate --all'
 ```
 
-## Keyboard remaps `💻`
+## Keyboard remaps&nbsp;`💻`
 
 Recommended to reduce wrist strain: map Right Cmd/Alt to Control, and Caps Lock to Escape.
 
@@ -131,7 +131,7 @@ macOS (Karabiner-Elements): https://karabiner-elements.pqrs.org
 ./karabiner/install_karabiner.sh
 ```
 
-## Codex `💻` `🗄️`
+## Codex&nbsp;`💻` `🗄️`
 
 Install and link the Codex config from this repo:
 
@@ -141,7 +141,7 @@ Install and link the Codex config from this repo:
 
 Then run `codex` and log in with ChatGPT, not an API key.
 
-## SSH `💻`
+## SSH&nbsp;`💻`
 
 Use `vmadd` to add a VM alias, then `vm <alias>` to start and connect:
 
@@ -172,7 +172,7 @@ Then use `vm <alias>` to mount:
 vmfs devserver
 ```
 
-## System Monitor `💻` `🗄️`
+## System Monitor&nbsp;`💻` `🗄️`
 
 Use `btop` to monitor resource usage with a terminal UI.
 
@@ -182,7 +182,7 @@ Use `btop` to monitor resource usage with a terminal UI.
 
 If the colors look odd, open the btop options menu and make sure the `TTY` theme is selected.
 
-## File Explorer `💻` `🗄️`
+## File Explorer&nbsp;`💻` `🗄️`
 
 Use `yazi` to easily navigate the filesystem and change directories with a TUI.
 
