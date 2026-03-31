@@ -97,16 +97,7 @@ mkdir -p "$HOME/.config/btop"
 maybe_copy "$SCRIPT_DIR/btop/btop.conf" "$HOME/.config/btop/btop.conf"
 
 # ----- ensure sourcing order in shell rc files -----
-ensure_source_in_file "$HOME/.bashrc_extra" "$HOME/.bashrc"
-ensure_source_in_file "$HOME/.bashrc"       "$HOME/.bash_profile"
-
-# Source for current session (best-effort, non-interactive safe)
-if [[ -f "$HOME/.bashrc_extra" ]]; then
-  set +e
-  # shellcheck disable=SC1090
-  source "$HOME/.bashrc_extra" || true
-  set -e
-fi
+ensure_source_in_file "$HOME/.bashrc" "$HOME/.bash_profile"
 
 # ----- install scripts into ~/.local/bin (only if missing) -----
 mkdir -p "$HOME/.local/bin"
@@ -239,13 +230,7 @@ fi
 
 # ----- ensure sourcing from the right startup files -----
 ensure_source_in_file "$RC_TARGET" "$HOME/.bashrc"
-
-# ----- reload shell config (best-effort) -----
-if [[ -f "$RC_TARGET" ]]; then
-  # shellcheck disable=SC1090
-  source "$RC_TARGET" || true
-  log "Sourced $RC_TARGET"
-fi
+ensure_source_in_file "$HOME/.bashrc_extra" "$HOME/.bashrc"
 
 printf '\n'
 printf 'Run `source ~/.bashrc` before proceeding.\n'
