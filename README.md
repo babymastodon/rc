@@ -4,7 +4,7 @@ Personal dotfiles and setup scripts for a desktop environment that uses tmux for
 
 Legend: `💻` laptop, `🗄️` server
 
-## Getting started `💻🗄️`
+## Getting started `💻` `🗄️`
 
 1) Clone the repo:
 
@@ -37,7 +37,7 @@ After install, link the config from this repo:
 ./ghostty/install_ghostty.sh
 ```
 
-## Vim `💻🗄️`
+## Vim `💻` `🗄️`
 
 Install Vim:
 
@@ -72,7 +72,7 @@ save: :w
 copy: \\c
 ```
 
-## tmux sessions `💻🗄️`
+## tmux sessions `💻` `🗄️`
 
 Install tmux:
 
@@ -98,7 +98,7 @@ new window: Ctrl-b c
 close window: Ctrl-d
 ```
 
-## Git shortcuts `💻🗄️`
+## Git shortcuts `💻` `🗄️`
 
 The install script sets up these aliases:
 
@@ -131,7 +131,7 @@ macOS (Karabiner-Elements): https://karabiner-elements.pqrs.org
 ./karabiner/install_karabiner.sh
 ```
 
-## Codex `💻🗄️`
+## Codex `💻` `🗄️`
 
 Install and link the Codex config from this repo:
 
@@ -172,7 +172,7 @@ Then use `vm <alias>` to mount:
 vmfs devserver
 ```
 
-## System Monitor `💻🗄️`
+## System Monitor `💻` `🗄️`
 
 Use `btop` to monitor resource usage with a terminal UI.
 
@@ -182,7 +182,7 @@ Use `btop` to monitor resource usage with a terminal UI.
 
 If the colors look odd, open the btop options menu and make sure the `TTY` theme is selected.
 
-## File Explorer `💻🗄️`
+## File Explorer `💻` `🗄️`
 
 Use `yazi` to easily navigate the filesystem and change directories with a TUI.
 
