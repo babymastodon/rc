@@ -115,7 +115,9 @@ print_vm_instructions() {
 
   warn "Virtual machine detected."
   printf 'Run this on your laptop before logging in:\n\n'
-  printf '  ssh -L %s:localhost:%s %s\n\n' "$AUTH_PORT" "$AUTH_PORT" "$ssh_target"
+  printf '  ssh -L %s:localhost:%s %s\n' "$AUTH_PORT" "$AUTH_PORT" "$ssh_target"
+  printf '\nIf you have the VM aliases installed, you can use this instead:\n\n'
+  printf '  vm <alias> %s\n\n' "$AUTH_PORT"
   printf 'Then run `codex` on the VM and choose ChatGPT login, not API key login.\n'
 }
 
