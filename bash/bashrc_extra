@@ -21,21 +21,20 @@ add_to_path() {
     esac
 }
 
-export GOROOT="$HOME/.local/share/go"
 export GOPATH="$HOME/.local/state/go"
 export GOBIN="$HOME/.local/bin"
-export NODEJS_HOME="$HOME/.local/share/nodejs/current"
 export NPM_CONFIG_PREFIX="$HOME/.local"
 export XDG_DATA_HOME="$HOME/.local/share"
 export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_STATE_HOME="$HOME/.local/state"
 
 add_to_path "$HOME/.local/bin"
-add_to_path "$GOROOT/bin"
 add_to_path "$GOBIN"
-add_to_path "$NODEJS_HOME/bin"
 add_to_path "${KREW_ROOT:-$HOME/.krew}/bin"
-add_to_path "$HOME/.cargo/bin"
+
+if [[ -x "$HOME/.local/bin/mise" ]]; then
+  eval "$("$HOME/.local/bin/mise" activate bash)"
+fi
 
 export PATH
 
@@ -86,11 +85,8 @@ alias gd='git diff'
 alias ch='git cherry-pick'
 alias lg='lazygit'
 alias p='ps aux | grep'
-alias submit='git status && git diff --stat && git commit -am progress && git push'
 alias br='git log --graph --oneline --decorate --all'
 alias src='source ~/.bashrc'
-alias rc='cd ~/code/rc'
-alias activate='source venv/bin/activate'
 alias vm='vm_start.sh'
 alias vmadd='add_ssh_host.sh'
 alias vmresize='vm_resize.sh'

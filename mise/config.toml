@@ -1,0 +1,5 @@
+[tools]
+node = "lts"
+go = "1.26.1"
+rust = "stable"
+python = "3.14"

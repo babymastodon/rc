@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ----- helpers -----
 log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
@@ -52,19 +53,19 @@ fi
 
 # ----- install Nerd Fonts for Kitty icons -----
 log "Installing Nerd Fonts for Kitty…"
-"$PWD/../fonts/install_nerdfonts.sh"
+"$SCRIPT_DIR/../fonts/install_nerdfonts.sh"
 
 # ----- link configs (via maybe_link) -----
 log "Linking Kitty configuration…"
 mkdir -p "$HOME/.config/kitty/" "$HOME/.config/kitty/themes/"
-maybe_link "$PWD/kitty.conf"              "$HOME/.config/kitty/kitty.conf"
-maybe_link "$PWD/MonokaiCustom.conf"         "$HOME/.config/kitty/themes/MonokaiCustom.conf"
-maybe_link "$PWD/MonokaiCustomLight.conf"    "$HOME/.config/kitty/themes/MonokaiCustomLight.conf"
+maybe_link "$SCRIPT_DIR/kitty.conf"              "$HOME/.config/kitty/kitty.conf"
+maybe_link "$SCRIPT_DIR/MonokaiCustom.conf"         "$HOME/.config/kitty/themes/MonokaiCustom.conf"
+maybe_link "$SCRIPT_DIR/MonokaiCustomLight.conf"    "$HOME/.config/kitty/themes/MonokaiCustomLight.conf"
 
 # ----- install watcher script into ~/.local/bin and ensure it's executable -----
 log "Installing theme watcher script…"
 mkdir -p "$HOME/.local/bin"
-maybe_link "$PWD/kitty-theme-watcher.sh"  "$HOME/.local/bin/kitty-theme-watcher.sh"
+maybe_link "$SCRIPT_DIR/kitty-theme-watcher.sh"  "$HOME/.local/bin/kitty-theme-watcher.sh"
 chmod +x "$HOME/.local/bin/kitty-theme-watcher.sh" || true
 
 # Ensure ~/.local/bin is in PATH for future sessions (best-effort)
@@ -75,7 +76,7 @@ fi
 # ----- install and enable user systemd service (via maybe_link) -----
 log "Installing user systemd service for theme watcher…"
 mkdir -p "$HOME/.config/systemd/user"
-maybe_link "$PWD/kitty-theme-watcher.service" "$HOME/.config/systemd/user/kitty-theme-watcher.service"
+maybe_link "$SCRIPT_DIR/kitty-theme-watcher.service" "$HOME/.config/systemd/user/kitty-theme-watcher.service"
 
 # If a user systemd instance is available, enable the service
 if systemctl --user 2>/dev/null >/dev/null; then

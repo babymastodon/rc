@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # ----- helpers -----
 log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
@@ -121,14 +123,14 @@ detect_gnome
 if ! command -v cargo >/dev/null 2>&1; then
   err "Cargo is required for Yazi."
   print_shell_setup_guidance
-  printf 'Then run `cd ../vim && ./install_languages.sh` first to install the shared language tooling, then rerun this script.\n' >&2
+  printf 'Then run `%s/mise/install_mise.sh` first to install the shared language tooling, then rerun this script.\n' "$REPO_ROOT" >&2
   exit 1
 else
   log "Cargo already present: $(cargo --version 2>/dev/null || echo 'version unknown')"
 fi
 
-# Make sure ~/.cargo/bin is in PATH for this session
-export PATH="$HOME/.cargo/bin:$PATH"
+# Make sure ~/.local/bin is in PATH for this session
+export PATH="$HOME/.local/bin:$PATH"
 
 # ----- ensure native build tools required by cargo dependencies -----
 if ! command -v make >/dev/null 2>&1; then
@@ -175,7 +177,7 @@ have_yazi() {
 
 if ! have_yazi; then
   log "Installing Yazi via cargo (crate: yazi-fm, version 25.5.31)…"
-  cargo install --force yazi-fm --locked --version 25.5.31 || {
+  cargo install --root "$HOME/.local" --force yazi-fm --locked --version 25.5.31 || {
     err "cargo install yazi 25.5.31 failed."
     exit 1
   }
@@ -188,10 +190,10 @@ fi
 # ----- link configs (works everywhere) -----
 log "Linking Yazi configuration…"
 mkdir -p "$HOME/.config/yazi/"
-maybe_link "$PWD/yazi.toml" "$HOME/.config/yazi/yazi.toml"
+maybe_link "$SCRIPT_DIR/yazi.toml" "$HOME/.config/yazi/yazi.toml"
 
 mkdir -p "$HOME/.local/share/applications/"
-maybe_link "$PWD/yazi.desktop" "$HOME/.local/share/applications/yazi.desktop"
+maybe_link "$SCRIPT_DIR/yazi.desktop" "$HOME/.local/share/applications/yazi.desktop"
 
 # ----- GNOME-only desktop integration (ImageMagick, icon, gtk, desktop-db) -----
 if [[ "$GNOME_DESKTOP" -eq 1 ]]; then
@@ -209,7 +211,7 @@ if [[ "$GNOME_DESKTOP" -eq 1 ]]; then
   log "Installing Yazi icon…"
   ICON_DIR="$HOME/.local/share/icons/hicolor/256x256/apps"
   mkdir -p "$ICON_DIR"
-  cp "$PWD/yazi.png" "$ICON_DIR/yazi.png"
+  cp "$SCRIPT_DIR/yazi.png" "$ICON_DIR/yazi.png"
 
   gtk-update-icon-cache "$HOME/.local/share/icons/hicolor" -f 2>/dev/null || true
   log "✅ Installed: $ICON_DIR/yazi.png (use Icon=yazi in your .desktop)"

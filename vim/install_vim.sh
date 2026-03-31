@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 log()  { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
 warn() { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
@@ -121,6 +123,8 @@ main() {
     warn "Your Vim (${version}) is older than ${MIN_VIM_VERSION}."
     warn "For the best experience, compile Vim from source."
   fi
+
+  printf 'Next step: run `%s/mise/install_mise.sh` to install the shared toolchains.\n' "$REPO_ROOT"
 }
 
 main "$@"

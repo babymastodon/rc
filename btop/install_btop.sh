@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ----- helpers -----
 log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
@@ -88,6 +89,6 @@ else
 fi
 
 mkdir -p "$HOME/.config/btop"
-maybe_copy "$PWD/btop.conf" "$HOME/.config/btop/btop.conf"
+maybe_copy "$SCRIPT_DIR/btop.conf" "$HOME/.config/btop/btop.conf"
 
 log "Done."

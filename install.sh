@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ----- helpers -----
 log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
@@ -87,13 +88,13 @@ if ! command -v curl >/dev/null 2>&1; then
 fi
 
 # ----- link config files (only if missing) -----
-maybe_link "$PWD/vim/vimrc"         "$HOME/.vimrc"
-maybe_link "$PWD/vim/ideavimrc"     "$HOME/.ideavimrc"
-maybe_link "$PWD/tmux/tmux.conf"    "$HOME/.tmux.conf"
-maybe_link "$PWD/bash/bashrc_extra" "$HOME/.bashrc_extra"
+maybe_link "$SCRIPT_DIR/vim/vimrc"         "$HOME/.vimrc"
+maybe_link "$SCRIPT_DIR/vim/ideavimrc"     "$HOME/.ideavimrc"
+maybe_link "$SCRIPT_DIR/tmux/tmux.conf"    "$HOME/.tmux.conf"
+maybe_link "$SCRIPT_DIR/bash/bashrc_extra" "$HOME/.bashrc_extra"
 
 mkdir -p "$HOME/.config/btop"
-maybe_copy "$PWD/btop/btop.conf" "$HOME/.config/btop/btop.conf"
+maybe_copy "$SCRIPT_DIR/btop/btop.conf" "$HOME/.config/btop/btop.conf"
 
 # ----- ensure sourcing order in shell rc files -----
 ensure_source_in_file "$HOME/.bashrc_extra" "$HOME/.bashrc"
@@ -109,21 +110,21 @@ fi
 
 # ----- install scripts into ~/.local/bin (only if missing) -----
 mkdir -p "$HOME/.local/bin"
-maybe_link "$PWD/bash/git-commit-all" "$HOME/.local/bin/git-commit-all"
-maybe_link "$PWD/tmux/tmux-git-badge" "$HOME/.local/bin/tmux-git-badge"
-maybe_link "$PWD/tmux/tmux-ssh-host"  "$HOME/.local/bin/tmux-ssh-host"
-maybe_link "$PWD/tmux/tmux-pane-label" "$HOME/.local/bin/tmux-pane-label"
-maybe_link "$PWD/ssh/install_vm_auto_shutdown.sh" "$HOME/.local/bin/install_vm_auto_shutdown.sh"
+maybe_link "$SCRIPT_DIR/bash/git-commit-all" "$HOME/.local/bin/git-commit-all"
+maybe_link "$SCRIPT_DIR/tmux/tmux-git-badge" "$HOME/.local/bin/tmux-git-badge"
+maybe_link "$SCRIPT_DIR/tmux/tmux-ssh-host"  "$HOME/.local/bin/tmux-ssh-host"
+maybe_link "$SCRIPT_DIR/tmux/tmux-pane-label" "$HOME/.local/bin/tmux-pane-label"
+maybe_link "$SCRIPT_DIR/ssh/install_vm_auto_shutdown.sh" "$HOME/.local/bin/install_vm_auto_shutdown.sh"
 if ! is_vm; then
-  maybe_link "$PWD/ssh/vm_start.sh" "$HOME/.local/bin/vm_start.sh"
-  maybe_link "$PWD/ssh/vm_resize.sh" "$HOME/.local/bin/vm_resize.sh"
-  maybe_link "$PWD/ssh/vm_mount.sh" "$HOME/.local/bin/vm_mount.sh"
-  maybe_link "$PWD/ssh/add_ssh_host.sh" "$HOME/.local/bin/add_ssh_host.sh"
+  maybe_link "$SCRIPT_DIR/ssh/vm_start.sh" "$HOME/.local/bin/vm_start.sh"
+  maybe_link "$SCRIPT_DIR/ssh/vm_resize.sh" "$HOME/.local/bin/vm_resize.sh"
+  maybe_link "$SCRIPT_DIR/ssh/vm_mount.sh" "$HOME/.local/bin/vm_mount.sh"
+  maybe_link "$SCRIPT_DIR/ssh/add_ssh_host.sh" "$HOME/.local/bin/add_ssh_host.sh"
 else
   log "Running on a VM; skipping install of SSH helper scripts on this machine."
 fi
 
-"$PWD/ssh/install_vm_auto_shutdown.sh" || warn "VM auto-shutdown check did not complete."
+"$SCRIPT_DIR/ssh/install_vm_auto_shutdown.sh" || warn "VM auto-shutdown check did not complete."
 
 # ----- create GOPATH directory ~/.local/state/go (only if missing) -----
 mkdir -p "$HOME/.local/state/go"
@@ -229,7 +230,7 @@ case "$os" in
 esac
 
 # ----- link per-OS bashrc -----
-RC_SRC_PATH="$PWD/bash/$RC_SRC_REL"
+RC_SRC_PATH="$SCRIPT_DIR/bash/$RC_SRC_REL"
 if [[ ! -f "$RC_SRC_PATH" ]]; then
   warn "Expected $RC_SRC_PATH but it does not exist."
 else

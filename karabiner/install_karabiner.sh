@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
 warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
@@ -42,7 +43,7 @@ if [[ ! -d "/Applications/Karabiner-Elements.app" && ! -d "$HOME/Applications/Ka
   warn "Karabiner-Elements app not found. Install it first from https://karabiner-elements.pqrs.org"
 fi
 
-CONF_SRC="$PWD/karabiner.json"
+CONF_SRC="$SCRIPT_DIR/karabiner.json"
 CONF_DST="$HOME/.config/karabiner/karabiner.json"
 
 if [[ ! -f "$CONF_SRC" ]]; then

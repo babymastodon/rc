@@ -29,12 +29,18 @@ cd ghostty
 
 ## Vim
 
-Install Vim and the development tools for Rust, Go, Node, and Python:
+Install Vim:
 
 ```bash
 cd vim
 ./install_vim.sh
-./install_languages.sh
+```
+
+Install the shared Rust, Go, Node, and Python toolchains via `mise`:
+
+```bash
+cd mise
+./install_mise.sh
 ```
 
 If you want plugins, open `vim` and run:

@@ -9,6 +9,7 @@
 # - Custom keys: de-duplicated by (Name|Command). If only binding differs, it's updated.
 
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ✏️ EDIT THESE LISTS
@@ -56,7 +57,7 @@ maybe_link() {
   fi
 }
 
-maybe_link "$PWD/toggle-dark-mode.sh" "$HOME/.local/bin/toggle-dark-mode.sh"
+maybe_link "$SCRIPT_DIR/toggle-dark-mode.sh" "$HOME/.local/bin/toggle-dark-mode.sh"
 
 # ── Built-in keybindings helpers ─────────────────────────────────────────────
 wrap_as_array() {
@@ -264,4 +265,3 @@ apply_gnome_shortcuts
 apply_custom_shortcuts
 
 echo "All done."
-

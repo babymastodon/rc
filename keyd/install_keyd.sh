@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ----- helpers -----
 log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
@@ -47,7 +48,7 @@ if ! command -v dnf >/dev/null 2>&1; then
 fi
 
 REPO_DIR="$HOME/code/keyd"
-CONF_SRC="$PWD/default.conf"
+CONF_SRC="$SCRIPT_DIR/default.conf"
 CONF_DST="/etc/keyd/default.conf"
 
 log "Installing/Configuring keyd…"

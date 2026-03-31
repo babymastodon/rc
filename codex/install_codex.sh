@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 log()  { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
 warn() { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
@@ -120,12 +122,13 @@ print_vm_instructions() {
 if ! command -v npm >/dev/null 2>&1; then
   err "npm is required to install Codex."
   print_shell_setup_guidance
-  printf 'Then run `cd ../vim && ./install_languages.sh` first to install the shared language tooling, then rerun this script.\n' >&2
+  printf 'Then run `%s/mise/install_mise.sh` first to install the shared language tooling, then rerun this script.\n' "$REPO_ROOT" >&2
   exit 1
 fi
 
-require_env_vars NODEJS_HOME NPM_CONFIG_PREFIX
-export PATH="${NODEJS_HOME}/bin:${NPM_CONFIG_PREFIX}/bin:$PATH"
+require_env_vars NPM_CONFIG_PREFIX
+export PATH="${HOME}/.local/bin:${NPM_CONFIG_PREFIX}/bin:$PATH"
+npm config set prefix "${NPM_CONFIG_PREFIX}"
 
 if command -v codex >/dev/null 2>&1; then
   log "Codex already installed: $(codex --version 2>/dev/null | head -n1 || echo 'version lookup skipped')"
