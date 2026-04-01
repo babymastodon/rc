@@ -143,7 +143,7 @@ Then run `codex` and log in with ChatGPT, not an API key.
 
 ## SSH&nbsp;`💻`
 
-Read [`ssh/README.md`](/Users/zack/code/rc/ssh/README.md) first.
+Read [`ssh/README.md`](ssh/README.md) first.
 It covers how to install your SSH public key on the VM before first use.
 
 After that, use `vmadd` to add a VM alias, then `vm <alias>` to start and connect:
