@@ -7,8 +7,7 @@ echo "=== Setting up runtimes + CoC language servers with mise ==="
 OS="$(uname -s)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MISE_CONFIG_PATH="${SCRIPT_DIR}/config.toml"
-MISE_GLOBAL_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/mise"
-MISE_GLOBAL_CONFIG_PATH="${MISE_GLOBAL_CONFIG_DIR}/config.toml"
+MISE_GLOBAL_CONFIG_PATH="${XDG_CONFIG_HOME:-$HOME/.config}/mise/config.toml"
 MISE_BIN="${HOME}/.local/bin/mise"
 
 if [[ "$OS" == "Darwin" ]] && ! command -v brew >/dev/null 2>&1; then
@@ -18,25 +17,6 @@ fi
 
 print_shell_setup_guidance() {
   echo "Run \`${SCRIPT_DIR}/../install.sh\`, then \`source ~/.bashrc\`, then rerun this script." >&2
-}
-
-maybe_link() {
-  local src="$1" dest="$2"
-
-  mkdir -p "$(dirname "$dest")"
-  if [[ -L "$dest" ]]; then
-    local target
-    target="$(readlink "$dest")"
-    if [[ "$target" == "$src" ]]; then
-      return 0
-    fi
-    rm -f "$dest"
-  elif [[ -e "$dest" ]]; then
-    echo "Refusing to replace existing non-symlink: $dest" >&2
-    exit 1
-  fi
-
-  ln -s "$src" "$dest"
 }
 
 require_env_vars() {
@@ -142,9 +122,38 @@ clear_legacy_runtime_env() {
 }
 
 configure_global_tooling() {
-  echo "Linking global mise config to ${MISE_CONFIG_PATH}..."
-  maybe_link "$MISE_CONFIG_PATH" "$MISE_GLOBAL_CONFIG_PATH"
-  mise trust "$MISE_CONFIG_PATH"
+  local in_tools=0 line key value
+
+  echo "Applying global mise defaults from ${MISE_CONFIG_PATH}..."
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+
+    [[ -z "$line" || "$line" == \#* ]] && continue
+
+    if [[ "$line" =~ ^\[(.*)\]$ ]]; then
+      if [[ "${BASH_REMATCH[1]}" == "tools" ]]; then
+        in_tools=1
+      else
+        in_tools=0
+      fi
+      continue
+    fi
+
+    (( in_tools )) || continue
+
+    if [[ "$line" =~ ^([A-Za-z0-9_.-]+)[[:space:]]*=[[:space:]]*\"([^\"]+)\"$ ]]; then
+      key="${BASH_REMATCH[1]}"
+      value="${BASH_REMATCH[2]}"
+      echo "  mise use -g ${key}@${value}"
+      mise use -g "${key}@${value}"
+      continue
+    fi
+
+    echo "Unsupported mise config line in ${MISE_CONFIG_PATH}: ${line}" >&2
+    exit 1
+  done < "$MISE_CONFIG_PATH"
 }
 
 install_repo_tooling() {
@@ -272,7 +281,7 @@ echo
 
 echo "=== Done ==="
 echo "Runtimes came from mise; language servers came from npm/go/cargo where appropriate."
-echo "Global defaults come from ${MISE_CONFIG_PATH}, linked at ${MISE_GLOBAL_CONFIG_PATH}."
+echo "Global defaults from ${MISE_CONFIG_PATH} were applied into ${MISE_GLOBAL_CONFIG_PATH}."
 echo "Other repos can still override them with their own local mise.toml files."
 printf '\n'
 printf 'Run `source ~/.bashrc` before proceeding.\n'
