@@ -143,7 +143,10 @@ Then run `codex` and log in with ChatGPT, not an API key.
 
 ## SSH&nbsp;`💻`
 
-Use `vmadd` to add a VM alias, then `vm <alias>` to start and connect:
+Read [`ssh/README.md`](/Users/zack/code/rc/ssh/README.md) first.
+It covers how to install your SSH public key on the VM before first use.
+
+After that, use `vmadd` to add a VM alias, then `vm <alias>` to start and connect:
 
 ```bash
 vmadd
@@ -157,8 +160,6 @@ vm devserver 8080 3000
 ```
 
 Use `vmresize <alias>` to change a VM size within the same instance family.
-
-Setup details and config examples are in `ssh/README.md`.
 
 To mount a VM home directory on macOS, install `fuse-t` and `sshfs`:
 
