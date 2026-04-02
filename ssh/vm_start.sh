@@ -73,25 +73,25 @@ fi
 if [[ -z "$proxycommand_value" ]]; then
   if [[ "$hostname_value" == "$alias_name" ]]; then
     err "SSH alias $alias_name was not found in ~/.ssh/config."
-  else
-    err "SSH alias $alias_name does not define ProxyCommand, so cloud/provider cannot be inferred."
-  fi
-  exit 1
-fi
-
-cloud=""
-case "$proxycommand_value" in
-  *"aws ssm start-session"*)
-    cloud="aws"
-    ;;
-  *"gcloud compute start-iap-tunnel"*)
-    cloud="gcp"
-    ;;
-  *)
-    err "Unsupported ProxyCommand for $alias_name: $proxycommand_value"
     exit 1
-    ;;
-esac
+  else
+    cloud="direct"
+  fi
+else
+  cloud=""
+  case "$proxycommand_value" in
+    *"aws ssm start-session"*)
+      cloud="aws"
+      ;;
+    *"gcloud compute start-iap-tunnel"*)
+      cloud="gcp"
+      ;;
+    *)
+      err "Unsupported ProxyCommand for $alias_name: $proxycommand_value"
+      exit 1
+      ;;
+  esac
+fi
 
 extract_flag_value() {
   local text="$1" flag="$2"
@@ -276,7 +276,22 @@ retry_ssh() {
   exec ssh "${ssh_args[@]}"
 }
 
-log "Resolved $alias_name to $cloud host $hostname_value${user_value:+ as $user_value}."
+direct_ssh() {
+  local ssh_args=()
+
+  for port in "${forwarded_ports[@]}"; do
+    ssh_args+=(-L "${port}:localhost:${port}")
+  done
+
+  log "Connecting directly to SSH host $hostname_value${user_value:+ as $user_value}."
+  exec ssh "${ssh_args[@]}" "$alias_name"
+}
+
+if [[ "$cloud" == "direct" ]]; then
+  log "Resolved $alias_name to direct SSH host $hostname_value${user_value:+ as $user_value}."
+else
+  log "Resolved $alias_name to $cloud host $hostname_value${user_value:+ as $user_value}."
+fi
 
 if [[ ${#forwarded_ports[@]} -gt 0 ]]; then
   log "Forwarding local ports: ${forwarded_ports[*]}"
@@ -285,6 +300,7 @@ fi
 case "$cloud" in
   aws) start_aws_vm ;;
   gcp) start_gcp_vm ;;
+  direct) direct_ssh ;;
 esac
 
 retry_ssh
