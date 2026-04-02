@@ -157,7 +157,8 @@ start_aws_vm() {
   status="$(get_status)"
   case "$status" in
     running)
-      log "AWS instance $instance_id is already running."
+      log "AWS instance $instance_id is running."
+      return 0
       ;;
     stopped)
       log "Starting AWS instance $instance_id${region:+ in $region}..."
@@ -244,6 +245,8 @@ start_gcp_vm() {
 retry_ssh() {
   local ssh_start_ts now ssh_args=() ssh_probe_args=()
   ssh_start_ts="$(date +%s)"
+
+  log "Attempting to connect to the SSH server..."
 
   for port in "${forwarded_ports[@]}"; do
     ssh_args+=(-L "${port}:localhost:${port}")
