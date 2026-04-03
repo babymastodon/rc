@@ -95,6 +95,7 @@ activate_mise() {
 
 configure_global_tooling() {
   local in_tools=0 line key value
+  local -a tool_specs=()
 
   echo "Applying global mise defaults from ${MISE_CONFIG_PATH}..."
 
@@ -118,22 +119,28 @@ configure_global_tooling() {
     if [[ "$line" =~ ^\"([^\"]+)\"[[:space:]]*=[[:space:]]*\"([^\"]+)\"$ ]]; then
       key="${BASH_REMATCH[1]}"
       value="${BASH_REMATCH[2]}"
-      echo "  mise use -g ${key}@${value}"
-      mise use -g "${key}@${value}"
+      tool_specs+=("${key}@${value}")
       continue
     fi
 
     if [[ "$line" =~ ^([A-Za-z0-9_.-]+)[[:space:]]*=[[:space:]]*\"([^\"]+)\"$ ]]; then
       key="${BASH_REMATCH[1]}"
       value="${BASH_REMATCH[2]}"
-      echo "  mise use -g ${key}@${value}"
-      mise use -g "${key}@${value}"
+      tool_specs+=("${key}@${value}")
       continue
     fi
 
     echo "Unsupported mise config line in ${MISE_CONFIG_PATH}: ${line}" >&2
     exit 1
   done < "$MISE_CONFIG_PATH"
+
+  if (( ${#tool_specs[@]} == 0 )); then
+    echo "No tools found in ${MISE_CONFIG_PATH}." >&2
+    exit 1
+  fi
+
+  echo "  mise use -g ${tool_specs[*]}"
+  mise use -g "${tool_specs[@]}"
 }
 
 ensure_clang_tooling() {
