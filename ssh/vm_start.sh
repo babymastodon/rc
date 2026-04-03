@@ -17,10 +17,18 @@ Usage: vm_start.sh <ssh-alias> [port...]
 Starts the VM behind an SSH alias defined in ~/.ssh/config, waits for it to
 become reachable, then SSHes into it.
 
-Each optional port adds local forwarding with the same local and remote port:
+Each optional port can be either:
+- PORT to forward the same local and remote port
+- LOCAL:REMOTE to forward different local and remote ports
+
+Examples:
   vm_start.sh devserver 8080 3000
 is equivalent to:
   ssh -L 8080:localhost:8080 -L 3000:localhost:3000 devserver
+
+  vm_start.sh devserver 8000:443
+is equivalent to:
+  ssh -L 8000:localhost:443 devserver
 EOF
   exit 1
 }
@@ -31,7 +39,7 @@ fi
 
 alias_name="$1"
 shift
-forwarded_ports=("$@")
+forwarded_port_specs=("$@")
 
 if ! command -v ssh >/dev/null 2>&1; then
   err "ssh is required."
@@ -54,11 +62,31 @@ validate_port() {
   (( port >= 1 && port <= 65535 ))
 }
 
-for port in "${forwarded_ports[@]}"; do
-  if ! validate_port "$port"; then
-    err "Invalid port: $port. Ports must be integers between 1 and 65535."
+build_forward_spec() {
+  local spec="$1" local_port remote_port
+
+  if [[ "$spec" == *:* ]]; then
+    IFS=':' read -r local_port remote_port <<<"$spec"
+  else
+    local_port="$spec"
+    remote_port="$spec"
+  fi
+
+  if ! validate_port "$local_port" || ! validate_port "$remote_port"; then
+    return 1
+  fi
+
+  printf '%s:localhost:%s\n' "$local_port" "$remote_port"
+}
+
+forwarded_ports=()
+for spec in "${forwarded_port_specs[@]}"; do
+  forward_spec="$(build_forward_spec "$spec" || true)"
+  if [[ -z "$forward_spec" ]]; then
+    err "Invalid port forward: $spec. Use PORT or LOCAL:REMOTE with integers between 1 and 65535."
     exit 1
   fi
+  forwarded_ports+=("$forward_spec")
 done
 
 hostname_value="$(get_ssh_value hostname)"
@@ -249,7 +277,7 @@ retry_ssh() {
   log "Attempting to connect to the SSH server..."
 
   for port in "${forwarded_ports[@]}"; do
-    ssh_args+=(-L "${port}:localhost:${port}")
+    ssh_args+=(-L "$port")
   done
 
   ssh_probe_args+=(
@@ -280,7 +308,7 @@ direct_ssh() {
   local ssh_args=()
 
   for port in "${forwarded_ports[@]}"; do
-    ssh_args+=(-L "${port}:localhost:${port}")
+    ssh_args+=(-L "$port")
   done
 
   log "Connecting directly to SSH host $hostname_value${user_value:+ as $user_value}."
