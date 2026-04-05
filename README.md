@@ -161,16 +161,22 @@ vm devserver 8080 3000
 
 Use `vmresize <alias>` to change a VM size within the same instance family.
 
-To mount a VM home directory on macOS, install `fuse-t` and `sshfs`:
+To mount a VM home directory on Linux or macOS, install `sshfs` first:
 
 ```bash
 ./ssh/install_sshfs.sh
 ```
 
-Then use `vm <alias>` to mount:
+Then use `vmfs <alias>` to mount:
 
 ```bash
 vmfs devserver
+```
+
+To unmount it again:
+
+```bash
+vmfs devserver umount
 ```
 
 ## System Monitor&nbsp;`💻` `🗄️`

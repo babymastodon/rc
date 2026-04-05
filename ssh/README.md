@@ -88,6 +88,26 @@ vm <alias> 8080 3000
 This forwards `localhost:8080` and `localhost:3000` on your laptop to the same
 ports on the VM.
 
+## Mount The VM Filesystem
+
+Install `sshfs` on your laptop:
+
+```bash
+./ssh/install_sshfs.sh
+```
+
+Then mount the VM home directory at `~/vmfs/<alias>`:
+
+```bash
+vmfs <alias>
+```
+
+To unmount it later:
+
+```bash
+vmfs <alias> umount
+```
+
 ## VM Auto-Shutdown
 
 When `./install.sh` runs on a VM, it checks whether daily auto-shutdown is configured.

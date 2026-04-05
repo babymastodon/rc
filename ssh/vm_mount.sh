@@ -7,25 +7,26 @@ err()  { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
 
 usage() {
   cat <<'EOF'
-Usage: vm_mount.sh <ssh-alias>
+Usage: vm_mount.sh <ssh-alias> [umount]
 
-Mounts /home/<remote-user> for the SSH alias at ~/vmfs/<ssh-alias> on macOS
-using sshfs + fuse-t. If the mountpoint is already mounted, it is unmounted
-and mounted again.
+Mounts /home/<remote-user> for the SSH alias at ~/vmfs/<ssh-alias> using
+sshfs. If "umount" is passed, only unmounts ~/vmfs/<ssh-alias>.
 EOF
 }
 
-if [[ $# -ne 1 ]]; then
+if [[ $# -lt 1 || $# -gt 2 ]]; then
   usage >&2
   exit 1
 fi
 
-if [[ "${OSTYPE:-}" != darwin* ]]; then
-  err "vm_mount.sh only supports macOS."
+alias_name="$1"
+action="${2:-mount}"
+os="$(uname -s)"
+
+if [[ "$action" != "mount" && "$action" != "umount" ]]; then
+  usage >&2
   exit 1
 fi
-
-alias_name="$1"
 
 if ! command -v ssh >/dev/null 2>&1; then
   err "ssh is required."
@@ -82,20 +83,62 @@ mount_dir="$mount_root/$alias_name"
 mkdir -p "$mount_dir"
 
 is_mounted() {
-  mount | grep -Fq "on $mount_dir ("
+  if command -v findmnt >/dev/null 2>&1; then
+    findmnt -rn --mountpoint "$mount_dir" >/dev/null 2>&1
+  else
+    mount | grep -Fq "on $mount_dir "
+  fi
+}
+
+force_unmount() {
+  case "$os" in
+    Darwin)
+      diskutil unmount force "$mount_dir" >/dev/null
+      ;;
+    Linux)
+      umount -l "$mount_dir"
+      ;;
+    *)
+      err "vm_mount.sh only supports Linux and macOS. Detected: $os"
+      exit 1
+      ;;
+  esac
 }
 
 if is_mounted; then
   log "Unmounting existing mount at $mount_dir"
   umount "$mount_dir" || {
     warn "Regular unmount failed, retrying forced unmount."
-    diskutil unmount force "$mount_dir" >/dev/null
+    force_unmount
   }
+elif [[ "$action" == "umount" ]]; then
+  err "$mount_dir is not mounted."
+  exit 1
+fi
+
+if [[ "$action" == "umount" ]]; then
+  log "Unmounted $mount_dir"
+  exit 0
 fi
 
 log "Mounting $alias_name:$remote_path at $mount_dir"
+sshfs_opts=(reconnect)
+
+case "$os" in
+  Darwin)
+    sshfs_opts+=(auto_cache defer_permissions "volname=$alias_name")
+    ;;
+  Linux)
+    ;;
+  *)
+    err "vm_mount.sh only supports Linux and macOS. Detected: $os"
+    exit 1
+    ;;
+esac
+
 sshfs "$alias_name:$remote_path" "$mount_dir" \
   -p "$port_value" \
-  -o auto_cache,defer_permissions,reconnect,volname="$alias_name"
+  -o "$(IFS=,; printf '%s' "${sshfs_opts[*]}")"
 
 log "Mounted at $mount_dir"
+log "To unmount later, run: vmfs $alias_name umount"
