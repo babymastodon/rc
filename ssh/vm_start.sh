@@ -12,12 +12,14 @@ SSH_RETRY_TIMEOUT_SEC="${SSH_RETRY_TIMEOUT_SEC:-120}"
 
 usage() {
   cat <<'EOF' >&2
-Usage: vm_start.sh <ssh-alias> [port...]
+Usage: vm_start.sh [-t] <ssh-alias> [port...]
 
 Starts the VM behind an SSH alias defined in ~/.ssh/config, waits for it to
 become reachable, then SSHes into it.
 
-Each optional port can be either:
+Optional arguments:
+- -t to sync the current local TERM terminfo to the remote before connecting
+- Each port can be either:
 - PORT to forward the same local and remote port
 - LOCAL:REMOTE to forward different local and remote ports
 
@@ -29,9 +31,31 @@ is equivalent to:
   vm_start.sh devserver 8000:443
 is equivalent to:
   ssh -L 8000:localhost:443 devserver
+
+  vm_start.sh -t devserver 8080
+syncs the current TERM terminfo to the remote, then runs:
+  ssh -L 8080:localhost:8080 devserver
 EOF
   exit 1
 }
+
+sync_term_requested=0
+
+while getopts ":t" opt; do
+  case "$opt" in
+    t)
+      sync_term_requested=1
+      ;;
+    :)
+      usage
+      ;;
+    \?)
+      usage
+      ;;
+  esac
+done
+
+shift $((OPTIND - 1))
 
 if [[ $# -lt 1 ]]; then
   usage
@@ -270,6 +294,28 @@ start_gcp_vm() {
   done
 }
 
+sync_terminfo() {
+  local term remote_cmd
+  (( sync_term_requested )) || return 0
+  term="${TERM:-}"
+
+  [[ -n "$term" ]] || return 0
+  command -v infocmp >/dev/null 2>&1 || return 0
+  infocmp -x "$term" >/dev/null 2>&1 || return 0
+
+  remote_cmd='
+    if ! command -v tic >/dev/null 2>&1; then
+      exit 0
+    fi
+    mkdir -p "$HOME/.terminfo"
+    cat | tic -x -
+  '
+
+  log "Syncing local terminfo for $term to $alias_name when needed."
+  ssh -o BatchMode=yes -o ConnectTimeout=5 -T "$alias_name" "$remote_cmd" \
+    < <(infocmp -x "$term") >/dev/null 2>&1 || true
+}
+
 retry_ssh() {
   local ssh_start_ts now ssh_args=() ssh_probe_args=()
   ssh_start_ts="$(date +%s)"
@@ -301,6 +347,7 @@ retry_ssh() {
     sleep "$SSH_RETRY_INTERVAL_SEC"
   done
 
+  sync_terminfo
   exec ssh "${ssh_args[@]}"
 }
 
@@ -311,6 +358,7 @@ direct_ssh() {
     ssh_args+=(-L "$port")
   done
 
+  sync_terminfo
   log "Connecting directly to SSH host $hostname_value${user_value:+ as $user_value}."
   exec ssh "${ssh_args[@]}" "$alias_name"
 }
