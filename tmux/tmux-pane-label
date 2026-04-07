@@ -12,10 +12,13 @@ pane_title="${5:-}"
 cache="/tmp/tmux-badge-label${key//\//-}"
 now=${EPOCHSECONDS:-$(date +%s)}
 ttl=60
-cache_version=8
+cache_version=9
 
 ICON_TERMINAL=$'\ue795'
 ICON_AGENT="󰚩"
+ICON_AGENT_CODEX=$'\uE00B'
+ICON_AGENT_CLAUDE=$'\uE00C'
+ICON_AGENT_OPENCODE=$'\uE00D'
 ICON_VIM=$'\U000f022e'
 ICON_SSH=$'\U000f08a9'
 ICON_GIT=""
@@ -83,6 +86,25 @@ is_coding_agent() {
   [[ "$comm" =~ ^(codex|claude|aider|cursor-agent|gemini|opencode)$ ]] && return 0
   [[ "$args" =~ (^|[[:space:]/:_-])(codex|claude|aider|cursor-agent|gemini|opencode)([[:space:]/:_-]|$) ]] && return 0
   return 1
+}
+
+icon_for_agent() {
+  local comm="$1" args="$2"
+  comm="$(normalize_comm "$comm")"
+  if [[ "$comm" == "codex" || "$args" =~ (^|[[:space:]/:_-])codex([[:space:]/:_-]|$) ]]; then
+    printf '%s\n' "$ICON_AGENT_CODEX"
+  elif [[ "$comm" == "claude" || "$args" =~ (^|[[:space:]/:_-])claude([[:space:]/:_-]|$) ]]; then
+    printf '%s\n' "$ICON_AGENT_CLAUDE"
+  elif [[ "$comm" == "opencode" || "$args" =~ (^|[[:space:]/:_-])opencode([[:space:]/:_-]|$) ]]; then
+    printf '%s\n' "$ICON_AGENT_OPENCODE"
+  else
+    printf '%s\n' "$ICON_AGENT"
+  fi
+}
+
+is_agent_icon() {
+  local icon="$1"
+  [[ "$icon" == "$ICON_AGENT" || "$icon" == "$ICON_AGENT_CODEX" || "$icon" == "$ICON_AGENT_CLAUDE" || "$icon" == "$ICON_AGENT_OPENCODE" ]]
 }
 
 ssh_host_from_args() {
@@ -157,7 +179,7 @@ classify_label() {
 
   # Highest-priority contexts first.
   if is_coding_agent "$comm" "$args"; then
-    icon="$ICON_AGENT"
+    icon="$(icon_for_agent "$comm" "$args")"
   elif [[ "$comm" == "ssh" || "$comm" == "mosh-client" || "$args" =~ (^|[[:space:]])(ssh|mosh-client)([[:space:]]|$) ]]; then
     host="$(ssh_host_from_args "$args")"
     (( nocase_was_on )) || shopt -u nocasematch
@@ -291,7 +313,7 @@ if [[ -n "$pane_pid" ]]; then
             icon="$(icon_for_proc "$comm" "$args" "$path_base")"
             prio=1
             [[ "$icon" == "$ICON_SSH" ]] && prio=100
-            [[ "$icon" == "$ICON_AGENT" ]] && prio=90
+            is_agent_icon "$icon" && prio=90
             [[ "$icon" == "$ICON_VIM" ]] && prio=80
             [[ "$icon" == "$ICON_GIT" ]] && prio=70
             [[ "$icon" == "$ICON_K8S" || "$icon" == "$ICON_DOCKER" ]] && prio=60

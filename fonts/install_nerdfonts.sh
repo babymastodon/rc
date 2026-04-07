@@ -22,6 +22,19 @@ warn() { printf "\033[1;33m[!] %s\033[0m\n" "$*"; }
 err()  { printf "\033[1;31m[✗] %s\033[0m\n" "$*" >&2; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+install_bundled_fonts() {
+  local dest="$1"
+  local installed=0
+  for ttf in "$SCRIPT_DIR"/HackNerdFontMonoBsrc-*.ttf; do
+    [[ -f "$ttf" ]] || continue
+    cp "$ttf" "$dest/"
+    installed=$(( installed + 1 ))
+  done
+  (( installed > 0 )) && msg "Installed $installed bundled HackNerdFontMonoBsrc variant(s) to $dest."
+}
+
 # ============ macOS ============
 install_macos() {
   msg "Detected macOS. Installing ${NERD_FONT_NAME} Nerd Font with Homebrew (no Chrome config)…"
@@ -41,6 +54,7 @@ install_macos() {
   fi
 
   msg "Installed ${NERD_FONT_NAME} Nerd Font via Homebrew."
+  install_bundled_fonts "$HOME/Library/Fonts"
 }
 
 # ============ Linux ============
@@ -97,6 +111,7 @@ install_linux() {
   } > "$LINUX_FC_CONF_FILE"
 
   msg "Wrote fontconfig fallback rule: $LINUX_FC_CONF_FILE"
+  install_bundled_fonts "$LINUX_FONT_DIR"
 
   # Verify visibility (quiet if not available)
   if have fc-list; then
