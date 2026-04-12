@@ -77,16 +77,13 @@ nnoremap E :edit!<CR>
 " More intuitive movement
 noremap H 10h
 noremap L 10l
-noremap <C-h> ^
-noremap <C-l> $
-
 noremap J 5j
 noremap K 5k
-noremap <C-j> 15<C-e>
-noremap <C-k> 15<C-y>
+noremap <C-a> ^
+noremap <C-e> $
 
-" Map open directory to ctrl-d
-nnoremap <C-e> :e .<CR>
+" Map open directory to ctrl-f
+nnoremap <C-f> :e .<CR>
 
 " Splits open on the right
 set splitright
@@ -194,15 +191,6 @@ augroup END
 " go to next tag match
 noremap ) :tn<CR>
 noremap ( :tp<CR>
-
-" autoload tag files
-:set tags=./tags;
-" jump backwards in the ctag stack
-:nnoremap <C-p> <C-t>
-" next/previous tag match
-" NOTE: replaced with quicklist navigation
-" :nnoremap + :tnext<CR>
-" :nnoremap _ :tprevious<CR>
 
 " disable preview split on autocomplete
 :set completeopt-=preview
@@ -325,7 +313,7 @@ nnoremap gs :%s/\<<C-r><C-w>\>//g<Left><Left>
 xnoremap s :'<,'>sort<CR>
 
 " ctrp plugin
-let g:ctrlp_map = '<C-f>'
+let g:ctrlp_map = '<C-p>'
 
 " grep shortcuts
 command! -nargs=+ Gr execute 'silent Ggrep!' <q-args> | silent! botright cwindow 15 | cc | redraw! | let @/=<q-args> | set hls

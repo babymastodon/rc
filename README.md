@@ -65,7 +65,8 @@ move: hjkl
 move a lot: Shift-hjkl
 new tab: Ctrl-t
 close tab: :q
-open current directory: Ctrl-e
+open current directory: Ctrl-f
+fuzzy find file: Ctrl-p
 go to definition: gd
 undo go to definition: Ctrl-o
 save: :w
