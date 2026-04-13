@@ -60,7 +60,7 @@ printf '%s\n' "$pubkey" | sudo tee -a "/home/$devuser/.ssh/authorized_keys" >/de
 
 Paste the contents of your local `~/.ssh/id_ed25519.pub`, then press `Enter`.
 
-### 6. Create The SSH Alias
+### 5. Create The SSH Alias
 
 Back on your laptop:
 
@@ -70,7 +70,7 @@ vmadd
 
 This opens a short wizard and writes the SSH alias to `~/.ssh/config`.
 
-### 7. Connect
+### 6. Connect
 
 ```bash
 vm <alias>
