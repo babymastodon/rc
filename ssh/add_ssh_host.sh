@@ -17,6 +17,11 @@ install_hint() {
       printf 'macOS: brew install awscli\n' >&2
       printf 'Linux: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html\n' >&2
       ;;
+    aws-session-manager-plugin)
+      printf 'Install the AWS Session Manager plugin and rerun this script.\n' >&2
+      printf 'macOS: brew install --cask session-manager-plugin\n' >&2
+      printf 'Linux: https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html\n' >&2
+      ;;
     gcloud)
       printf 'Install the Google Cloud CLI and rerun this script.\n' >&2
       printf 'macOS: brew install --cask google-cloud-sdk\n' >&2
@@ -142,6 +147,12 @@ ensure_aws_ready() {
   if ! command -v aws >/dev/null 2>&1; then
     err "aws CLI is required for AWS hosts."
     install_hint aws
+    exit 1
+  fi
+
+  if ! command -v session-manager-plugin >/dev/null 2>&1; then
+    err "AWS Session Manager plugin is required for AWS hosts."
+    install_hint aws-session-manager-plugin
     exit 1
   fi
 
