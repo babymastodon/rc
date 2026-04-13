@@ -46,7 +46,7 @@ sudo visudo -cf "/etc/sudoers.d/$devuser"
 
 ### 4. Install Your Public Key
 
-Still on the VM, create the SSH directory and set permissions:
+Still on the VM, run:
 
 ```bash
 sudo mkdir -p "/home/$devuser/.ssh"
@@ -54,11 +54,6 @@ sudo chmod 700 "/home/$devuser/.ssh"
 sudo touch "/home/$devuser/.ssh/authorized_keys"
 sudo chmod 600 "/home/$devuser/.ssh/authorized_keys"
 sudo chown -R "$devuser:$devuser" "/home/$devuser/.ssh"
-```
-
-Then append your public key:
-
-```bash
 read -r -p "Paste your public key, then press Enter: " pubkey
 printf '%s\n' "$pubkey" | sudo tee -a "/home/$devuser/.ssh/authorized_keys" >/dev/null
 ```
