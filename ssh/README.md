@@ -14,19 +14,16 @@ Before `vm` can log in, the VM needs a Linux user for you and your public key in
 
 These steps assume you can reach the machine through the cloud provider's browser-based terminal or serial console in AWS or GCP.
 
-### 1. Generate A Local SSH Key
+### 1. Copy Your Local Public Key
 
-If you do not already have one:
-
-```bash
-ssh-keygen -t ed25519 -a 100 -C "you@example.com" -f ~/.ssh/id_ed25519
-```
-
+If you ran `./install.sh` on your laptop, your SSH key should already exist.
 Print the public key so you can paste it into the VM:
 
 ```bash
 cat ~/.ssh/id_ed25519.pub
 ```
+
+If that file is missing, run `./install.sh` first.
 
 ### 2. Create Your Linux User
 
