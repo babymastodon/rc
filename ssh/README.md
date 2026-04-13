@@ -59,10 +59,11 @@ sudo chown -R "$devuser:$devuser" "/home/$devuser/.ssh"
 Then append your public key:
 
 ```bash
-sudo tee -a "/home/$devuser/.ssh/authorized_keys" >/dev/null
+read -r -p "Paste your public key, then press Enter: " pubkey
+printf '%s\n' "$pubkey" | sudo tee -a "/home/$devuser/.ssh/authorized_keys" >/dev/null
 ```
 
-Now paste the contents of your local `~/.ssh/id_ed25519.pub`, then press `Ctrl-D`.
+Paste the contents of your local `~/.ssh/id_ed25519.pub`, then press `Enter`.
 
 ### 6. Create The SSH Alias
 
