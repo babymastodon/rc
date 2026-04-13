@@ -21,13 +21,13 @@ cd rc
 ./install.sh
 ```
 
-3) Reload your shell so the aliases/functions are available:
-
-If you are on Mac OS, set your default shell to Bash:
+3) If you are on Mac OS, set your default shell to Bash and restart your shell:
 
 ```bash
 ./bash/install_bash_mac.sh
 ```
+
+4) Reload your shell so the aliases/functions are available:
 
 ```bash
 source ~/.bashrc

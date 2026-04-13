@@ -50,4 +50,6 @@ fi
 
 log "Changing default shell to $BASH_BIN..."
 chsh -s "$BASH_BIN"
-log "Default shell updated. Open a new terminal session to use Bash."
+log "Default shell updated."
+warn "Fully quit and reopen your terminal app to start using Bash."
+warn "If you use Ghostty, a new window is not enough; quit the app completely and open it again."
