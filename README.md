@@ -23,6 +23,12 @@ cd rc
 
 3) Reload your shell so the aliases/functions are available:
 
+If you are on Mac OS, set your default shell to Bash:
+
+```bash
+./bash/install_bash_mac.sh
+```
+
 ```bash
 source ~/.bashrc
 ```
