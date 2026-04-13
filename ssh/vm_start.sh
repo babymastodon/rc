@@ -317,7 +317,7 @@ sync_terminfo() {
 }
 
 retry_ssh() {
-  local ssh_start_ts now ssh_args=() ssh_probe_args=()
+  local ssh_start_ts now ssh_args=() ssh_probe_args=() probe_output probe_status
   ssh_start_ts="$(date +%s)"
 
   log "Attempting to connect to the SSH server..."
@@ -336,9 +336,21 @@ retry_ssh() {
   ssh_args+=("$alias_name")
 
   while true; do
-    if ssh "${ssh_probe_args[@]}" >/dev/null 2>&1; then
+    probe_output="$(ssh "${ssh_probe_args[@]}" 2>&1 >/dev/null || true)"
+    probe_status=$?
+
+    if (( probe_status == 0 )); then
       break
     fi
+
+    if printf '%s\n' "$probe_output" | grep -Eqi \
+      'host key verification failed|authenticity of host|REMOTE HOST IDENTIFICATION HAS CHANGED'; then
+      err "SSH host key verification is blocking the connection for $alias_name."
+      err "Run this once to accept or fix the host key:"
+      printf '  ssh %s\n' "$alias_name" >&2
+      exit 1
+    fi
+
     now="$(date +%s)"
     if (( now - ssh_start_ts > SSH_RETRY_TIMEOUT_SEC )); then
       err "Timed out waiting for SSH on $alias_name."
