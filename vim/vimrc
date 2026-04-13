@@ -81,6 +81,8 @@ noremap J 5j
 noremap K 5k
 noremap <C-a> ^
 noremap <C-e> $
+noremap <C-j> <C-d>
+noremap <C-k> <C-u>
 
 " Map open directory to ctrl-f
 nnoremap <C-f> :e .<CR>
