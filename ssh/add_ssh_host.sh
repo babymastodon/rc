@@ -161,6 +161,9 @@ ensure_aws_ready() {
   fi
 
   warn "AWS CLI is installed, but you are not logged in."
+  printf 'If this is your first time using AWS SSO on this machine, run:\n  aws configure sso\n' >&2
+  printf 'When prompted for SSO session name, enter:\n  user\n' >&2
+  printf 'Get the SSO start URL, SSO region, AWS account, and role from your company admin or internal onboarding docs.\n' >&2
   printf 'Run this command to log in:\n  aws sso login\n' >&2
   if [[ "$(prompt_yes_no "Run aws sso login now" "yes")" != "yes" ]]; then
     err "AWS login required before adding an AWS host."

@@ -336,8 +336,11 @@ retry_ssh() {
   ssh_args+=("$alias_name")
 
   while true; do
-    probe_output="$(ssh "${ssh_probe_args[@]}" 2>&1 >/dev/null || true)"
-    probe_status=$?
+    if probe_output="$(ssh "${ssh_probe_args[@]}" 2>&1 >/dev/null)"; then
+      probe_status=0
+    else
+      probe_status=$?
+    fi
 
     if (( probe_status == 0 )); then
       break

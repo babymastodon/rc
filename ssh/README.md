@@ -8,6 +8,29 @@
 - `vm`, a shell alias for `vm_start.sh`
 - `vmfs`, a shell alias for `vm_mount.sh`
 
+## AWS Prerequisites
+
+If you are connecting to an AWS-hosted VM, install the AWS CLI and AWS Session
+Manager plugin first.
+
+Before first use, configure AWS SSO:
+
+```bash
+aws configure sso
+```
+
+When prompted for `SSO session name`, enter `user`.
+
+Use the SSO start URL and SSO region required by your company. Get those from
+your company admin or internal onboarding docs. The AWS account and role are
+also company-specific.
+
+After that, log in when needed with:
+
+```bash
+aws sso login
+```
+
 ## Prepare The VM User
 
 Before `vm` can log in, the VM needs a Linux user for you and your public key installed for that user.
