@@ -72,13 +72,11 @@ sudo visudo -cf "/etc/sudoers.d/$devuser"
 Still on the VM, run:
 
 ```bash
-sudo mkdir -p "/home/$devuser/.ssh"
-sudo chmod 700 "/home/$devuser/.ssh"
-sudo touch "/home/$devuser/.ssh/authorized_keys"
-sudo chmod 600 "/home/$devuser/.ssh/authorized_keys"
-sudo chown -R "$devuser:$devuser" "/home/$devuser/.ssh"
+sudo install -d -m 700 -o "$devuser" -g "$devuser" "/home/$devuser/.ssh"
 read -r -p "Paste your public key, then press Enter: " pubkey
-printf '%s\n' "$pubkey" | sudo tee -a "/home/$devuser/.ssh/authorized_keys" >/dev/null
+printf '%s\n' "$pubkey" | sudo tee "/home/$devuser/.ssh/authorized_keys" >/dev/null
+sudo chown "$devuser:$devuser" "/home/$devuser/.ssh/authorized_keys"
+sudo chmod 600 "/home/$devuser/.ssh/authorized_keys"
 ```
 
 Paste the contents of your local `~/.ssh/id_ed25519.pub`, then press `Enter`.
