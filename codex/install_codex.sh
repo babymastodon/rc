@@ -28,7 +28,7 @@ require_env_vars() {
   fi
 }
 
-ensure_ansi_theme_comment() {
+ensure_codex_config() {
   local dest="$1" tmp
 
   mkdir -p "$(dirname "$dest")"
@@ -36,7 +36,10 @@ ensure_ansi_theme_comment() {
 
   if [[ -f "$dest" ]]; then
     awk '
-      BEGIN { theme_done=0; header_done=0; url_done=0 }
+      BEGIN {
+        theme_done=0; header_done=0; url_done=0
+        tui_done=0; in_tui=0; notifications_done=0; method_done=0
+      }
       /^# Use the basic ANSI theme because Codex'\''s TUI is still hard to read in light-theme terminals:/ {
         if (!header_done) {
           print "# Use the basic ANSI theme because Codex'\''s TUI is still hard to read in light-theme terminals:"
@@ -68,8 +71,55 @@ ensure_ansi_theme_comment() {
         theme_done=1
         next
       }
+      /^\[tui\][[:space:]]*$/ {
+        if (in_tui) {
+          if (!notifications_done) {
+            print "notifications = true"
+          }
+          if (!method_done) {
+            print "notification_method = \"osc9\""
+          }
+        }
+        print
+        tui_done=1
+        in_tui=1
+        notifications_done=0
+        method_done=0
+        next
+      }
+      /^\[[^]]+\][[:space:]]*$/ {
+        if (in_tui) {
+          if (!notifications_done) {
+            print "notifications = true"
+          }
+          if (!method_done) {
+            print "notification_method = \"osc9\""
+          }
+          in_tui=0
+        }
+        print
+        next
+      }
+      in_tui && /^notifications[[:space:]]*=/ {
+        print "notifications = true"
+        notifications_done=1
+        next
+      }
+      in_tui && /^notification_method[[:space:]]*=/ {
+        print "notification_method = \"osc9\""
+        method_done=1
+        next
+      }
       { print }
       END {
+        if (in_tui) {
+          if (!notifications_done) {
+            print "notifications = true"
+          }
+          if (!method_done) {
+            print "notification_method = \"osc9\""
+          }
+        }
         if (!header_done) {
           print "# Use the basic ANSI theme because Codex'\''s TUI is still hard to read in light-theme terminals:"
         }
@@ -79,6 +129,13 @@ ensure_ansi_theme_comment() {
         if (!theme_done) {
           print "theme = \"ansi\""
         }
+        if (!tui_done) {
+          print ""
+          print "# Notify the terminal when Codex needs attention."
+          print "[tui]"
+          print "notifications = true"
+          print "notification_method = \"osc9\""
+        }
       }
     ' "$dest" > "$tmp"
   else
@@ -86,6 +143,11 @@ ensure_ansi_theme_comment() {
 # Use the basic ANSI theme because Codex's TUI is still hard to read in light-theme terminals:
 # https://github.com/openai/codex/issues/2020
 theme = "ansi"
+
+# Notify the terminal when Codex needs attention.
+[tui]
+notifications = true
+notification_method = "osc9"
 EOF
   fi
 
@@ -139,7 +201,7 @@ else
   npm install -g @openai/codex
 fi
 
-ensure_ansi_theme_comment "$HOME/.codex/config.toml"
+ensure_codex_config "$HOME/.codex/config.toml"
 
 if command -v codex >/dev/null 2>&1; then
   log "Codex installed: $(codex --version 2>/dev/null | head -n1 || echo 'version lookup skipped')"

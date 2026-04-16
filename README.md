@@ -146,6 +146,15 @@ Install and link the Codex config from this repo:
 ./codex/install_codex.sh
 ```
 
+This also enables Codex TUI notifications in `~/.codex/config.toml`:
+
+```toml
+[tui]
+notifications = true
+notification_method = "osc9"
+```
+
+If you use Ghostty from this repo, keep `app-notifications = true` so OSC 9 notifications can surface.
 Then run `codex` and log in with ChatGPT, not an API key.
 
 ## SSH&nbsp;`💻`
