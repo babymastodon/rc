@@ -151,10 +151,10 @@ This also enables Codex TUI notifications in `~/.codex/config.toml`:
 ```toml
 [tui]
 notifications = true
-notification_method = "osc9"
+notification_method = "bel"
 ```
 
-If you use Ghostty from this repo, keep `app-notifications = true` so OSC 9 notifications can surface.
+This uses a terminal bell so tmux can mark the window with `window_bell_flag`.
 Then run `codex` and log in with ChatGPT, not an API key.
 
 ## SSH&nbsp;`💻`

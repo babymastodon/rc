@@ -77,7 +77,7 @@ ensure_codex_config() {
             print "notifications = true"
           }
           if (!method_done) {
-            print "notification_method = \"osc9\""
+            print "notification_method = \"bel\""
           }
         }
         print
@@ -93,7 +93,7 @@ ensure_codex_config() {
             print "notifications = true"
           }
           if (!method_done) {
-            print "notification_method = \"osc9\""
+            print "notification_method = \"bel\""
           }
           in_tui=0
         }
@@ -106,7 +106,7 @@ ensure_codex_config() {
         next
       }
       in_tui && /^notification_method[[:space:]]*=/ {
-        print "notification_method = \"osc9\""
+        print "notification_method = \"bel\""
         method_done=1
         next
       }
@@ -117,7 +117,7 @@ ensure_codex_config() {
             print "notifications = true"
           }
           if (!method_done) {
-            print "notification_method = \"osc9\""
+            print "notification_method = \"bel\""
           }
         }
         if (!header_done) {
@@ -134,7 +134,7 @@ ensure_codex_config() {
           print "# Notify the terminal when Codex needs attention."
           print "[tui]"
           print "notifications = true"
-          print "notification_method = \"osc9\""
+          print "notification_method = \"bel\""
         }
       }
     ' "$dest" > "$tmp"
@@ -147,7 +147,7 @@ theme = "ansi"
 # Notify the terminal when Codex needs attention.
 [tui]
 notifications = true
-notification_method = "osc9"
+notification_method = "bel"
 EOF
   fi
 
