@@ -84,16 +84,60 @@ get_major_shell_version() {
   echo "$major"
 }
 
+find_extension_dir() {
+  local uuid="$1"
+  local dir
+
+  for dir in \
+    "$HOME/.local/share/gnome-shell/extensions/$uuid" \
+    "/usr/local/share/gnome-shell/extensions/$uuid" \
+    "/usr/share/gnome-shell/extensions/$uuid"
+  do
+    if [[ -d "$dir" ]]; then
+      echo "$dir"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+print_extension_status() {
+  local uuid="$1"
+  local installed="no"
+  local enabled="no"
+  local version="unknown"
+  local dir=""
+
+  if gnome-extensions info "$uuid" &>/dev/null; then
+    installed="yes"
+    if gnome-extensions list --enabled | grep -Fxq "$uuid"; then
+      enabled="yes"
+    fi
+  fi
+
+  if dir="$(find_extension_dir "$uuid")"; then
+    version="$(jq -r '.version // "unknown"' "$dir/metadata.json" 2>/dev/null || echo "unknown")"
+  fi
+
+  printf "%-40s installed=%-3s enabled=%-3s version=%s\n" "$uuid" "$installed" "$enabled" "$version"
+}
+
 install_extension_uuid() {
   local uuid="$1"
   local major="$2"
+  local upgrade="${3:-false}"
   local tmpdir; tmpdir="$(mktemp -d)"
   local info dl zip
 
-  if gnome-extensions info "$uuid" &>/dev/null; then
+  if [[ "$upgrade" != true ]] && gnome-extensions info "$uuid" &>/dev/null; then
     log "Extension already installed: $uuid"
   else
-    log "Fetching $uuid for GNOME Shell $major"
+    if gnome-extensions info "$uuid" &>/dev/null; then
+      log "Upgrading $uuid for GNOME Shell $major"
+    else
+      log "Fetching $uuid for GNOME Shell $major"
+    fi
     info="$(curl -fsSL "https://extensions.gnome.org/extension-info/?uuid=${uuid}&shell_version=${major}" || true)"
     dl="$(jq -r '.download_url // empty' <<<"$info")"
     if [[ -z "$dl" || "$dl" == "null" ]]; then
@@ -153,6 +197,16 @@ load_gnome_extensions() {
 set_gnome_input_prefs() {
   log "Applying GNOME input/interface preferences"
 
+  # Allow extensions built for nearby GNOME Shell versions to load.
+  local current_validation
+  current_validation="$(gsettings get org.gnome.shell disable-extension-version-validation)"
+  if [[ "$current_validation" != "true" ]]; then
+    gsettings set org.gnome.shell disable-extension-version-validation true
+    log "Disabled extension version validation (was $current_validation)"
+  else
+    log "Extension version validation already disabled"
+  fi
+
   # Disable hot corner
   local current_hot
   current_hot="$(gsettings get org.gnome.desktop.interface enable-hot-corners)"
@@ -178,7 +232,11 @@ usage() {
   cat <<EOF
 Usage:
   $0                       # install the EXTENSIONS array
+  $0 --status             # print installed/enabled/version for the EXTENSIONS array
+  $0 --upgrade            # upgrade installed extensions in the EXTENSIONS array
+  $0 --status uuid1 ...   # print status for the listed UUIDs too
   $0 uuid1 uuid2 ...       # install extra UUIDs
+  $0 --upgrade uuid1 ...   # upgrade/install the listed UUIDs too
   $0 -f extensions.txt     # install from file (one UUID per line)
 EOF
 }
@@ -186,10 +244,14 @@ EOF
 main() {
   local file=""
   local extra=()
+  local status=false
+  local upgrade=false
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -f|--file) file="$2"; shift 2 ;;
+      -s|--status) status=true; shift ;;
+      -u|--upgrade) upgrade=true; shift ;;
       -h|--help) usage; exit 0 ;;
       *) extra+=("$1"); shift ;;
     esac
@@ -207,9 +269,21 @@ main() {
   all+=("${extra[@]}")
   mapfile -t all < <(printf "%s\n" "${all[@]}" | awk 'NF && !seen[$0]++')
 
-  log "Installing ${#all[@]} extension(s)"
+  if [[ "$status" == true ]]; then
+    log "Extension status for ${#all[@]} extension(s)"
+    for u in "${all[@]}"; do
+      print_extension_status "$u"
+    done
+    exit 0
+  fi
+
+  if [[ "$upgrade" == true ]]; then
+    log "Installing/upgrading ${#all[@]} extension(s)"
+  else
+    log "Installing ${#all[@]} extension(s)"
+  fi
   for u in "${all[@]}"; do
-    install_extension_uuid "$u" "$major"
+    install_extension_uuid "$u" "$major" "$upgrade"
   done
 
   load_gnome_extensions
