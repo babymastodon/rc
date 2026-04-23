@@ -10,6 +10,7 @@ need_sudo() { if [[ ${EUID:-$(id -u)} -ne 0 ]]; then echo "sudo"; fi; }
 
 SUDO="$(need_sudo || true)"
 MIN_VIM_VERSION="9.0.0438"
+MISE_VIM_CONFIG="--with-tlib=ncurses --with-compiledby=mise --enable-multibyte --enable-cscope --enable-terminal --enable-python3interp --with-python3-command=python3 --enable-gui=no --without-x"
 
 have() {
   command -v "$1" >/dev/null 2>&1
@@ -88,6 +89,26 @@ get_vim_version() {
   normalize_vim_version "$raw"
 }
 
+print_mise_vim_upgrade_guidance() {
+  warn "To install a newer mise-managed Vim, run:"
+  warn "  ${REPO_ROOT}/mise/install_mise.sh"
+
+  if [[ "$(uname -s)" == "Linux" ]]; then
+    case "$(detect_linux_distro)" in
+      ubuntu)
+        warn "  sudo apt-get install -y build-essential curl git ca-certificates pkg-config libncurses-dev gettext python3-dev"
+        ;;
+      fedora)
+        warn "  sudo dnf install -y make gcc gcc-c++ curl git ca-certificates pkgconf-pkg-config ncurses-devel gettext python3-devel"
+        ;;
+    esac
+  fi
+
+  warn "  ASDF_CONCURRENCY=1 ASDF_VIM_CONFIG='${MISE_VIM_CONFIG}' mise install --raw -f vim@latest"
+  warn "  mise use -g vim@latest"
+  warn "  vim --version | grep '+python3'"
+}
+
 main() {
   case "$(uname -s)" in
     Darwin)
@@ -121,10 +142,10 @@ main() {
 
   if [[ -n "$version" ]] && ! version_ge "$version" "$MIN_VIM_VERSION"; then
     warn "Your Vim (${version}) is older than ${MIN_VIM_VERSION}."
-    warn "For the best experience, compile Vim from source."
+    print_mise_vim_upgrade_guidance
+  else
+    printf 'Next step: run `%s/mise/install_mise.sh` to install the shared toolchains.\n' "$REPO_ROOT"
   fi
-
-  printf 'Next step: run `%s/mise/install_mise.sh` to install the shared toolchains.\n' "$REPO_ROOT"
 }
 
 main "$@"

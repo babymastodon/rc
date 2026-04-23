@@ -44,6 +44,22 @@ maybe_copy() {
   fi
 }
 
+sanitize_btop_config() {
+  local conf="$1" tmp
+  [[ -f "$conf" ]] || return 0
+
+  if grep -Eq '^[[:space:]]*cpu_graph_(upper|lower)[[:space:]]*=[[:space:]]*"Auto"' "$conf"; then
+    tmp="${conf}.tmp.$$"
+    awk '
+      /^[[:space:]]*cpu_graph_upper[[:space:]]*=/ { print "cpu_graph_upper = \"total\""; next }
+      /^[[:space:]]*cpu_graph_lower[[:space:]]*=/ { print "cpu_graph_lower = \"total\""; next }
+      { print }
+    ' "$conf" > "$tmp"
+    mv "$tmp" "$conf"
+    warn "Updated btop CPU graph fields from Auto to total for older btop compatibility."
+  fi
+}
+
 is_vm() {
   if command -v systemd-detect-virt >/dev/null 2>&1; then
     systemd-detect-virt --quiet
@@ -95,6 +111,7 @@ maybe_link "$SCRIPT_DIR/bash/bashrc_extra" "$HOME/.bashrc_extra"
 
 mkdir -p "$HOME/.config/btop"
 maybe_copy "$SCRIPT_DIR/btop/btop.conf" "$HOME/.config/btop/btop.conf"
+sanitize_btop_config "$HOME/.config/btop/btop.conf"
 
 # ----- ensure sourcing order in shell rc files -----
 ensure_source_in_file "$HOME/.bashrc" "$HOME/.bash_profile"
