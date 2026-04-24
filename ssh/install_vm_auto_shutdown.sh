@@ -12,6 +12,26 @@ TIMER_PATH="/etc/systemd/system/${TIMER_NAME}"
 DISABLED_MARKER_PATH="/etc/systemd/system/rc-vm-auto-shutdown.disabled"
 SHUTDOWN_COMMAND="/sbin/shutdown -h now"
 MODE="${1:-check}"
+COMMON_TIMEZONE_LABELS=(
+  "US Pacific"
+  "US Mountain"
+  "US Central"
+  "US Eastern"
+  "UK"
+  "Central Europe"
+  "Eastern Europe"
+  "UTC"
+)
+COMMON_TIMEZONE_VALUES=(
+  "America/Los_Angeles"
+  "America/Denver"
+  "America/Chicago"
+  "America/New_York"
+  "Europe/London"
+  "Europe/Berlin"
+  "Europe/Bucharest"
+  "UTC"
+)
 
 usage() {
   cat <<'EOF' >&2
@@ -93,18 +113,11 @@ timezone_exists() {
 }
 
 print_common_timezone_examples() {
-  cat <<'EOF'
-Common timezone values to enter:
-
-US Pacific               America/Los_Angeles
-US Mountain              America/Denver
-US Central               America/Chicago
-US Eastern               America/New_York
-UK                       Europe/London
-Central Europe           Europe/Berlin
-Eastern Europe           Europe/Bucharest
-UTC                      UTC
-EOF
+  local index
+  printf 'Common timezone values:\n\n'
+  for index in "${!COMMON_TIMEZONE_VALUES[@]}"; do
+    printf '%2d) %-18s %s\n' "$((index + 1))" "${COMMON_TIMEZONE_LABELS[$index]}" "${COMMON_TIMEZONE_VALUES[$index]}"
+  done
 }
 
 prompt_choice() {
@@ -150,13 +163,22 @@ prompt_hour() {
 }
 
 prompt_timezone() {
-  local default_tz="$1" value
+  local default_tz="$1" value index
   while true; do
-    read -r -p "Timezone for shutdown schedule [$default_tz]: " value
+    read -r -p "Timezone for shutdown schedule (number or value) [$default_tz]: " value
     value="${value:-$default_tz}"
     if [[ -z "$value" ]]; then
       warn "Timezone cannot be empty."
       continue
+    fi
+    if [[ "$value" =~ ^[0-9]+$ ]]; then
+      index=$((10#$value - 1))
+      if (( index >= 0 && index < ${#COMMON_TIMEZONE_VALUES[@]} )); then
+        value="${COMMON_TIMEZONE_VALUES[$index]}"
+      else
+        warn "Timezone number must be between 1 and ${#COMMON_TIMEZONE_VALUES[@]}."
+        continue
+      fi
     fi
     if timezone_exists "$value"; then
       printf '%s\n' "$value"
@@ -184,11 +206,11 @@ service_unit_exists() {
 }
 
 timer_is_enabled() {
-  sudo systemctl is-enabled --quiet "$TIMER_NAME"
+  sudo systemctl is-enabled --quiet "$TIMER_NAME" >/dev/null 2>&1
 }
 
 timer_is_active() {
-  sudo systemctl is-active --quiet "$TIMER_NAME"
+  sudo systemctl is-active --quiet "$TIMER_NAME" >/dev/null 2>&1
 }
 
 read_timer_setting() {

@@ -193,12 +193,12 @@ if [[ -z "${git_email:-}" && -f "$SSH_PUB" ]]; then
   key_comment="$(awk '{print $3}' "$SSH_PUB" || true)"
   if [[ -n "${key_comment:-}" && "$key_comment" == *"@"* ]]; then
     git_email="$key_comment"
-    log "Derived email from SSH key: $git_email"
+    log "Derived Git email: $git_email"
   fi
 fi
 
 if [[ -z "${git_email:-}" ]]; then
-  read -rp "Enter email address for Git & SSH key: " git_email
+  read -rp "Enter Git email address: " git_email
   while [[ -z "${git_email// }" ]]; do
     read -rp "Email cannot be empty. Enter email: " git_email
   done
