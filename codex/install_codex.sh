@@ -36,8 +36,26 @@ ensure_codex_config() {
 
   if [[ -f "$dest" ]]; then
     awk '
+      function print_top_level_config() {
+        if (!header_done) {
+          print "# Use the basic ANSI theme because Codex'\''s TUI is still hard to read in light-theme terminals:"
+          header_done=1
+        }
+        if (!url_done) {
+          print "# https://github.com/openai/codex/issues/2020"
+          url_done=1
+        }
+        if (!theme_done) {
+          print "theme = \"ansi\""
+          theme_done=1
+        }
+        if (!reasoning_done) {
+          print "model_reasoning_effort = \"medium\""
+          reasoning_done=1
+        }
+      }
       BEGIN {
-        theme_done=0; header_done=0; url_done=0
+        theme_done=0; header_done=0; url_done=0; reasoning_done=0; seen_section=0
         tui_done=0; in_tui=0; notifications_done=0; method_done=0
       }
       /^# Use the basic ANSI theme because Codex'\''s TUI is still hard to read in light-theme terminals:/ {
@@ -71,7 +89,16 @@ ensure_codex_config() {
         theme_done=1
         next
       }
+      !seen_section && /^model_reasoning_effort[[:space:]]*=/ {
+        print "model_reasoning_effort = \"medium\""
+        reasoning_done=1
+        next
+      }
       /^\[tui\][[:space:]]*$/ {
+        if (!seen_section) {
+          print_top_level_config()
+          seen_section=1
+        }
         if (in_tui) {
           if (!notifications_done) {
             print "notifications = true"
@@ -88,6 +115,10 @@ ensure_codex_config() {
         next
       }
       /^\[[^]]+\][[:space:]]*$/ {
+        if (!seen_section) {
+          print_top_level_config()
+          seen_section=1
+        }
         if (in_tui) {
           if (!notifications_done) {
             print "notifications = true"
@@ -120,14 +151,8 @@ ensure_codex_config() {
             print "notification_method = \"bel\""
           }
         }
-        if (!header_done) {
-          print "# Use the basic ANSI theme because Codex'\''s TUI is still hard to read in light-theme terminals:"
-        }
-        if (!url_done) {
-          print "# https://github.com/openai/codex/issues/2020"
-        }
-        if (!theme_done) {
-          print "theme = \"ansi\""
+        if (!seen_section) {
+          print_top_level_config()
         }
         if (!tui_done) {
           print ""
@@ -143,6 +168,7 @@ ensure_codex_config() {
 # Use the basic ANSI theme because Codex's TUI is still hard to read in light-theme terminals:
 # https://github.com/openai/codex/issues/2020
 theme = "ansi"
+model_reasoning_effort = "medium"
 
 # Notify the terminal when Codex needs attention.
 [tui]
