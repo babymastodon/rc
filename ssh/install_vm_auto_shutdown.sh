@@ -309,6 +309,8 @@ fi
 require_sudo
 require_systemd
 
+has_existing_timer=false
+
 if [[ "$MODE" == "check" ]] && disabled_marker_exists; then
   log "Auto-shutdown is explicitly disabled."
   exit 0
@@ -324,6 +326,7 @@ if [[ "$MODE" == "edit" ]]; then
   if disabled_marker_exists; then
     log "Auto-shutdown is currently disabled."
   elif timer_unit_exists || service_unit_exists || timer_is_enabled || timer_is_active; then
+    has_existing_timer=true
     current_calendar="$(read_timer_setting OnCalendar)"
     current_hour="$(extract_hour_from_calendar "$current_calendar" || true)"
     current_timezone="$(extract_timezone_from_calendar "$current_calendar" || true)"
@@ -341,6 +344,11 @@ fi
 choice="$(prompt_choice)"
 case "$choice" in
   no)
+    if [[ "$MODE" == "edit" && "$has_existing_timer" == true ]]; then
+      cleanup_managed_units
+      log "Disabled managed auto-shutdown timer."
+      exit 0
+    fi
     log "No changes made."
     exit 0
     ;;
