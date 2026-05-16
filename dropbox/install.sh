@@ -3,8 +3,7 @@ set -euo pipefail
 
 # ============================================================
 # Dropbox headless + CLI installer for Fedora (x86_64)
-# XDG-aware:
-#   - Daemon in   : $XDG_DATA_HOME/dropbox/dist
+# XDG-aware where possible:
 #   - systemd unit: $XDG_CONFIG_HOME/systemd/user/dropbox.service
 #   - CLI script  : ~/.local/bin/dropbox
 #
@@ -14,7 +13,9 @@ set -euo pipefail
 # - Leaves selective sync configuration to a separate helper script.
 #
 # NOTE:
-# - Dropbox itself still uses ~/.dropbox and ~/Dropbox internally.
+# - Dropbox itself still uses ~/.dropbox, ~/.dropbox-dist, and ~/Dropbox internally.
+# - The official CLI hard-codes ~/.dropbox-dist for daemon management, so the
+#   daemon must live there to keep `dropbox status/start/stop` and systemd in sync.
 # ============================================================
 
 # ----- helpers -----
@@ -57,8 +58,8 @@ XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 
-# Our paths (XDG-aware)
-dropbox_daemon_dir="$XDG_DATA_HOME/dropbox/dist"
+# Dropbox's CLI expects the daemon here; do not relocate it.
+dropbox_daemon_dir="$HOME/.dropbox-dist"
 dropbox_daemon_path="$dropbox_daemon_dir/dropboxd"
 dropbox_cli_path="$HOME/.local/bin/dropbox"
 
@@ -138,7 +139,7 @@ install_dropbox_daemon() {
   fi
 
   mkdir -p "$dropbox_daemon_dir"
-  # Extract into temp, then move contents of .dropbox-dist into XDG_DATA_HOME path
+  # Extract into temp, then move contents of .dropbox-dist into Dropbox's expected path.
   tar -xzf "$tmpdir/dropbox.tgz" -C "$tmpdir"
 
   if [[ ! -d "$tmpdir/.dropbox-dist" ]]; then
@@ -233,10 +234,23 @@ EOF
   fi
 }
 
+# ----- heal split-brain installs -----
+
+warn_if_split_install() {
+  local legacy_xdg_dir="$XDG_DATA_HOME/dropbox/dist"
+
+  if [[ -d "$legacy_xdg_dir" && "$legacy_xdg_dir" != "$dropbox_daemon_dir" ]]; then
+    warn "Found an older Dropbox daemon tree at $legacy_xdg_dir"
+    warn "Dropbox CLI only manages ~/.dropbox-dist, so keeping both paths can cause"
+    warn "high-CPU orphaned daemons and 'Dropbox isn't running!' status mismatches."
+    warn "Remove $legacy_xdg_dir after confirming no service still points at it."
+  fi
+}
+
 # ----- systemd user service (XDG_CONFIG_HOME) -----
 
 install_systemd_user_service() {
-  log "Installing user systemd service for Dropbox daemon (XDG_CONFIG_HOME)…"
+  log "Installing user systemd service for Dropbox daemon…"
 
   local systemd_user_dir="$XDG_CONFIG_HOME/systemd/user"
   mkdir -p "$systemd_user_dir"
@@ -282,6 +296,7 @@ log "=== Dropbox headless + CLI setup (Fedora, XDG-aware) ==="
 
 install_dropbox_daemon
 install_dropbox_cli
+warn_if_split_install
 link_dropbox_if_needed
 install_systemd_user_service
 

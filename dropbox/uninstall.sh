@@ -5,7 +5,7 @@ set -euo pipefail
 # Dropbox headless + CLI uninstaller for Fedora (x86_64)
 # Removes:
 #   - Systemd user unit (XDG_CONFIG_HOME/systemd/user/dropbox.service)
-#   - Dropbox daemon binaries (XDG_DATA_HOME/dropbox/dist)
+#   - Dropbox daemon binaries (~/.dropbox-dist)
 #   - Dropbox CLI script (~/.local/bin/dropbox)
 # Leaves intact:
 #   - Your synced data (~/Dropbox)
@@ -26,8 +26,8 @@ XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 
-# Our paths (XDG-aware)
-dropbox_daemon_dir="$XDG_DATA_HOME/dropbox/dist"
+# Dropbox's CLI expects the daemon here.
+dropbox_daemon_dir="$HOME/.dropbox-dist"
 dropbox_daemon_path="$dropbox_daemon_dir/dropboxd"
 dropbox_cli_path="$HOME/.local/bin/dropbox"
 systemd_user_dir="$XDG_CONFIG_HOME/systemd/user"
@@ -68,6 +68,12 @@ remove_daemon() {
     rm -rf "$dropbox_daemon_dir"
   else
     log "Dropbox daemon directory not found (nothing to remove): $dropbox_daemon_dir"
+  fi
+
+  local legacy_xdg_dir="$XDG_DATA_HOME/dropbox/dist"
+  if [[ -d "$legacy_xdg_dir" ]]; then
+    log "Removing legacy Dropbox daemon directory: $legacy_xdg_dir"
+    rm -rf "$legacy_xdg_dir"
   fi
 }
 
