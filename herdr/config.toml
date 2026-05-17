@@ -12,6 +12,7 @@ prompt_new_tab_name = false
 delivery = "terminal"
 
 [keys]
+detach = "d"
 previous_tab = "shift+left"
 next_tab = "shift+right"
 previous_workspace = "shift+up"

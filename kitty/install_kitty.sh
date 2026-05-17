@@ -61,33 +61,8 @@ mkdir -p "$HOME/.config/kitty/" "$HOME/.config/kitty/themes/"
 maybe_link "$SCRIPT_DIR/kitty.conf"              "$HOME/.config/kitty/kitty.conf"
 maybe_link "$SCRIPT_DIR/MonokaiCustom.conf"         "$HOME/.config/kitty/themes/MonokaiCustom.conf"
 maybe_link "$SCRIPT_DIR/MonokaiCustomLight.conf"    "$HOME/.config/kitty/themes/MonokaiCustomLight.conf"
-
-# ----- install watcher script into ~/.local/bin and ensure it's executable -----
-log "Installing theme watcher script…"
-mkdir -p "$HOME/.local/bin"
-maybe_link "$SCRIPT_DIR/kitty-theme-watcher.sh"  "$HOME/.local/bin/kitty-theme-watcher.sh"
-chmod +x "$HOME/.local/bin/kitty-theme-watcher.sh" || true
-
-# Ensure ~/.local/bin is in PATH for future sessions (best-effort)
-if [[ ":${PATH}:" != *":${HOME}/.local/bin:"* ]]; then
-  warn "~/.local/bin is not in PATH for this session. Consider adding: 'export PATH=\$HOME/.local/bin:\$PATH' to your shell rc."
-fi
-
-# ----- install and enable user systemd service (via maybe_link) -----
-log "Installing user systemd service for theme watcher…"
-mkdir -p "$HOME/.config/systemd/user"
-maybe_link "$SCRIPT_DIR/kitty-theme-watcher.service" "$HOME/.config/systemd/user/kitty-theme-watcher.service"
-
-# If a user systemd instance is available, enable the service
-if systemctl --user 2>/dev/null >/dev/null; then
-  log "Reloading user systemd daemon and enabling service…"
-  systemctl --user daemon-reload
-  systemctl --user enable --now kitty-theme-watcher.service
-  systemctl --user status kitty-theme-watcher.service --no-pager --full || true
-else
-  warn "systemd user instance not detected. To run user services across logouts:
-    loginctl enable-linger \"$USER\"
-  Then re-run: systemctl --user daemon-reload && systemctl --user enable --now kitty-theme-watcher.service"
-fi
+maybe_link "$SCRIPT_DIR/MonokaiCustom.conf"         "$HOME/.config/kitty/dark-theme.auto.conf"
+maybe_link "$SCRIPT_DIR/MonokaiCustomLight.conf"    "$HOME/.config/kitty/light-theme.auto.conf"
+maybe_link "$SCRIPT_DIR/MonokaiCustomLight.conf"    "$HOME/.config/kitty/no-preference-theme.auto.conf"
 
 log "Done."
