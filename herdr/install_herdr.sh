@@ -7,7 +7,7 @@ err()  { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 HERDR_REPO_URL="${HERDR_REPO_URL:-https://github.com/babymastodon/herdr.git}"
-HERDR_BRANCH="${HERDR_BRANCH:-terminal-theme}"
+HERDR_BRANCH="${HERDR_BRANCH:-double-click-word-select}"
 HERDR_SOURCE_URL="${HERDR_SOURCE_URL:-https://github.com/babymastodon/herdr/tree/$HERDR_BRANCH}"
 HERDR_MISE_CONFIG="${HERDR_MISE_CONFIG:-$SCRIPT_DIR/mise.toml}"
 
@@ -93,7 +93,7 @@ main() {
   fi
 
   printf '\n'
-  printf 'Next step: run `hoo` to attach to the named herdr session.\n'
+  printf 'Next step: run `hoo` to attach to the default herdr session.\n'
 }
 
 main "$@"

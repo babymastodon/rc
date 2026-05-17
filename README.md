@@ -114,17 +114,20 @@ Install herdr:
 ./herdr/install_herdr.sh
 ```
 
-The shell setup adds these aliases for a named `hoo` session:
+The shell setup adds these aliases for the default Herdr session:
 
 ```bash
-# create or attach the session named "hoo"
+# create or attach the default session
 newhoo
 
 # attach the same session
 hoo
+
+# stop the server and start again
+fixhoo
 ```
 
-This maps to `herdr session attach hoo`, so either command will create the named session on first use and reattach it later.
+This maps to `herdr`, so either command will create the default session on first use and reattach it later.
 
 The repo also manages a minimal Herdr config at `~/.config/herdr/config.toml`. After editing it, reload without restarting the session server:
 

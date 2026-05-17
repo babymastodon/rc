@@ -8,6 +8,7 @@ confirm_close = true
 agent_panel_scope = "all"
 prompt_new_tab_name = false
 
+show_agent_labels_on_pane_borders = false
 [ui.toast]
 delivery = "terminal"
 
@@ -17,3 +18,6 @@ previous_tab = "shift+left"
 next_tab = "shift+right"
 previous_workspace = "shift+up"
 next_workspace = "shift+down"
+
+[keys.indexed]
+tabs = "ctrl"
