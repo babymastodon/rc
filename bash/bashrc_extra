@@ -84,7 +84,6 @@ alias gs='git -c color.status=always status -s && \
   staged=$(git diff --cached --stat) && \
   if [[ -n "$unstaged" ]]; then echo && echo -e "\033[1;33mUnstaged changes:\033[0m" && echo "$unstaged"; fi && \
   if [[ -n "$staged" ]]; then echo && echo -e "\033[1;32mStaged changes:\033[0m" && echo "$staged"; fi'
-alias gd='git diff'
 alias ch='git cherry-pick'
 alias lg='lazygit'
 alias p='ps aux | grep'

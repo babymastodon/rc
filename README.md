@@ -143,7 +143,7 @@ The install script sets up these aliases:
 g='git'
 ga='git add .'
 st='git status && git diff --stat'
-gd='git diff'
+gd='git diff origin/master...'
 gs='git -c color.status=always status -s && ...'
 cm='git-commit-all'
 pl='git pull'
