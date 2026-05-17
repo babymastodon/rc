@@ -93,7 +93,7 @@ The install script sets up these aliases to start or resume a tmux session:
 # init a new session named "moo"
 newmoo
 
-# resume the session
+# attach the session, creating it if missing
 moo
 ```
 
@@ -103,6 +103,33 @@ Key shortcuts:
 move between windows: Shift-Left/Right
 new window: Ctrl-b c
 close window: Ctrl-d
+```
+
+## herdr session&nbsp;`💻` `🗄️`
+
+Install herdr:
+
+```bash
+./install.sh
+./herdr/install_herdr.sh
+```
+
+The shell setup adds these aliases for a named `hoo` session:
+
+```bash
+# create or attach the session named "hoo"
+newhoo
+
+# attach the same session
+hoo
+```
+
+This maps to `herdr session attach hoo`, so either command will create the named session on first use and reattach it later.
+
+The repo also manages a minimal Herdr config at `~/.config/herdr/config.toml`. After editing it, reload without restarting the session server:
+
+```bash
+herdr server reload-config
 ```
 
 ## Git shortcuts&nbsp;`💻` `🗄️`

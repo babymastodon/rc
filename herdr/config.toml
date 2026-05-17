@@ -1,0 +1,17 @@
+onboarding = false
+
+[theme]
+name = "terminal"
+
+[ui]
+confirm_close = true
+agent_panel_scope = "all"
+
+[ui.toast]
+delivery = "terminal"
+
+[keys]
+previous_tab = "shift+left"
+next_tab = "shift+right"
+previous_workspace = "shift+up"
+next_workspace = "shift+down"

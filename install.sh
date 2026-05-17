@@ -108,6 +108,8 @@ maybe_link "$SCRIPT_DIR/vim/vimrc"         "$HOME/.vimrc"
 maybe_link "$SCRIPT_DIR/vim/ideavimrc"     "$HOME/.ideavimrc"
 maybe_link "$SCRIPT_DIR/tmux/tmux.conf"    "$HOME/.tmux.conf"
 maybe_link "$SCRIPT_DIR/bash/bashrc_extra" "$HOME/.bashrc_extra"
+mkdir -p "$HOME/.config/herdr"
+maybe_link "$SCRIPT_DIR/herdr/config.toml" "$HOME/.config/herdr/config.toml"
 
 mkdir -p "$HOME/.config/btop"
 maybe_copy "$SCRIPT_DIR/btop/btop.conf" "$HOME/.config/btop/btop.conf"
