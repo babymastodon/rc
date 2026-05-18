@@ -29,28 +29,26 @@ require_tool() {
   fi
 }
 
-require_full_xcode_on_macos() {
+macos_developer_dir_for_herdr_build() {
   local developer_dir
 
   if [[ "$(uname -s)" != "Darwin" ]]; then
     return
   fi
 
-  require_tool xcodebuild
-
-  if xcodebuild -version >/dev/null 2>&1; then
+  if [[ -d /Library/Developer/CommandLineTools ]]; then
+    printf '%s\n' /Library/Developer/CommandLineTools
     return
   fi
 
   developer_dir="$(xcode-select -p 2>/dev/null || true)"
-  err "herdr's vendored Ghostty VT build requires full Xcode for xcodebuild -create-xcframework."
-  if [[ -n "$developer_dir" ]]; then
-    err "Current active developer directory: ${developer_dir}"
+  if [[ -n "$developer_dir" && -d "$developer_dir" ]]; then
+    printf '%s\n' "$developer_dir"
+    return
   fi
-  printf 'Install Xcode from the App Store or Apple Developer, then run:\n' >&2
-  printf '  sudo xcode-select -s /Applications/Xcode.app/Contents/Developer\n' >&2
-  printf '  sudo xcodebuild -license accept\n' >&2
-  printf 'Then rerun this script.\n' >&2
+
+  err "No usable macOS developer directory found."
+  printf 'Install Command Line Tools with `xcode-select --install`, then rerun this script.\n' >&2
   exit 1
 }
 
@@ -61,8 +59,29 @@ clone_source() {
   git clone --depth 1 --branch "$HERDR_BRANCH" "$HERDR_REPO_URL" "$dest"
 }
 
+patch_source() {
+  local source_dir="$1" build_rs="$1/build.rs"
+
+  if [[ ! -f "$build_rs" ]]; then
+    err "Expected build script not found: ${build_rs}"
+    exit 1
+  fi
+
+  if grep -q -- '-Demit-xcframework=false' "$build_rs"; then
+    return
+  fi
+
+  log "Disabling unused Ghostty VT xcframework artifact for herdr build..."
+  perl -0pi -e 's/(\n\s*\.arg\("-Demit-lib-vt"\))/$1\n        .arg("-Demit-xcframework=false")/' "$build_rs"
+
+  if ! grep -q -- '-Demit-xcframework=false' "$build_rs"; then
+    err "Failed to patch ${build_rs}"
+    exit 1
+  fi
+}
+
 install_binary() {
-  local source_dir="$1" built_binary="$1/target/release/herdr" target="$HOME/.local/bin/herdr"
+  local source_dir="$1" built_binary="$1/target/release/herdr" target="$HOME/.local/bin/herdr" developer_dir
 
   if [[ -f "$HERDR_MISE_CONFIG" ]]; then
     cp "$HERDR_MISE_CONFIG" "$source_dir/mise.toml"
@@ -76,7 +95,12 @@ install_binary() {
   fi
 
   log "Building herdr from source..."
-  mise exec -C "$source_dir" -- cargo build --release --locked
+  developer_dir="$(macos_developer_dir_for_herdr_build)"
+  if [[ -n "$developer_dir" ]]; then
+    DEVELOPER_DIR="$developer_dir" mise exec -C "$source_dir" -- cargo build --release --locked
+  else
+    mise exec -C "$source_dir" -- cargo build --release --locked
+  fi
 
   if [[ ! -x "$built_binary" ]]; then
     err "Build finished, but no executable was found at ${built_binary}"
@@ -123,7 +147,7 @@ main() {
   require_tool git
   require_tool mise
   require_tool cargo
-  require_full_xcode_on_macos
+  require_tool perl
 
   if have herdr; then
     log "Existing herdr detected: $(herdr --version 2>/dev/null | head -n1 || echo 'version lookup skipped')"
@@ -137,6 +161,7 @@ main() {
   source_dir="$tmpdir/herdr"
 
   clone_source "$source_dir"
+  patch_source "$source_dir"
   install_binary "$source_dir"
   link_config
 
