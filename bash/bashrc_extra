@@ -65,7 +65,6 @@ alias moo="TMPDIR=$TMUXTMP echo -ne '\033]0;$(hostname)\007'; tmux new-session -
 alias fixmoo='TMPDIR=$TMUXTMP killall -s SIGUSR1 moo'
 alias newhoo='herdr'
 alias hoo='herdr'
-alias fixhoo='herdr server stop; herdr'
 alias vimdiff='vim -d'
 alias ck='git checkout'
 alias cm='git-commit-all'
