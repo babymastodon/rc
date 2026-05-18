@@ -56,7 +56,7 @@ ensure_codex_config() {
       }
       BEGIN {
         theme_done=0; header_done=0; url_done=0; reasoning_done=0; seen_section=0
-        tui_done=0; in_tui=0; notifications_done=0; method_done=0
+        in_tui=0
       }
       /^# Use the basic ANSI theme because Codex'\''s TUI is still hard to read in light-theme terminals:/ {
         if (!header_done) {
@@ -99,19 +99,8 @@ ensure_codex_config() {
           print_top_level_config()
           seen_section=1
         }
-        if (in_tui) {
-          if (!notifications_done) {
-            print "notifications = true"
-          }
-          if (!method_done) {
-            print "notification_method = \"bel\""
-          }
-        }
         print
-        tui_done=1
         in_tui=1
-        notifications_done=0
-        method_done=0
         next
       }
       /^\[[^]]+\][[:space:]]*$/ {
@@ -119,47 +108,20 @@ ensure_codex_config() {
           print_top_level_config()
           seen_section=1
         }
-        if (in_tui) {
-          if (!notifications_done) {
-            print "notifications = true"
-          }
-          if (!method_done) {
-            print "notification_method = \"bel\""
-          }
-          in_tui=0
-        }
+        in_tui=0
         print
         next
       }
       in_tui && /^notifications[[:space:]]*=/ {
-        print "notifications = true"
-        notifications_done=1
         next
       }
       in_tui && /^notification_method[[:space:]]*=/ {
-        print "notification_method = \"bel\""
-        method_done=1
         next
       }
       { print }
       END {
-        if (in_tui) {
-          if (!notifications_done) {
-            print "notifications = true"
-          }
-          if (!method_done) {
-            print "notification_method = \"bel\""
-          }
-        }
         if (!seen_section) {
           print_top_level_config()
-        }
-        if (!tui_done) {
-          print ""
-          print "# Notify the terminal when Codex needs attention."
-          print "[tui]"
-          print "notifications = true"
-          print "notification_method = \"bel\""
         }
       }
     ' "$dest" > "$tmp"
@@ -169,11 +131,6 @@ ensure_codex_config() {
 # https://github.com/openai/codex/issues/2020
 theme = "ansi"
 model_reasoning_effort = "medium"
-
-# Notify the terminal when Codex needs attention.
-[tui]
-notifications = true
-notification_method = "bel"
 EOF
   fi
 

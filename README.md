@@ -1,6 +1,6 @@
 # rc
 
-Personal dotfiles and setup scripts for a desktop environment that uses tmux for window management, Vim for code editing, and works well over SSH. Supports macOS and Linux.
+Personal dotfiles and setup scripts for a desktop environment that uses Herdr for persistent sessions, Vim for code editing, and works well over SSH. Supports macOS and Linux.
 
 Where to run each section: `💻` laptop, `🗄️` server
 
@@ -79,61 +79,21 @@ save: :w
 copy: \\c
 ```
 
-## tmux sessions&nbsp;`💻` `🗄️`
-
-Install tmux:
-
-```bash
-./tmux/install_tmux.sh
-```
-
-The install script sets up these aliases to start or resume a tmux session:
-
-```bash
-# init a new session named "moo"
-newmoo
-
-# attach the session, creating it if missing
-moo
-```
-
-Key shortcuts:
-
-```text
-move between windows: Shift-Left/Right
-new window: Ctrl-b c
-close window: Ctrl-d
-```
-
 ## herdr session&nbsp;`💻` `🗄️`
 
 Install herdr:
 
 ```bash
-./install.sh
 ./herdr/install_herdr.sh
 ```
 
-The shell setup adds these aliases for the default Herdr session:
+The shell setup adds `hoo` as a shortcut for `herdr`:
 
 ```bash
-# create or attach the default session
-newhoo
-
-# attach the same session
 hoo
-
-# stop the server and start again
-fixhoo
 ```
 
-This maps to `herdr`, so either command will create the default session on first use and reattach it later.
-
-The repo also manages a minimal Herdr config at `~/.config/herdr/config.toml`. After editing it, reload without restarting the session server:
-
-```bash
-herdr server reload-config
-```
+It is very convenient to run Herdr on a remote VM, since agents can keep working in the background after you disconnect.
 
 ## Git shortcuts&nbsp;`💻` `🗄️`
 
@@ -176,16 +136,7 @@ Install and link the Codex config from this repo:
 ./codex/install_codex.sh
 ```
 
-This also enables Codex TUI notifications in `~/.codex/config.toml`:
-
-```toml
-[tui]
-notifications = true
-notification_method = "bel"
-```
-
-This uses a terminal bell so tmux can mark the window with `window_bell_flag`.
-Then run `codex` and log in with ChatGPT, not an API key.
+Then run `codex` and log in with ChatGPT, not an API key. When logging in on a remote VM, port-forward the Codex login port so the browser callback can reach the VM.
 
 ## SSH&nbsp;`💻`
 
