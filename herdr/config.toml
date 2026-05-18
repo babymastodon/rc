@@ -3,6 +3,10 @@ onboarding = false
 [theme]
 name = "terminal"
 
+[theme.custom]
+accent = "green"
+selection_bg = "yellow"
+
 [ui]
 confirm_close = true
 agent_panel_scope = "all"

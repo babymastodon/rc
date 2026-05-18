@@ -10,6 +10,8 @@ HERDR_REPO_URL="${HERDR_REPO_URL:-https://github.com/babymastodon/herdr.git}"
 HERDR_BRANCH="${HERDR_BRANCH:-double-click-word-select}"
 HERDR_SOURCE_URL="${HERDR_SOURCE_URL:-https://github.com/babymastodon/herdr/tree/$HERDR_BRANCH}"
 HERDR_MISE_CONFIG="${HERDR_MISE_CONFIG:-$SCRIPT_DIR/mise.toml}"
+HERDR_CONFIG_SRC="${HERDR_CONFIG_SRC:-$SCRIPT_DIR/config.toml}"
+HERDR_CONFIG_DST="${HERDR_CONFIG_DST:-$HOME/.config/herdr/config.toml}"
 
 have() {
   command -v "$1" >/dev/null 2>&1
@@ -61,6 +63,34 @@ install_binary() {
   log "Installed herdr to ${target}"
 }
 
+link_config() {
+  local backup
+
+  if [[ ! -f "$HERDR_CONFIG_SRC" ]]; then
+    warn "Config source not found at ${HERDR_CONFIG_SRC}; skipping config link."
+    return
+  fi
+
+  mkdir -p "$(dirname "$HERDR_CONFIG_DST")"
+
+  if [[ -L "$HERDR_CONFIG_DST" ]]; then
+    if [[ "$(readlink "$HERDR_CONFIG_DST")" == "$HERDR_CONFIG_SRC" ]]; then
+      log "Config link already correct: ${HERDR_CONFIG_DST} -> ${HERDR_CONFIG_SRC}"
+      return
+    fi
+
+    warn "Replacing existing config symlink at ${HERDR_CONFIG_DST}."
+    rm -f "$HERDR_CONFIG_DST"
+  elif [[ -e "$HERDR_CONFIG_DST" ]]; then
+    backup="${HERDR_CONFIG_DST}.bak.$(date +%Y%m%d%H%M%S)"
+    mv "$HERDR_CONFIG_DST" "$backup"
+    log "Backed up existing config: ${backup}"
+  fi
+
+  ln -s "$HERDR_CONFIG_SRC" "$HERDR_CONFIG_DST"
+  log "Linked config: ${HERDR_CONFIG_DST} -> ${HERDR_CONFIG_SRC}"
+}
+
 main() {
   local tmpdir source_dir
 
@@ -82,6 +112,7 @@ main() {
 
   clone_source "$source_dir"
   install_binary "$source_dir"
+  link_config
 
   rm -rf -- "$tmpdir"
   trap - EXIT
