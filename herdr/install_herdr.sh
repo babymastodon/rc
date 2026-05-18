@@ -29,6 +29,31 @@ require_tool() {
   fi
 }
 
+require_full_xcode_on_macos() {
+  local developer_dir
+
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    return
+  fi
+
+  require_tool xcodebuild
+
+  if xcodebuild -version >/dev/null 2>&1; then
+    return
+  fi
+
+  developer_dir="$(xcode-select -p 2>/dev/null || true)"
+  err "herdr's vendored Ghostty VT build requires full Xcode for xcodebuild -create-xcframework."
+  if [[ -n "$developer_dir" ]]; then
+    err "Current active developer directory: ${developer_dir}"
+  fi
+  printf 'Install Xcode from the App Store or Apple Developer, then run:\n' >&2
+  printf '  sudo xcode-select -s /Applications/Xcode.app/Contents/Developer\n' >&2
+  printf '  sudo xcodebuild -license accept\n' >&2
+  printf 'Then rerun this script.\n' >&2
+  exit 1
+}
+
 clone_source() {
   local dest="$1"
 
@@ -98,6 +123,7 @@ main() {
   require_tool git
   require_tool mise
   require_tool cargo
+  require_full_xcode_on_macos
 
   if have herdr; then
     log "Existing herdr detected: $(herdr --version 2>/dev/null | head -n1 || echo 'version lookup skipped')"
