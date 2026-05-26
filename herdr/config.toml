@@ -5,7 +5,8 @@ name = "terminal"
 
 [theme.custom]
 accent = "green"
-selection_bg = "yellow"
+selection_bg = "darkgrey"
+selection_fg = "preserve"
 
 [ui]
 confirm_close = true
@@ -17,7 +18,7 @@ show_agent_labels_on_pane_borders = false
 delivery = "terminal"
 
 [keys]
-detach = "d"
+detach = "prefix+d"
 previous_tab = "shift+left"
 next_tab = "shift+right"
 previous_workspace = "ctrl+shift+tab"
