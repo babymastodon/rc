@@ -1,0 +1,33 @@
+engine = "whisper"
+state_file = "auto"
+
+[hotkey]
+enabled = true
+key = "F23"
+mode = "push_to_talk"
+modifiers = []
+
+[audio]
+device = "default"
+sample_rate = 16000
+max_duration_secs = 60
+
+[whisper]
+model = "small.en"
+language = "en"
+translate = false
+on_demand_loading = false
+
+[output]
+mode = "type"
+fallback_to_clipboard = true
+driver_order = ["ydotool", "clipboard"]
+type_delay_ms = 0
+pre_type_delay_ms = 150
+wait_for_modifier_release = true
+modifier_release_timeout_ms = 1500
+
+[output.notification]
+on_recording_start = false
+on_recording_stop = false
+on_transcription = false

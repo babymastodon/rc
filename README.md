@@ -123,6 +123,12 @@ Linux (keyd):
 ./keyd/install_keyd.sh
 ```
 
+The Copilot key is mapped to Voxtype push-to-talk on Linux. The Voxtype config targets GNOME typing through `ydotool`, with clipboard fallback. Install Voxtype from the upstream prebuilt Fedora/Ubuntu package and link this repo's config:
+
+```bash
+./voxtype/install_voxtype.sh
+```
+
 macOS (Karabiner-Elements): https://karabiner-elements.pqrs.org
 
 ```bash
