@@ -51,7 +51,7 @@ Install Vim:
 ./vim/install_vim.sh
 ```
 
-Install the shared Rust, Go, Node, and Python toolchains via `mise`:
+Install the shared runtimes, CLI tools, and language servers via `mise`:
 
 ```bash
 ./mise/install_mise.sh
@@ -110,6 +110,7 @@ pl='git pull'
 ph='git push --force-with-lease'
 mg='git fetch && git merge origin/master --no-edit'
 br='git log --graph --oneline --decorate --all'
+lg='lazygit'
 ```
 
 ## Keyboard remaps&nbsp;`💻`

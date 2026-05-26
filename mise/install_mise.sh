@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-echo "=== Setting up runtimes + CoC language servers with mise ==="
+echo "=== Setting up runtimes, CLI tools, and CoC language servers with mise ==="
 
 OS="$(uname -s)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
