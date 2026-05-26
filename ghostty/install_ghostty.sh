@@ -6,8 +6,30 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
 warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
 err()   { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
-need_sudo() { if [[ $EUID -ne 0 ]]; then echo "sudo"; fi; }
-SUDO="$(need_sudo || true)"
+
+require_command() {
+  local cmd="$1"
+
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    err "Missing required command: $cmd"
+    exit 1
+  fi
+}
+
+install_ghostty_macos() {
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    return
+  fi
+
+  require_command brew
+
+  if brew list --cask ghostty >/dev/null 2>&1; then
+    log "Ghostty is already installed via Homebrew."
+  else
+    log "Installing Ghostty with Homebrew..."
+    brew install --cask ghostty
+  fi
+}
 
 # robust symlink creator that verifies/fixes target
 maybe_link() {
@@ -34,11 +56,12 @@ maybe_link() {
   fi
 }
 
+# ----- install app on macOS -----
+install_ghostty_macos
+
 # ----- link configs (via maybe_link) -----
-log "Linking Ghotty configuration…"
+log "Linking Ghostty configuration..."
 mkdir -p "$HOME/.config/ghostty/" "$HOME/.config/ghostty/themes/"
 maybe_link "$SCRIPT_DIR/ghostty.conf"              "$HOME/.config/ghostty/config"
 maybe_link "$SCRIPT_DIR/monokai-custom.theme"         "$HOME/.config/ghostty/themes/monokai-custom.theme"
 maybe_link "$SCRIPT_DIR/monokai-custom-light.theme"    "$HOME/.config/ghostty/themes/monokai-custom-light.theme"
-
-printf 'Install Ghostty from: https://ghostty.org/download\n'

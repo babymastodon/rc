@@ -35,9 +35,7 @@ source ~/.bashrc
 
 ## Ghostty&nbsp;`💻`
 
-Get Ghostty here: https://ghostty.org (install on the laptop). It's a GPU-accelerated terminal that matches your OS light/dark theme. Kitty configs are also available.
-
-After install, link the config from this repo:
+Install Ghostty and link the config:
 
 ```bash
 ./ghostty/install_ghostty.sh
@@ -135,7 +133,7 @@ Install Voxtype:
 ./voxtype/install_voxtype.sh
 ```
 
-macOS (Karabiner-Elements): https://karabiner-elements.pqrs.org
+macOS (Karabiner-Elements):
 
 ```bash
 ./karabiner/install_karabiner.sh

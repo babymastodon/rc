@@ -6,6 +6,26 @@ log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
 warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
 err()   { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
 
+require_command() {
+  local cmd="$1"
+
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    err "Missing required command: $cmd"
+    exit 1
+  fi
+}
+
+install_karabiner_macos() {
+  require_command brew
+
+  if brew list --cask karabiner-elements >/dev/null 2>&1; then
+    log "Karabiner-Elements is already installed via Homebrew."
+  else
+    log "Installing Karabiner-Elements with Homebrew..."
+    brew install --cask karabiner-elements
+  fi
+}
+
 maybe_link() {
   local src="$1" dest="$2"
 
@@ -39,9 +59,7 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
   exit 1
 fi
 
-if [[ ! -d "/Applications/Karabiner-Elements.app" && ! -d "$HOME/Applications/Karabiner-Elements.app" ]]; then
-  warn "Karabiner-Elements app not found. Install it first from https://karabiner-elements.pqrs.org"
-fi
+install_karabiner_macos
 
 CONF_SRC="$SCRIPT_DIR/karabiner.json"
 CONF_DST="$HOME/.config/karabiner/karabiner.json"
@@ -56,4 +74,3 @@ mkdir -p "$(dirname "$CONF_DST")"
 maybe_link "$CONF_SRC" "$CONF_DST"
 
 log "Done."
-printf 'Install Karabiner-Elements from: https://karabiner-elements.pqrs.org\n'
