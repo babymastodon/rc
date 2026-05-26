@@ -93,6 +93,12 @@ The shell setup adds `hoo` as a shortcut for `herdr`:
 hoo
 ```
 
+With one host argument, `hoo` attaches through Herdr's remote mode:
+
+```bash
+hoo workbox
+```
+
 It is very convenient to run Herdr on a remote VM, since agents can keep working in the background after you disconnect.
 
 ## Git shortcuts&nbsp;`💻` `🗄️`

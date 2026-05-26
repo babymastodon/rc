@@ -64,7 +64,13 @@ alias newmoo="TMPDIR=$TMUXTMP echo -ne '\033]0;$(hostname)\007'; tmux new -s moo
 alias moo="TMPDIR=$TMUXTMP echo -ne '\033]0;$(hostname)\007'; tmux new-session -A -s moo"
 alias fixmoo='TMPDIR=$TMUXTMP killall -s SIGUSR1 moo'
 alias newhoo='herdr'
-alias hoo='herdr'
+function hoo() {
+  if [ "$#" -eq 1 ] && [ "${1#-}" = "$1" ]; then
+    herdr --remote "$1"
+  else
+    herdr "$@"
+  fi
+}
 alias vimdiff='vim -d'
 alias ck='git checkout'
 alias cm='git-commit-all'
