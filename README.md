@@ -127,16 +127,18 @@ Linux (keyd):
 ./keyd/install_keyd.sh
 ```
 
-Install Voxtype:
-
-```bash
-./voxtype/install_voxtype.sh
-```
-
 macOS (Karabiner-Elements):
 
 ```bash
 ./karabiner/install_karabiner.sh
+```
+
+## Voxtype&nbsp;`💻`
+
+Install Voxtype:
+
+```bash
+./voxtype/install_voxtype.sh
 ```
 
 ## Codex&nbsp;`💻` `🗄️`
