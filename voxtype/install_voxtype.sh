@@ -3,515 +3,263 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-VOXTYPE_REPO_API="https://api.github.com/repos/peteonrails/voxtype/releases"
-DEFAULT_PACKAGE_VERSION="0.7.3"
-DEFAULT_MODEL="${VOXTYPE_MODEL:-large-v3-turbo}"
-NEEDS_LOGOUT=0
 
-log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
-warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
-err()   { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
+VOXTYPE_VERSION="0.7.4"
+COHERE_MODEL="cohere-transcribe-q4f16"
+COHERE_REPO="https://huggingface.co/onnx-community/cohere-transcribe-03-2026-ONNX"
 
-need_sudo() { if [[ $EUID -ne 0 ]]; then echo "sudo"; fi; }
-SUDO="$(need_sudo || true)"
-TARGET_USER="${SUDO_USER:-${USER:-$(id -un)}}"
+VOXTYPE_BIN_DIR="$HOME/.local/share/voxtype/bin"
+VOXTYPE_BIN="$VOXTYPE_BIN_DIR/voxtype-onnx-avx2"
+VOXTYPE_LINK="$HOME/.local/bin/voxtype"
+VOXTYPE_URL="https://github.com/peteonrails/voxtype/releases/download/v${VOXTYPE_VERSION}/voxtype-${VOXTYPE_VERSION}-linux-x86_64-onnx-avx2"
 
-maybe_link() {
-  local src="$1" dest="$2"
+CONFIG_SRC="$REPO_ROOT/voxtype/config.toml"
+CONFIG_DEST="$HOME/.config/voxtype/config.toml"
+MODEL_DIR="$HOME/.local/share/voxtype/models/${COHERE_MODEL}"
 
-  if [[ -e "$dest" || -L "$dest" ]]; then
-    if [[ -L "$dest" ]]; then
-      local target
-      target="$(readlink "$dest")"
-      if [[ "$target" == "$src" ]]; then
-        log "Link already correct: $dest -> $src"
-      else
-        warn "Link exists but wrong target ($target), fixing..."
-        rm -f "$dest"
-        ln -s "$src" "$dest"
-        log "Fixed link: $dest -> $src"
-      fi
-    else
-      warn "Exists and not a link: $dest (skipping)"
-    fi
-  else
-    ln -s "$src" "$dest"
-    log "Linked: $dest -> $src"
-  fi
-}
+log() { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
+err() { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
 
-source_os_release() {
-  if [[ -r /etc/os-release ]]; then
-    # shellcheck disable=SC1091
-    . /etc/os-release
-  fi
-}
+require_command() {
+  local cmd="$1"
 
-detect_pkg_type() {
-  source_os_release
-
-  case "${ID:-}" in
-    ubuntu|debian)
-      echo "deb"
-      return
-      ;;
-    fedora|rhel|centos|rocky|almalinux)
-      echo "rpm"
-      return
-      ;;
-  esac
-
-  if command -v apt-get >/dev/null 2>&1; then
-    echo "deb"
-  elif command -v dnf >/dev/null 2>&1; then
-    echo "rpm"
-  else
-    echo ""
-  fi
-}
-
-version_major() {
-  local version_id="${VERSION_ID:-0}"
-  printf '%s\n' "${version_id%%.*}"
-}
-
-check_supported_distro() {
-  source_os_release
-  local major
-  major="$(version_major)"
-
-  case "${ID:-}" in
-    ubuntu)
-      if (( major < 24 )); then
-        err "Voxtype prebuilt packages require Ubuntu 24.04 or newer."
-        exit 1
-      fi
-      ;;
-    debian)
-      if (( major < 13 )); then
-        err "Voxtype prebuilt packages require Debian 13 (Trixie) or newer."
-        exit 1
-      fi
-      ;;
-    fedora)
-      if (( major < 40 )); then
-        err "Voxtype prebuilt packages require Fedora 40 or newer."
-        exit 1
-      fi
-      ;;
-    rhel|centos|rocky|almalinux)
-      warn "Using the RPM package on ${PRETTY_NAME:-this distro}; upstream documents Fedora/RHEL-family support."
-      ;;
-  esac
-}
-
-ensure_arch() {
-  case "$(uname -m)" in
-    x86_64|amd64)
-      ;;
-    *)
-      err "This prebuilt .deb/.rpm installer only supports x86_64 Linux."
-      err "Upstream documents separate manual binaries for Linux arm64."
-      exit 1
-      ;;
-  esac
-}
-
-install_pkgs() {
-  local pkg_type="$1"
-  shift
-
-  ensure_sudo_auth
-
-  case "$pkg_type" in
-    deb)
-      $SUDO apt-get update
-      $SUDO apt-get install -y "$@"
-      ;;
-    rpm)
-      $SUDO dnf install -y "$@"
-      ;;
-  esac
-}
-
-ensure_curl() {
-  local pkg_type="$1"
-  if command -v curl >/dev/null 2>&1; then
-    return
-  fi
-
-  log "Installing curl..."
-  install_pkgs "$pkg_type" curl
-}
-
-ensure_python3() {
-  local pkg_type="$1"
-  if command -v python3 >/dev/null 2>&1; then
-    return
-  fi
-
-  log "Installing python3..."
-  install_pkgs "$pkg_type" python3
-}
-
-ensure_sudo_auth() {
-  if [[ -z "$SUDO" ]]; then
-    return
-  fi
-
-  log "Checking sudo access..."
-  $SUDO -v || {
-    err "sudo authentication is required to install Voxtype packages and update group membership."
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    err "Missing required command: ${cmd}"
     exit 1
-  }
+  fi
+}
+
+pkg_manager() {
+  if command -v apt-get >/dev/null 2>&1; then
+    echo apt
+  elif command -v dnf >/dev/null 2>&1; then
+    echo dnf
+  else
+    err "Missing apt-get or dnf for system dependency installation."
+    exit 1
+  fi
 }
 
 package_installed() {
-  local pkg_type="$1" pkg="$2"
+  local manager="$1" pkg="$2"
 
-  case "$pkg_type" in
-    deb)
-      dpkg -s "$pkg" >/dev/null 2>&1
-      ;;
-    rpm)
-      rpm -q "$pkg" >/dev/null 2>&1
-      ;;
+  case "$manager" in
+    apt) dpkg -s "$pkg" >/dev/null 2>&1 ;;
+    dnf) rpm -q "$pkg" >/dev/null 2>&1 ;;
   esac
 }
 
-package_pattern() {
-  local pkg_type="$1"
-  case "$pkg_type" in
-    deb) printf '^voxtype_[0-9].*_amd64[.]deb$' ;;
-    rpm) printf '^voxtype-[0-9].*[.]x86_64[.]rpm$' ;;
-  esac
-}
-
-resolve_package_asset() {
-  local pkg_type="$1"
-  local requested="${VOXTYPE_VERSION:-latest-packaged}"
-  local api_url pattern json
-
-  pattern="$(package_pattern "$pkg_type")"
-  if [[ "$requested" == "latest" || "$requested" == "latest-packaged" ]]; then
-    api_url="${VOXTYPE_REPO_API}?per_page=20"
-  else
-    api_url="${VOXTYPE_REPO_API}/tags/v${requested#v}"
-  fi
-
-  json="$(curl -fsSL "$api_url")"
-  python3 -c '
-import json
-import re
-import sys
-
-pattern = re.compile(sys.argv[1])
-requested = sys.argv[2]
-data = json.load(sys.stdin)
-releases = data if isinstance(data, list) else [data]
-
-for release in releases:
-    tag = release.get("tag_name", "")
-    version = tag.removeprefix("v")
-    for asset in release.get("assets", []):
-        name = asset.get("name", "")
-        url = asset.get("browser_download_url", "")
-        if pattern.match(name) and url:
-            print(f"{version}\t{name}\t{url}")
-            raise SystemExit(0)
-
-if requested in {"latest", "latest-packaged"}:
-    print("No recent Voxtype release publishes a matching .deb/.rpm asset.", file=sys.stderr)
-else:
-    print(f"Voxtype {requested} does not publish a matching .deb/.rpm asset.", file=sys.stderr)
-raise SystemExit(1)
-' "$pattern" "$requested" <<< "$json"
-}
-
-fallback_package_asset() {
-  local pkg_type="$1" version="$DEFAULT_PACKAGE_VERSION" package_name url
-
-  case "$pkg_type" in
-    deb) package_name="voxtype_${version}-1_amd64.deb" ;;
-    rpm) package_name="voxtype-${version}-1.x86_64.rpm" ;;
-  esac
-
-  url="https://github.com/peteonrails/voxtype/releases/download/v${version}/${package_name}"
-  printf '%s\t%s\t%s\n' "$version" "$package_name" "$url"
-}
-
-install_runtime_deps() {
-  local pkg_type="$1"
-  local -a packages=() missing=()
+install_system_deps() {
+  local manager
+  local -a packages missing
   local pkg
 
-  case "$pkg_type" in
-    deb)
-      packages=(ydotool wl-clipboard libnotify-bin playerctl pipewire-alsa libvulkan1)
-      ;;
-    rpm)
-      packages=(ydotool wl-clipboard libnotify playerctl pipewire-alsa vulkan-loader)
-      ;;
-  esac
+  manager="$(pkg_manager)"
+  packages=(curl ydotool pipewire-alsa)
+  missing=()
 
   for pkg in "${packages[@]}"; do
-    package_installed "$pkg_type" "$pkg" || missing+=("$pkg")
+    package_installed "$manager" "$pkg" || missing+=("$pkg")
   done
 
   if (( ${#missing[@]} == 0 )); then
-    log "Recommended Voxtype runtime packages are already installed."
+    log "Required system packages are already installed."
     return
   fi
 
-  log "Installing missing Voxtype runtime packages: ${missing[*]}"
-  install_pkgs "$pkg_type" "${missing[@]}" \
-    || warn "Some recommended runtime packages could not be installed."
-}
+  log "Installing missing system packages: ${missing[*]}"
+  sudo -v
 
-download_and_install_voxtype() {
-  local pkg_type="$1" version="$2" package_name="$3" url="$4"
-  local tmpdir package_path
-
-  tmpdir="$(mktemp -d)"
-  trap "rm -rf '$tmpdir'" EXIT
-
-  package_path="${tmpdir}/${package_name}"
-
-  log "Downloading Voxtype ${version} package..."
-  curl -fL "$url" -o "$package_path"
-
-  log "Installing ${package_name}..."
-  case "$pkg_type" in
-    deb)
-      $SUDO apt-get install -y "$package_path"
+  case "$manager" in
+    apt)
+      sudo apt-get update
+      sudo apt-get install -y "${missing[@]}"
       ;;
-    rpm)
-      $SUDO dnf install -y "$package_path"
+    dnf)
+      sudo dnf install -y "${missing[@]}"
       ;;
   esac
 }
 
-installed_voxtype_version() {
-  if command -v voxtype >/dev/null 2>&1; then
-    voxtype --version 2>/dev/null | awk '{print $2; exit}'
+preflight() {
+  case "$(uname -m)" in
+    x86_64|amd64) ;;
+    *)
+      err "This installer only supports x86_64 Linux."
+      exit 1
+      ;;
+  esac
+
+  pkg_manager >/dev/null
+
+  if ! id -nG | tr ' ' '\n' | grep -qx input; then
+    err "This login session is not in the input group."
+    err "Fix once with: sudo usermod -aG input \$USER"
+    err "Then log out and back in before rerunning this script."
+    exit 1
+  fi
+
+  if [[ ! -r /dev/uinput || ! -w /dev/uinput ]]; then
+    err "Current user cannot access /dev/uinput; ydotool cannot type on GNOME."
+    exit 1
   fi
 }
 
-ensure_voxtype_package() {
-  local pkg_type="$1" version="$2" package_name="$3" url="$4"
-  local installed_version
+require_prereqs() {
+  require_command curl
+  require_command systemctl
+  require_command ydotool
+  require_command ydotoold
+}
 
-  installed_version="$(installed_voxtype_version)"
-  if [[ "$installed_version" == "$version" ]]; then
-    log "Voxtype ${version} already installed."
-    return
-  fi
+install_voxtype_binary() {
+  local tmp_bin="${VOXTYPE_BIN}.new"
 
-  download_and_install_voxtype "$pkg_type" "$version" "$package_name" "$url"
+  mkdir -p "$VOXTYPE_BIN_DIR" "$HOME/.local/bin"
+
+  log "Downloading official Voxtype ONNX CPU binary ${VOXTYPE_VERSION}..."
+  rm -f "$tmp_bin"
+  curl -fL "$VOXTYPE_URL" -o "$tmp_bin"
+  chmod +x "$tmp_bin"
+  mv -f "$tmp_bin" "$VOXTYPE_BIN"
+
+  ln -sfnT "$VOXTYPE_BIN" "$VOXTYPE_LINK"
+  log "Linked: $VOXTYPE_LINK -> $VOXTYPE_BIN"
 }
 
 link_config() {
-  mkdir -p "$HOME/.config/voxtype"
-  maybe_link "$REPO_ROOT/voxtype/config.toml" "$HOME/.config/voxtype/config.toml"
+  mkdir -p "$(dirname "$CONFIG_DEST")"
+  ln -sfnT "$CONFIG_SRC" "$CONFIG_DEST"
+  log "Linked: $CONFIG_DEST -> $CONFIG_SRC"
 }
 
-enable_input_group() {
-  if getent group input >/dev/null 2>&1; then
-    if id -nG "$TARGET_USER" | tr ' ' '\n' | grep -qx input; then
-      log "${TARGET_USER} is already in the input group."
-      if ! id -nG | tr ' ' '\n' | grep -qx input; then
-        NEEDS_LOGOUT=1
-        warn "This login session has not picked up the input group yet; log out and back in before using the F23 hotkey."
-      fi
-      return
-    fi
+install_ydotool_user_service() {
+  local service_file="$HOME/.config/systemd/user/ydotool.service"
+  local ydotoold_bin
 
-    log "Adding ${TARGET_USER} to input group for Voxtype evdev hotkey support..."
-    $SUDO usermod -aG input "$TARGET_USER" || {
-      warn "Could not add ${TARGET_USER} to input group."
-      return
-    }
-    NEEDS_LOGOUT=1
-  else
-    warn "input group not found; Voxtype evdev hotkey support may need manual setup."
-  fi
-}
+  ydotoold_bin="$(command -v ydotoold)"
 
-enable_user_service() {
-  if ! command -v systemctl >/dev/null 2>&1; then
-    warn "systemctl not found; start Voxtype manually with: voxtype daemon"
-    return
-  fi
-
-  if (( NEEDS_LOGOUT )); then
-    log "Enabling Voxtype user service for the next graphical login..."
-    systemctl --user daemon-reload || true
-    systemctl --user enable voxtype \
-      || warn "Could not enable the Voxtype user service. Try after logout/login: systemctl --user enable --now voxtype"
-    return
-  fi
-
-  if systemctl --user is-active --quiet voxtype 2>/dev/null; then
-    log "Restarting Voxtype user service..."
-    systemctl --user daemon-reload || true
-    systemctl --user restart voxtype \
-      || warn "Could not restart the Voxtype user service. Try: systemctl --user restart voxtype"
-    return
-  fi
-
-  log "Enabling and starting Voxtype user service..."
-  systemctl --user daemon-reload || true
-  systemctl --user enable --now voxtype \
-    || warn "Could not enable the Voxtype user service. Try: systemctl --user enable --now voxtype"
-}
-
-enable_voxtype_gpu_override() {
-  if [[ "${VOXTYPE_ENABLE_GPU:-1}" != "1" ]]; then
-    log "Skipping Voxtype GPU override because VOXTYPE_ENABLE_GPU is not 1."
-    return
-  fi
-
-  if ! command -v voxtype >/dev/null 2>&1; then
-    return
-  fi
-
-  if ! VOXTYPE_GPU=1 voxtype info variants 2>/dev/null | grep -q 'Features:.*gpu-vulkan'; then
-    warn "Voxtype Vulkan binary is not available; leaving GPU override disabled."
-    return
-  fi
-
-  local override_dir="$HOME/.config/systemd/user/voxtype.service.d"
-  local override_file="${override_dir}/10-gpu.conf"
-
-  log "Enabling Voxtype Vulkan GPU override..."
-  mkdir -p "$override_dir"
-  cat > "$override_file" <<'EOF'
-[Service]
-Environment=VOXTYPE_GPU=1
-EOF
-  systemctl --user daemon-reload || true
-}
-
-enable_ydotool_service() {
-  if ! command -v ydotool >/dev/null 2>&1; then
-    warn "ydotool is not installed; GNOME typing output will fall back to clipboard."
-    return
-  fi
-
-  if [[ -r /dev/uinput && -w /dev/uinput ]]; then
-    local user_unit_dir="$HOME/.config/systemd/user"
-    local user_unit="${user_unit_dir}/ydotool.service"
-
-    if [[ -S /tmp/.ydotool_socket && ! -w /tmp/.ydotool_socket ]]; then
-      warn "A root-owned ydotool socket is blocking the user ydotool service."
-      if systemctl is-active --quiet ydotool 2>/dev/null; then
-        log "Disabling root ydotool service so the user service can own the socket..."
-        ensure_sudo_auth
-        $SUDO systemctl disable --now ydotool \
-          || warn "Could not disable root ydotool. Try: sudo systemctl disable --now ydotool"
-      fi
-      if [[ -S /tmp/.ydotool_socket && ! -w /tmp/.ydotool_socket ]]; then
-        ensure_sudo_auth
-        $SUDO rm -f /tmp/.ydotool_socket \
-          || warn "Could not remove root-owned /tmp/.ydotool_socket."
-      fi
-    fi
-
-    log "Installing ydotool user service for GNOME typing output..."
-    mkdir -p "$user_unit_dir"
-    cat > "$user_unit" <<'EOF'
+  mkdir -p "$(dirname "$service_file")"
+  cat > "$service_file" <<EOF
 [Unit]
 Description=ydotool daemon for user-owned keyboard injection
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/ydotoold
+ExecStart=$ydotoold_bin
 Restart=on-failure
 
 [Install]
 WantedBy=default.target
 EOF
-    systemctl --user daemon-reload || true
-    systemctl --user enable --now ydotool \
-      || warn "Could not enable ydotool user service. Try: systemctl --user enable --now ydotool"
+
+  systemctl --user daemon-reload
+  systemctl --user enable --now ydotool
+  log "Installed ydotool user service."
+}
+
+install_voxtype_user_service() {
+  local service_file="$HOME/.config/systemd/user/voxtype.service"
+
+  mkdir -p "$(dirname "$service_file")"
+  cat > "$service_file" <<EOF
+[Unit]
+Description=Voxtype Cohere CPU daemon
+After=graphical-session.target pipewire.service pipewire-pulse.service
+Wants=ydotool.service
+
+[Service]
+Type=simple
+ExecStart=$VOXTYPE_BIN -q daemon
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target
+EOF
+
+  systemctl --user daemon-reload
+  log "Installed Voxtype user service."
+}
+
+file_size_gt() {
+  local file="$1" min_bytes="$2"
+
+  [[ -f "$file" ]] && (( "$(stat -c %s "$file")" > min_bytes ))
+}
+
+cohere_model_installed() {
+  file_size_gt "$MODEL_DIR/encoder_model.onnx" 1024 \
+    && file_size_gt "$MODEL_DIR/decoder_model_merged.onnx" 1024 \
+    && file_size_gt "$MODEL_DIR/encoder_model_q4f16.onnx_data" 1048576 \
+    && file_size_gt "$MODEL_DIR/decoder_model_merged_q4f16.onnx_data" 1048576 \
+    && file_size_gt "$MODEL_DIR/tokenizer.json" 1048576 \
+    && [[ -s "$MODEL_DIR/config.json" ]] \
+    && [[ -s "$MODEL_DIR/generation_config.json" ]] \
+    && [[ -s "$MODEL_DIR/processor_config.json" ]] \
+    && [[ -s "$MODEL_DIR/tokenizer_config.json" ]]
+}
+
+download_cohere_file() {
+  local src="$1" dest="$2"
+  local tmp_file="$MODEL_DIR/${dest}.new"
+
+  log "Downloading ${dest} from the official Cohere ONNX repo..."
+  rm -f "$tmp_file"
+  curl -fL "$COHERE_REPO/resolve/main/${src}" -o "$tmp_file"
+  mv -f "$tmp_file" "$MODEL_DIR/${dest}"
+}
+
+install_cohere_model() {
+  if cohere_model_installed; then
+    log "Cohere model is already installed: ${COHERE_MODEL}"
     return
   fi
 
-  warn "Current user cannot access /dev/uinput; ydotool needs /dev/uinput access to type on GNOME."
+  mkdir -p "$MODEL_DIR"
+
+  download_cohere_file "onnx/encoder_model_q4f16.onnx" "encoder_model.onnx"
+  download_cohere_file "onnx/encoder_model_q4f16.onnx_data" "encoder_model_q4f16.onnx_data"
+  download_cohere_file "onnx/decoder_model_merged_q4f16.onnx" "decoder_model_merged.onnx"
+  download_cohere_file "onnx/decoder_model_merged_q4f16.onnx_data" "decoder_model_merged_q4f16.onnx_data"
+  download_cohere_file "tokenizer.json" "tokenizer.json"
+  download_cohere_file "tokenizer_config.json" "tokenizer_config.json"
+  download_cohere_file "config.json" "config.json"
+  download_cohere_file "generation_config.json" "generation_config.json"
+  download_cohere_file "processor_config.json" "processor_config.json"
+
+  if ! cohere_model_installed; then
+    err "Cohere model was not installed correctly."
+    exit 1
+  fi
 }
 
 validate_config() {
-  if ! command -v voxtype >/dev/null 2>&1; then
-    return
-  fi
-
-  log "Validating Voxtype config..."
-  voxtype info variants >/dev/null || {
-    err "Voxtype config validation failed: $HOME/.config/voxtype/config.toml"
-    exit 1
-  }
+  log "Validating Voxtype Cohere config..."
+  "$VOXTYPE_BIN" config >/dev/null
 }
 
-ensure_model() {
-  local model="$1"
-
-  if [[ "${VOXTYPE_DOWNLOAD_MODEL:-1}" != "1" ]]; then
-    log "Skipping model download. To download later, run: voxtype setup --download --model ${model}"
-    return
-  fi
-
-  log "Ensuring Voxtype model is installed: ${model}"
-  voxtype setup --download --model "$model" --no-post-install || {
-    warn "Voxtype model download failed. Rerun: voxtype setup --download --model ${model}"
-    return
-  }
+start_voxtype_service() {
+  systemctl --user enable --now voxtype
+  systemctl --user restart voxtype
+  log "Voxtype user service is running."
 }
 
 run_setup_check() {
   log "Running Voxtype setup check..."
-  voxtype setup check || {
-    warn "Voxtype setup check reported issues. Review the output above."
-    return
-  }
+  "$VOXTYPE_BIN" setup check
 }
 
-print_next_steps() {
-  if (( NEEDS_LOGOUT )); then
-    warn "Log out and back in so this session can use the input group for the F23 push-to-talk hotkey."
-  fi
-
-  if ! systemctl --user is-active --quiet voxtype 2>/dev/null; then
-    warn "Voxtype user service is not active in this shell. Try: systemctl --user enable --now voxtype"
-  fi
-}
-
-pkg_type="$(detect_pkg_type)"
-if [[ -z "$pkg_type" ]]; then
-  err "No supported package manager detected. This installer supports apt-get and dnf."
-  exit 1
-fi
-
-ensure_arch
-check_supported_distro
-ensure_curl "$pkg_type"
-ensure_python3 "$pkg_type"
-
-if ! package_info="$(resolve_package_asset "$pkg_type")"; then
-  warn "Falling back to Voxtype ${DEFAULT_PACKAGE_VERSION}, the newest known packaged release."
-  package_info="$(fallback_package_asset "$pkg_type")"
-fi
-IFS=$'\t' read -r version package_name package_url <<< "$package_info"
-
-install_runtime_deps "$pkg_type"
-ensure_voxtype_package "$pkg_type" "$version" "$package_name" "$package_url"
+preflight
+install_system_deps
+require_prereqs
+install_voxtype_binary
 link_config
-enable_ydotool_service
-enable_voxtype_gpu_override
+install_ydotool_user_service
+install_voxtype_user_service
+install_cohere_model
 validate_config
-enable_input_group
-ensure_model "$DEFAULT_MODEL"
-enable_user_service
+start_voxtype_service
 run_setup_check
-print_next_steps
 
-log "Voxtype install complete."
+log "Voxtype Cohere CPU install complete."

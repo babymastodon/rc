@@ -1,4 +1,4 @@
-engine = "whisper"
+engine = "cohere"
 state_file = "auto"
 
 [hotkey]
@@ -12,17 +12,21 @@ device = "default"
 sample_rate = 16000
 max_duration_secs = 60
 
-[whisper]
-model = "large-v3-turbo"
+[cohere]
+model = "cohere-transcribe-q4f16"
 language = "en"
-translate = false
 on_demand_loading = false
-gpu_isolation = false
+
+[vad]
+enabled = true
+backend = "energy"
+threshold = 0.5
+min_speech_duration_ms = 100
 
 [output]
 mode = "type"
-fallback_to_clipboard = true
-driver_order = ["ydotool", "clipboard"]
+fallback_to_clipboard = false
+driver_order = ["ydotool"]
 type_delay_ms = 0
 pre_type_delay_ms = 0
 wait_for_modifier_release = true
