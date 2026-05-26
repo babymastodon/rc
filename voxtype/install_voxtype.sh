@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 VOXTYPE_REPO_API="https://api.github.com/repos/peteonrails/voxtype/releases"
 DEFAULT_PACKAGE_VERSION="0.7.3"
-DEFAULT_MODEL="${VOXTYPE_MODEL:-small.en}"
+DEFAULT_MODEL="${VOXTYPE_MODEL:-large-v3-turbo}"
 NEEDS_LOGOUT=0
 
 log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
@@ -351,10 +351,45 @@ enable_user_service() {
     return
   fi
 
+  if systemctl --user is-active --quiet voxtype 2>/dev/null; then
+    log "Restarting Voxtype user service..."
+    systemctl --user daemon-reload || true
+    systemctl --user restart voxtype \
+      || warn "Could not restart the Voxtype user service. Try: systemctl --user restart voxtype"
+    return
+  fi
+
   log "Enabling and starting Voxtype user service..."
   systemctl --user daemon-reload || true
   systemctl --user enable --now voxtype \
     || warn "Could not enable the Voxtype user service. Try: systemctl --user enable --now voxtype"
+}
+
+enable_voxtype_gpu_override() {
+  if [[ "${VOXTYPE_ENABLE_GPU:-1}" != "1" ]]; then
+    log "Skipping Voxtype GPU override because VOXTYPE_ENABLE_GPU is not 1."
+    return
+  fi
+
+  if ! command -v voxtype >/dev/null 2>&1; then
+    return
+  fi
+
+  if ! VOXTYPE_GPU=1 voxtype info variants 2>/dev/null | grep -q 'Features:.*gpu-vulkan'; then
+    warn "Voxtype Vulkan binary is not available; leaving GPU override disabled."
+    return
+  fi
+
+  local override_dir="$HOME/.config/systemd/user/voxtype.service.d"
+  local override_file="${override_dir}/10-gpu.conf"
+
+  log "Enabling Voxtype Vulkan GPU override..."
+  mkdir -p "$override_dir"
+  cat > "$override_file" <<'EOF'
+[Service]
+Environment=VOXTYPE_GPU=1
+EOF
+  systemctl --user daemon-reload || true
 }
 
 enable_ydotool_service() {
@@ -471,6 +506,7 @@ install_runtime_deps "$pkg_type"
 ensure_voxtype_package "$pkg_type" "$version" "$package_name" "$package_url"
 link_config
 enable_ydotool_service
+enable_voxtype_gpu_override
 validate_config
 enable_input_group
 ensure_model "$DEFAULT_MODEL"

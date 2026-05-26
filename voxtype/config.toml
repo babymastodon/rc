@@ -13,17 +13,18 @@ sample_rate = 16000
 max_duration_secs = 60
 
 [whisper]
-model = "small.en"
+model = "large-v3-turbo"
 language = "en"
 translate = false
 on_demand_loading = false
+gpu_isolation = false
 
 [output]
 mode = "type"
 fallback_to_clipboard = true
 driver_order = ["ydotool", "clipboard"]
 type_delay_ms = 0
-pre_type_delay_ms = 150
+pre_type_delay_ms = 0
 wait_for_modifier_release = true
 modifier_release_timeout_ms = 1500
 
