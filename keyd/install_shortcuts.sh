@@ -34,6 +34,7 @@ log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
 warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
 maybe_link() {
   local src="$1" dest="$2"
+  mkdir -p "$(dirname "$dest")"
 
   # If destination exists
   if [[ -e "$dest" || -L "$dest" ]]; then

@@ -112,4 +112,11 @@ else
   $SUDO systemctl restart keyd || warn "Could not restart keyd; check logs with: sudo journalctl -u keyd -e"
 fi
 
+if [[ -x "$SCRIPT_DIR/install_shortcuts.sh" ]]; then
+  log "Installing GNOME shortcuts…"
+  "$SCRIPT_DIR/install_shortcuts.sh" || warn "GNOME shortcut installation failed; run $SCRIPT_DIR/install_shortcuts.sh for details."
+else
+  warn "GNOME shortcut installer not found or not executable: $SCRIPT_DIR/install_shortcuts.sh"
+fi
+
 log "Done."
