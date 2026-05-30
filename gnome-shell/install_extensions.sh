@@ -7,6 +7,7 @@ warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
 err()   { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
 need_sudo() { if [[ $EUID -ne 0 ]]; then echo "sudo"; fi; }
 SUDO="$(need_sudo || true)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ============================================
 # Configure extensions here (UUIDs)
@@ -175,7 +176,7 @@ load_gnome_extensions() {
   for ext in "${EXTENSIONS[@]}"; do
     local prefix="$(_get_dconf_key_prefix "$ext")"
     local path="/org/gnome/shell/extensions/${prefix}/"
-    local conf_file="${prefix}.conf"
+    local conf_file="${SCRIPT_DIR}/${prefix}.conf"
 
     if [[ -f "$conf_file" ]]; then
       local current desired
@@ -192,6 +193,52 @@ load_gnome_extensions() {
       log "No config found for: $ext (skipping)"
     fi
   done
+}
+
+configure_azwallpaper() {
+  local uuid="azwallpaper@azwallpaper.gitlab.com"
+  local schema="org.gnome.shell.extensions.azwallpaper"
+  local key="slideshow-directory"
+  local wall_base="$HOME/Pictures/wallpapers"
+  local extdir current target
+
+  if ! extdir="$(find_extension_dir "$uuid")"; then
+    warn "AZWallpaper extension directory not found; skipping wallpaper directory setup."
+    return 0
+  fi
+
+  if [[ ! -d "$extdir/schemas" ]]; then
+    warn "AZWallpaper schemas directory not found at $extdir/schemas; skipping wallpaper directory setup."
+    return 0
+  fi
+
+  if [[ ! -d "$wall_base" ]]; then
+    warn "Wallpaper base directory not found: $wall_base"
+    return 0
+  fi
+
+  current="$(gsettings --schemadir "$extdir/schemas" get "$schema" "$key" 2>/dev/null || true)"
+  current="${current#\'}"
+  current="${current%\'}"
+
+  if [[ -n "$current" && -d "$current" ]]; then
+    log "AZWallpaper directory already set: $current"
+    return 0
+  fi
+
+  target="$(find "$wall_base" -type f \( \
+      -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o \
+      -iname '*.webp' -o -iname '*.bmp' -o -iname '*.gif' \
+    \) -printf '%h\n' | sort -u | head -n 1 || true)"
+
+  if [[ -z "$target" ]]; then
+    warn "No image-containing wallpaper directory found under: $wall_base"
+    return 0
+  fi
+
+  gsettings --schemadir "$extdir/schemas" set "$schema" "$key" "$target"
+  gsettings --schemadir "$extdir/schemas" set "$schema" slideshow-change-slide-event 2
+  log "Set AZWallpaper directory: $target"
 }
 
 set_gnome_input_prefs() {
@@ -287,6 +334,7 @@ main() {
   done
 
   load_gnome_extensions
+  configure_azwallpaper
   set_gnome_input_prefs
 
   echo ""
