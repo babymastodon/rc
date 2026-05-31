@@ -1,0 +1,125 @@
+# Copy to ~/.config/mobo-watch/config.toml or pass with:
+#   mobo-watch --config ./sensors.toml
+
+[display]
+show_unconfigured = false
+
+[[devices]]
+match = "it8689"
+label = "Motherboard"
+group = "Board"
+order = 10
+
+[[devices.sensors]]
+key = "temp1"
+label = "System 1"
+order = 10
+
+[[devices.sensors]]
+key = "temp2"
+label = "PCH"
+order = 20
+
+[[devices.sensors]]
+key = "temp3"
+label = "CPU"
+order = 30
+
+[[devices.sensors]]
+key = "temp4"
+label = "PCIEX16"
+order = 40
+
+[[devices.sensors]]
+key = "temp5"
+label = "VRM MOS"
+order = 50
+
+[[devices.sensors]]
+key = "temp6"
+label = "EC_TEMP1"
+order = 60
+
+[[devices.sensors]]
+key = "fan1"
+label = "CPU_FAN"
+order = 100
+
+[[devices.sensors]]
+key = "fan2"
+label = "SYS_FAN1"
+order = 110
+
+[[devices.sensors]]
+key = "fan3"
+label = "SYS_FAN2"
+order = 120
+
+[[devices.sensors]]
+key = "fan4"
+label = "SYS_FAN5_PUMP"
+order = 150
+
+[[devices.sensors]]
+key = "fan5"
+label = "SYS_FAN6_PUMP"
+order = 160
+
+[[devices]]
+match = "it87952"
+label = "Secondary controller"
+group = "Board"
+order = 20
+
+[[devices.sensors]]
+key = "temp1"
+label = "PCIEX16_2"
+order = 10
+
+[[devices.sensors]]
+key = "temp2"
+label = "EC_TEMP2"
+order = 20
+
+[[devices.sensors]]
+key = "temp3"
+label = "PCIEX16_1"
+order = 30
+
+[[devices.sensors]]
+key = "fan1"
+label = "SYS_FAN7_PUMP"
+hidden = true
+
+[[devices.sensors]]
+key = "fan2"
+label = "unknown/unpopulated"
+hidden = true
+
+[[devices.sensors]]
+key = "fan3"
+label = "SYS_FAN8_PUMP"
+order = 180
+
+[psu]
+enabled = true
+device = "/dev/msi-ai1600t"
+timeout = 2.0
+label = "Power supply"
+group = "Power"
+order = 200
+
+[[psu.metrics]]
+key = "output_power"
+label = "Output"
+order = 10
+
+[[psu.metrics]]
+key = "efficiency"
+label = "Efficiency"
+order = 20
+
+[[psu.metrics]]
+key = "fan_speed"
+label = "PSU fan"
+order = 30

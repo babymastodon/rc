@@ -1,0 +1,14 @@
+diff --git a/it87.c b/it87.c
+index e7cc39f..c122fbe 100644
+--- a/it87.c
++++ b/it87.c
+@@ -5923,6 +5923,9 @@ static const struct dmi_system_id it87_dmi_table[] __initconst = {
+ 	IT87_DMI_MATCH_GBT("TRX40 AORUS XTREME", it87_dmi_cb,
+ 			   &it87_acpi_ignore),
+ 		/* IT8688E + IT8792E/IT8795E */
++	IT87_DMI_MATCH_GBT("TRX50 AI TOP", it87_dmi_cb,
++			   &it87_acpi_ignore),
++		/* IT8689E + IT87952E */
+ 	IT87_DMI_MATCH_GBT("Z390 AORUS ULTRA-CF", it87_dmi_cb,
+ 			   &it87_acpi_ignore),
+ 		/* IT8688E + IT8792E/IT8795E */

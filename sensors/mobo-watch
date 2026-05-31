@@ -1,0 +1,870 @@
+#!/usr/bin/env python3
+"""Watch Linux hwmon telemetry, with optional MSI PSU telemetry."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import select
+import shutil
+import sys
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - only relevant on older Python.
+    tomllib = None  # type: ignore[assignment]
+
+
+HWMON_ROOT = Path("/sys/class/hwmon")
+DEFAULT_PSU_DEVICE = "/dev/msi-ai1600t"
+DEFAULT_CONFIG_PATHS = (
+    Path.home() / ".config" / "mobo-watch" / "config.toml",
+    Path(__file__).resolve().with_name("sensors.toml"),
+)
+PRODUCT_COMMAND = (0xFA, 0x51)
+TELEMETRY_COMMAND = (0x51, 0xE0)
+RUNTIME_COMMAND = (0x51, 0xD1)
+BOARD_HWMON_NAMES = (
+    "it87",
+    "it879",
+    "it868",
+    "it862",
+    "gigabyte",
+    "nct",
+    "w836",
+    "f718",
+)
+
+
+class ConfigError(RuntimeError):
+    pass
+
+
+class PsuError(RuntimeError):
+    pass
+
+
+@dataclass(frozen=True)
+class Sensor:
+    kind: str
+    key: str
+    label: str
+    value: float
+    unit: str
+
+
+@dataclass(frozen=True)
+class HwmonDevice:
+    path: Path
+    name: str
+    sensors: tuple[Sensor, ...]
+
+
+@dataclass(frozen=True)
+class Metric:
+    key: str
+    label: str
+    unit: str
+
+
+AI1600T_METRICS = (
+    Metric("voltage_12v", "+12V voltage", "V"),
+    Metric("current_12v", "+12V current", "A"),
+    Metric("voltage_5v", "+5V voltage", "V"),
+    Metric("current_5v", "+5V current", "A"),
+    Metric("voltage_3v3", "+3.3V voltage", "V"),
+    Metric("current_3v3", "+3.3V current", "A"),
+    Metric("output_power", "Output power", "W"),
+    Metric("efficiency", "Efficiency", "%"),
+    Metric("temperature", "Temperature", "C"),
+    Metric("fan_speed", "Fan speed", "RPM"),
+)
+
+
+@dataclass(frozen=True)
+class SensorRule:
+    key: str | None = None
+    match: str | None = None
+    label: str | None = None
+    order: int = 100
+    hidden: bool = False
+
+
+@dataclass(frozen=True)
+class DeviceRule:
+    match: str | None = None
+    name: str | None = None
+    hwmon: str | None = None
+    path: str | None = None
+    label: str | None = None
+    group: str | None = None
+    order: int = 100
+    hidden: bool = False
+    sensors: tuple[SensorRule, ...] = ()
+
+
+@dataclass(frozen=True)
+class PsuConfig:
+    enabled: bool = False
+    device: str = DEFAULT_PSU_DEVICE
+    timeout: float = 2.0
+    label: str = "MSI PSU"
+    group: str | None = None
+    order: int = 100
+    metrics: tuple[SensorRule, ...] = ()
+
+
+@dataclass(frozen=True)
+class DisplayConfig:
+    show_unconfigured: bool = True
+
+
+@dataclass(frozen=True)
+class WatchConfig:
+    path: Path | None = None
+    display: DisplayConfig = field(default_factory=DisplayConfig)
+    devices: tuple[DeviceRule, ...] = ()
+    psu: PsuConfig = field(default_factory=PsuConfig)
+
+
+def natural_key(value: str) -> list[int | str]:
+    return [int(part) if part.isdigit() else part for part in re.split(r"(\d+)", value)]
+
+
+def read_text(path: Path) -> str | None:
+    try:
+        return path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+
+
+def read_number(path: Path) -> float | None:
+    text = read_text(path)
+    if text is None:
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def sensor_label(hwmon: Path, stem: str, fallback: str) -> str:
+    label = read_text(hwmon / f"{stem}_label")
+    return label if label else fallback
+
+
+def collect_device(hwmon: Path) -> HwmonDevice | None:
+    name = read_text(hwmon / "name")
+    if not name:
+        return None
+
+    sensors: list[Sensor] = []
+
+    for path in sorted(hwmon.glob("temp*_input"), key=lambda p: natural_key(p.name)):
+        raw = read_number(path)
+        if raw is None:
+            continue
+        stem = path.name.removesuffix("_input")
+        sensors.append(
+            Sensor(
+                kind="temperature",
+                key=stem,
+                label=sensor_label(hwmon, stem, stem),
+                value=raw / 1000,
+                unit="C",
+            )
+        )
+
+    for path in sorted(hwmon.glob("fan*_input"), key=lambda p: natural_key(p.name)):
+        raw = read_number(path)
+        if raw is None:
+            continue
+        stem = path.name.removesuffix("_input")
+        sensors.append(
+            Sensor(
+                kind="fan",
+                key=stem,
+                label=sensor_label(hwmon, stem, stem),
+                value=raw,
+                unit="RPM",
+            )
+        )
+
+    return HwmonDevice(path=hwmon, name=name, sensors=tuple(sensors))
+
+
+def collect_devices(board_only: bool) -> list[HwmonDevice]:
+    if not HWMON_ROOT.exists():
+        return []
+
+    devices: list[HwmonDevice] = []
+    for hwmon in sorted(HWMON_ROOT.glob("hwmon*"), key=lambda p: natural_key(p.name)):
+        device = collect_device(hwmon)
+        if not device or not device.sensors:
+            continue
+        if not board_only or is_board_device(device):
+            devices.append(device)
+    return devices
+
+
+def is_board_device(device: HwmonDevice) -> bool:
+    name = device.name.lower().replace("-", "_")
+    return any(name.startswith(prefix) or prefix in name for prefix in BOARD_HWMON_NAMES)
+
+
+def linear11_to_float(value: int) -> float:
+    exponent = value >> 11
+    if exponent & 0x10:
+        exponent -= 0x20
+
+    mantissa = value & 0x7FF
+    if mantissa & 0x400:
+        mantissa -= 0x800
+
+    return mantissa * (2**exponent)
+
+
+class MsiPsu:
+    def __init__(self, device: str, timeout: float) -> None:
+        self.device = device
+        self.timeout = timeout
+        self.fd: int | None = None
+
+    def __enter__(self) -> "MsiPsu":
+        try:
+            self.fd = os.open(self.device, os.O_RDWR | os.O_NONBLOCK)
+        except PermissionError as exc:
+            raise PsuError(
+                f"permission denied opening {self.device}; install the udev rule "
+                "or run as root"
+            ) from exc
+        except FileNotFoundError as exc:
+            raise PsuError(
+                f"{self.device} not found; check the USB cable and udev symlink"
+            ) from exc
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        if self.fd is not None:
+            os.close(self.fd)
+            self.fd = None
+
+    def request(self, command: tuple[int, int], min_length: int = 2) -> bytes:
+        if self.fd is None:
+            raise PsuError("device is not open")
+
+        packet = bytes([0, command[0], command[1]]) + bytes(61)
+        os.write(self.fd, packet)
+
+        ready, _, _ = select.select([self.fd], [], [], self.timeout)
+        if not ready:
+            raise PsuError(f"timeout waiting for reply to {command[0]:02x} {command[1]:02x}")
+
+        reply = os.read(self.fd, 64)
+        if len(reply) < min_length:
+            raise PsuError(f"short reply: {len(reply)} bytes, expected at least {min_length}")
+        if reply[0] != command[0] or reply[1] != command[1]:
+            raise PsuError(
+                "unexpected reply header: "
+                f"got {reply[0]:02x} {reply[1]:02x}, "
+                f"wanted {command[0]:02x} {command[1]:02x}"
+            )
+        return reply
+
+    def product(self) -> str:
+        reply = self.request(PRODUCT_COMMAND, min_length=44)
+        return reply[2:44].split(b"\0", 1)[0].decode("ascii", "replace")
+
+    def telemetry(self) -> dict[str, float]:
+        reply = self.request(TELEMETRY_COMMAND, min_length=2 + len(AI1600T_METRICS) * 2)
+        values: dict[str, float] = {}
+
+        for index, metric in enumerate(AI1600T_METRICS):
+            offset = 2 + index * 2
+            raw = reply[offset] | (reply[offset + 1] << 8)
+            values[metric.key] = linear11_to_float(raw)
+
+        return values
+
+    def runtime_minutes(self) -> float:
+        reply = self.request(RUNTIME_COMMAND, min_length=6)
+        return int.from_bytes(reply[2:6], "little", signed=False) / 100
+
+
+def detect_psu_device(default_device: str) -> str:
+    default_path = Path(default_device)
+    if default_path.exists():
+        return default_device
+
+    for hidraw in sorted(Path("/sys/class/hidraw").glob("hidraw*"), key=lambda p: natural_key(p.name)):
+        uevent = read_text(hidraw / "device" / "uevent")
+        if uevent and "HID_ID=0003:00000DB0:0000C9EB" in uevent:
+            candidate = Path("/dev") / hidraw.name
+            if candidate.exists():
+                return str(candidate)
+
+    return default_device
+
+
+def collect_psu(config: PsuConfig) -> dict[str, Any]:
+    detected_device = detect_psu_device(config.device)
+    try:
+        with MsiPsu(detected_device, config.timeout) as psu:
+            product = psu.product()
+            runtime_minutes = psu.runtime_minutes()
+            telemetry = psu.telemetry()
+    except PsuError as exc:
+        return {
+            "available": False,
+            "label": config.label,
+            "group": config.group,
+            "order": config.order,
+            "device": detected_device,
+            "error": str(exc),
+        }
+
+    metrics = [
+        {
+            "key": metric.key,
+            "label": metric.label,
+            "value": telemetry[metric.key],
+            "unit": metric.unit,
+            "order": index,
+        }
+        for index, metric in enumerate(AI1600T_METRICS)
+    ]
+
+    runtime_seconds = round(runtime_minutes * 60)
+
+    return {
+        "available": True,
+        "label": config.label,
+        "group": config.group,
+        "order": config.order,
+        "device": detected_device,
+        "product": product,
+        "runtime_minutes": runtime_minutes,
+        "runtime_seconds": runtime_seconds,
+        "runtime_display": format_duration(runtime_seconds),
+        "telemetry": telemetry,
+        "metrics": apply_metric_rules(metrics, config.metrics),
+    }
+
+
+def str_value(data: dict[str, Any], key: str, context: str) -> str | None:
+    value = data.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ConfigError(f"{context}.{key} must be a string")
+    return value
+
+
+def bool_value(data: dict[str, Any], key: str, default: bool, context: str) -> bool:
+    value = data.get(key, default)
+    if not isinstance(value, bool):
+        raise ConfigError(f"{context}.{key} must be true or false")
+    return value
+
+
+def int_value(data: dict[str, Any], key: str, default: int, context: str) -> int:
+    value = data.get(key, default)
+    if not isinstance(value, int):
+        raise ConfigError(f"{context}.{key} must be an integer")
+    return value
+
+
+def float_value(data: dict[str, Any], key: str, default: float, context: str) -> float:
+    value = data.get(key, default)
+    if not isinstance(value, (int, float)):
+        raise ConfigError(f"{context}.{key} must be a number")
+    return float(value)
+
+
+def parse_sensor_rules(items: Any, context: str) -> tuple[SensorRule, ...]:
+    if items is None:
+        return ()
+    if not isinstance(items, list):
+        raise ConfigError(f"{context} must be a list of tables")
+
+    rules: list[SensorRule] = []
+    for index, item in enumerate(items):
+        item_context = f"{context}[{index}]"
+        if not isinstance(item, dict):
+            raise ConfigError(f"{item_context} must be a table")
+        rules.append(
+            SensorRule(
+                key=str_value(item, "key", item_context),
+                match=str_value(item, "match", item_context),
+                label=str_value(item, "label", item_context),
+                order=int_value(item, "order", 100, item_context),
+                hidden=bool_value(item, "hidden", False, item_context),
+            )
+        )
+    return tuple(rules)
+
+
+def parse_device_rules(items: Any) -> tuple[DeviceRule, ...]:
+    if items is None:
+        return ()
+    if not isinstance(items, list):
+        raise ConfigError("devices must be a list of tables")
+
+    rules: list[DeviceRule] = []
+    for index, item in enumerate(items):
+        context = f"devices[{index}]"
+        if not isinstance(item, dict):
+            raise ConfigError(f"{context} must be a table")
+        rules.append(
+            DeviceRule(
+                match=str_value(item, "match", context),
+                name=str_value(item, "name", context),
+                hwmon=str_value(item, "hwmon", context),
+                path=str_value(item, "path", context),
+                label=str_value(item, "label", context),
+                group=str_value(item, "group", context),
+                order=int_value(item, "order", 100, context),
+                hidden=bool_value(item, "hidden", False, context),
+                sensors=parse_sensor_rules(item.get("sensors"), f"{context}.sensors"),
+            )
+        )
+    return tuple(rules)
+
+
+def parse_psu_config(item: Any) -> PsuConfig:
+    if item is None:
+        return PsuConfig()
+    if not isinstance(item, dict):
+        raise ConfigError("psu must be a table")
+
+    return PsuConfig(
+        enabled=bool_value(item, "enabled", False, "psu"),
+        device=str_value(item, "device", "psu") or DEFAULT_PSU_DEVICE,
+        timeout=float_value(item, "timeout", 2.0, "psu"),
+        label=str_value(item, "label", "psu") or "MSI PSU",
+        group=str_value(item, "group", "psu"),
+        order=int_value(item, "order", 100, "psu"),
+        metrics=parse_sensor_rules(item.get("metrics"), "psu.metrics"),
+    )
+
+
+def parse_display_config(item: Any) -> DisplayConfig:
+    if item is None:
+        return DisplayConfig()
+    if not isinstance(item, dict):
+        raise ConfigError("display must be a table")
+    return DisplayConfig(
+        show_unconfigured=bool_value(item, "show_unconfigured", True, "display"),
+    )
+
+
+def parse_config(path: Path) -> WatchConfig:
+    if tomllib is None:
+        raise ConfigError("config files require Python 3.11 or newer for tomllib")
+
+    try:
+        raw = tomllib.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise ConfigError(f"cannot read {path}: {exc}") from exc
+    except tomllib.TOMLDecodeError as exc:
+        raise ConfigError(f"cannot parse {path}: {exc}") from exc
+
+    if not isinstance(raw, dict):
+        raise ConfigError(f"{path} must contain a TOML table")
+
+    return WatchConfig(
+        path=path,
+        display=parse_display_config(raw.get("display")),
+        devices=parse_device_rules(raw.get("devices")),
+        psu=parse_psu_config(raw.get("psu")),
+    )
+
+
+def load_config(path: str | None) -> WatchConfig:
+    if path:
+        config_path = Path(path).expanduser()
+        if not config_path.exists():
+            raise ConfigError(f"config file not found: {config_path}")
+        return parse_config(config_path)
+
+    for config_path in DEFAULT_CONFIG_PATHS:
+        if config_path.exists():
+            return parse_config(config_path)
+    return WatchConfig()
+
+
+def path_candidates(path: Path) -> set[str]:
+    candidates = {str(path), path.name}
+    try:
+        candidates.add(str(path.resolve()))
+    except OSError:
+        pass
+    return candidates
+
+
+def device_matches(rule: DeviceRule, device: HwmonDevice) -> bool:
+    checks: list[bool] = []
+    candidates = {device.name, *path_candidates(device.path)}
+
+    if rule.match is not None:
+        checks.append(rule.match in candidates)
+    if rule.name is not None:
+        checks.append(rule.name == device.name)
+    if rule.hwmon is not None:
+        checks.append(rule.hwmon == device.path.name)
+    if rule.path is not None:
+        checks.append(rule.path in path_candidates(device.path))
+
+    return bool(checks) and all(checks)
+
+
+def sensor_matches(rule: SensorRule, sensor: Sensor) -> bool:
+    checks: list[bool] = []
+    candidates = {sensor.key, sensor.label}
+
+    if rule.key is not None:
+        checks.append(rule.key == sensor.key)
+    if rule.match is not None:
+        checks.append(rule.match in candidates)
+
+    return bool(checks) and all(checks)
+
+
+def match_device_rule(config: WatchConfig, device: HwmonDevice) -> DeviceRule | None:
+    for rule in config.devices:
+        if device_matches(rule, device):
+            return rule
+    return None
+
+
+def match_sensor_rule(rules: tuple[SensorRule, ...], sensor: Sensor) -> SensorRule | None:
+    for rule in rules:
+        if sensor_matches(rule, sensor):
+            return rule
+    return None
+
+
+def apply_metric_rules(metrics: list[dict[str, Any]], rules: tuple[SensorRule, ...]) -> list[dict[str, Any]]:
+    shown: list[dict[str, Any]] = []
+    for metric in metrics:
+        sensor = Sensor(
+            kind="psu",
+            key=metric["key"],
+            label=metric["label"],
+            value=metric["value"],
+            unit=metric["unit"],
+        )
+        rule = match_sensor_rule(rules, sensor)
+        if rule and rule.hidden:
+            continue
+        item = dict(metric)
+        if rule:
+            item["label"] = rule.label or item["label"]
+            item["order"] = rule.order
+        shown.append(item)
+
+    return sorted(shown, key=lambda item: (item["order"], natural_key(item["key"])))
+
+
+def apply_device_config(devices: list[HwmonDevice], config: WatchConfig) -> list[dict[str, Any]]:
+    shown: list[dict[str, Any]] = []
+    for index, device in enumerate(devices):
+        device_rule = match_device_rule(config, device)
+        if device_rule and device_rule.hidden:
+            continue
+        if device_rule is None and not config.display.show_unconfigured:
+            continue
+
+        sensors: list[dict[str, Any]] = []
+        for sensor_index, sensor in enumerate(device.sensors):
+            sensor_rule = match_sensor_rule(device_rule.sensors, sensor) if device_rule else None
+            if sensor_rule and sensor_rule.hidden:
+                continue
+            sensors.append(
+                {
+                    "kind": sensor.kind,
+                    "key": sensor.key,
+                    "label": sensor_rule.label if sensor_rule and sensor_rule.label else sensor.label,
+                    "value": sensor.value,
+                    "unit": sensor.unit,
+                    "order": sensor_rule.order if sensor_rule else 100,
+                    "source_label": sensor.label,
+                    "source_order": sensor_index,
+                }
+            )
+
+        if not sensors:
+            continue
+
+        sensors.sort(key=lambda sensor: (sensor["order"], sensor["source_order"], natural_key(sensor["key"])))
+        shown.append(
+            {
+                "hwmon": device.path.name,
+                "name": device.name,
+                "label": device_rule.label if device_rule and device_rule.label else device.name,
+                "group": device_rule.group if device_rule else None,
+                "order": device_rule.order if device_rule else 100,
+                "source_order": index,
+                "path": str(device.path.resolve()),
+                "sensors": sensors,
+            }
+        )
+
+    return sorted(
+        shown,
+        key=lambda device: (device["order"], device["source_order"], natural_key(device["hwmon"])),
+    )
+
+
+def sample(board_only: bool, include_psu: bool, config: WatchConfig) -> dict[str, Any]:
+    return {
+        "timestamp": time.time(),
+        "config": str(config.path) if config.path else None,
+        "devices": apply_device_config(collect_devices(board_only), config),
+        "psu": collect_psu(config.psu) if include_psu else None,
+    }
+
+
+def format_value(item: dict[str, Any]) -> str:
+    value = item["value"]
+    unit = item["unit"]
+    if unit == "RPM":
+        return f"{value:8.0f} {unit}"
+    if unit in {"W", "%", "C"}:
+        return f"{value:8.1f} {unit}"
+    return f"{value:8.3f} {unit}"
+
+
+def format_duration(total_seconds: int) -> str:
+    hours, remainder = divmod(max(0, total_seconds), 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours}:{minutes:02d}:{seconds:02d}"
+
+
+def print_device(device: dict[str, Any]) -> None:
+    title = device["label"]
+    if title == device["name"]:
+        print(f"{title} ({device['hwmon']})")
+    else:
+        print(f"{title} ({device['name']}, {device['hwmon']})")
+
+    for sensor in device["sensors"]:
+        print(f"  {sensor['label']:<24s} {format_value(sensor)}")
+
+
+def print_psu(psu: dict[str, Any]) -> None:
+    if psu["available"]:
+        print(f"{psu['label']}: {psu['product']}")
+        print(f"  Runtime                 {psu['runtime_display']:>8s}")
+        for metric in psu["metrics"]:
+            print(f"  {metric['label']:<24s} {format_value(metric)}")
+    else:
+        print(f"{psu['label']}: unavailable")
+        print(f"  {psu['error']}")
+
+
+def print_text(data: dict[str, Any], clear: bool) -> None:
+    if clear:
+        print("\033[2J\033[H", end="")
+
+    sections: list[tuple[int, int, str | None, str, dict[str, Any]]] = []
+    for index, device in enumerate(data["devices"]):
+        sections.append((device["order"], index, device["group"], "device", device))
+
+    psu = data.get("psu")
+    if psu:
+        sections.append((psu["order"], len(sections), psu.get("group"), "psu", psu))
+
+    if not sections:
+        print("No hwmon temperature or fan sensors are currently exposed.")
+        print("Run `mobo-watch --check` for kernel/device diagnostics.")
+        sys.stdout.flush()
+        return
+
+    previous_group: str | None = None
+    for index, (_, _, group, section_type, section_data) in enumerate(sorted(sections)):
+        if index:
+            print()
+        if group and group != previous_group:
+            print(group)
+            previous_group = group
+        if section_type == "device":
+            print_device(section_data)
+        else:
+            print_psu(section_data)
+
+    sys.stdout.flush()
+
+
+def command_exists(command: str) -> bool:
+    return shutil.which(command) is not None
+
+
+def read_dmi() -> dict[str, str]:
+    dmi: dict[str, str] = {}
+    for key in ("sys_vendor", "product_name", "board_vendor", "board_name", "bios_version"):
+        value = read_text(Path("/sys/class/dmi/id") / key)
+        if value:
+            dmi[key] = value
+    return dmi
+
+
+def print_check(config: WatchConfig) -> int:
+    dmi = read_dmi()
+    if dmi:
+        print("System:")
+        for key, value in dmi.items():
+            print(f"  {key}: {value}")
+        print()
+
+    if config.path:
+        print(f"Config: {config.path}")
+    else:
+        print("Config: none")
+    print()
+
+    devices = collect_devices(board_only=False)
+    board_devices = [device for device in devices if is_board_device(device)]
+
+    print("Current hwmon devices:")
+    if devices:
+        for device in devices:
+            counts = {
+                "temperature": sum(1 for sensor in device.sensors if sensor.kind == "temperature"),
+                "fan": sum(1 for sensor in device.sensors if sensor.kind == "fan"),
+            }
+            print(
+                f"  {device.path.name}: {device.name} "
+                f"({counts['temperature']} temps, {counts['fan']} fans)"
+            )
+    else:
+        print("  none with temp/fan inputs")
+    print()
+
+    print("Motherboard-like hwmon devices:")
+    if board_devices:
+        for device in board_devices:
+            print(f"  {device.path}: {device.name}")
+    else:
+        print("  none matched by the built-in name heuristic")
+    print()
+
+    print(f"lm-sensors command installed: {'yes' if command_exists('sensors') else 'no'}")
+    print(f"MSI PSU enabled by config: {'yes' if config.psu.enabled else 'no'}")
+    return 0 if devices else 1
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Watch Linux hwmon sensors, with optional MSI PSU telemetry."
+    )
+    parser.add_argument(
+        "-i",
+        "--interval",
+        type=float,
+        default=0.5,
+        help="seconds between samples (default: 0.5)",
+    )
+    parser.add_argument("--once", action="store_true", help="print one sample and exit")
+    parser.add_argument("--json", action="store_true", help="print newline-delimited JSON")
+    parser.add_argument(
+        "--config",
+        help=(
+            "TOML config path (default: first existing "
+            "~/.config/mobo-watch/config.toml or sensors.toml next to this script)"
+        ),
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="include unconfigured hwmon devices, overriding display.show_unconfigured",
+    )
+    parser.add_argument(
+        "--board-only",
+        action="store_true",
+        help="only include motherboard-like hwmon devices matched by name",
+    )
+    parser.add_argument("--check", action="store_true", help="print setup diagnostics and exit")
+    parser.add_argument("--psu", action="store_true", help="include MSI MEG Ai1600T PSU telemetry")
+    parser.add_argument(
+        "--psu-device",
+        default=None,
+        help=f"MSI PSU hidraw path or symlink (default from config, otherwise {DEFAULT_PSU_DEVICE})",
+    )
+    parser.add_argument(
+        "--psu-timeout",
+        type=float,
+        default=None,
+        help="seconds to wait for each PSU HID reply (default from config, otherwise 2.0)",
+    )
+    parser.add_argument("--no-psu", action="store_true", help="disable PSU telemetry, overriding config")
+    parser.add_argument("--no-clear", action="store_true", help="do not clear the screen")
+    return parser.parse_args()
+
+
+def merge_cli_config(config: WatchConfig, args: argparse.Namespace) -> WatchConfig:
+    display = DisplayConfig(show_unconfigured=config.display.show_unconfigured or args.all)
+    psu = config.psu
+    if args.psu_device is not None or args.psu_timeout is not None:
+        psu = PsuConfig(
+            enabled=psu.enabled,
+            device=args.psu_device if args.psu_device is not None else psu.device,
+            timeout=args.psu_timeout if args.psu_timeout is not None else psu.timeout,
+            label=psu.label,
+            group=psu.group,
+            order=psu.order,
+            metrics=psu.metrics,
+        )
+    return WatchConfig(path=config.path, display=display, devices=config.devices, psu=psu)
+
+
+def main() -> int:
+    args = parse_args()
+
+    if args.interval <= 0:
+        print("interval must be greater than 0", file=sys.stderr)
+        return 2
+
+    try:
+        config = merge_cli_config(load_config(args.config), args)
+    except ConfigError as exc:
+        print(f"mobo-watch: {exc}", file=sys.stderr)
+        return 2
+
+    if args.check:
+        return print_check(config)
+
+    include_psu = (args.psu or config.psu.enabled) and not args.no_psu
+    board_only = args.board_only
+
+    try:
+        next_sample = time.monotonic()
+        while True:
+            data = sample(board_only=board_only, include_psu=include_psu, config=config)
+            if args.json:
+                print(json.dumps(data, sort_keys=True))
+                sys.stdout.flush()
+            else:
+                print_text(data, clear=not args.no_clear)
+            if args.once:
+                break
+            next_sample += args.interval
+            sleep_for = next_sample - time.monotonic()
+            if sleep_for > 0:
+                time.sleep(sleep_for)
+            else:
+                next_sample = time.monotonic()
+    except KeyboardInterrupt:
+        return 130
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

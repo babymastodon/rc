@@ -199,6 +199,23 @@ Use `btop` to monitor resource usage with a terminal UI.
 
 If the colors look odd, open the btop options menu and make sure the `TTY` theme is selected.
 
+For motherboard temperatures, fan speeds, and MSI PSU telemetry:
+
+```bash
+./sensors/install_sensors.sh
+mobo-watch --check
+```
+
+`mobo-watch` uses `sensors/sensors.toml` for labels, ordering, hidden sensors,
+groups, and PSU display.
+
+On the Gigabyte TRX50 AI TOP, the full temperature/fan set needs the
+out-of-tree `it87` DKMS install:
+
+```bash
+./sensors/install_gigabyte_trx50_it87_dkms.sh
+```
+
 ## File Explorer&nbsp;`💻` `🗄️`
 
 Use `yazi` to easily navigate the filesystem and change directories with a TUI.
