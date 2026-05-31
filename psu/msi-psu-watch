@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+"""Read MSI MEG Ai1600T PSU telemetry from the Linux hidraw device."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import select
+import sys
+import time
+from dataclasses import dataclass
+from typing import Any
+
+
+DEFAULT_DEVICE = "/dev/msi-ai1600t"
+PRODUCT_COMMAND = (0xFA, 0x51)
+TELEMETRY_COMMAND = (0x51, 0xE0)
+RUNTIME_COMMAND = (0x51, 0xD1)
+
+
+@dataclass(frozen=True)
+class Metric:
+    key: str
+    label: str
+    unit: str
+
+
+AI1600T_METRICS = (
+    Metric("voltage_12v", "+12V voltage", "V"),
+    Metric("current_12v", "+12V current", "A"),
+    Metric("voltage_5v", "+5V voltage", "V"),
+    Metric("current_5v", "+5V current", "A"),
+    Metric("voltage_3v3", "+3.3V voltage", "V"),
+    Metric("current_3v3", "+3.3V current", "A"),
+    Metric("output_power", "Output power", "W"),
+    Metric("efficiency", "Efficiency", "%"),
+    Metric("temperature", "Temperature", "C"),
+    Metric("fan_speed", "Fan speed", "RPM"),
+)
+
+
+class PsuError(RuntimeError):
+    pass
+
+
+def linear11_to_float(value: int) -> float:
+    """Decode a PMBus Linear11 two-byte value."""
+    exponent = value >> 11
+    if exponent & 0x10:
+        exponent -= 0x20
+
+    mantissa = value & 0x7FF
+    if mantissa & 0x400:
+        mantissa -= 0x800
+
+    return mantissa * (2**exponent)
+
+
+class MsiPsu:
+    def __init__(self, device: str, timeout: float) -> None:
+        self.device = device
+        self.timeout = timeout
+        self.fd: int | None = None
+
+    def __enter__(self) -> "MsiPsu":
+        try:
+            self.fd = os.open(self.device, os.O_RDWR | os.O_NONBLOCK)
+        except PermissionError as exc:
+            raise PsuError(
+                f"permission denied opening {self.device}; install the udev rule "
+                "from README.md or run as root"
+            ) from exc
+        except FileNotFoundError as exc:
+            raise PsuError(
+                f"{self.device} not found; check the USB cable and udev symlink"
+            ) from exc
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        if self.fd is not None:
+            os.close(self.fd)
+            self.fd = None
+
+    def request(self, command: tuple[int, int]) -> bytes:
+        if self.fd is None:
+            raise PsuError("device is not open")
+
+        packet = bytes([0, command[0], command[1]]) + bytes(61)
+        os.write(self.fd, packet)
+
+        ready, _, _ = select.select([self.fd], [], [], self.timeout)
+        if not ready:
+            raise PsuError(f"timeout waiting for reply to {command[0]:02x} {command[1]:02x}")
+
+        reply = os.read(self.fd, 64)
+        if len(reply) < 2:
+            raise PsuError(f"short reply: {len(reply)} bytes")
+        if reply[0] != command[0] or reply[1] != command[1]:
+            raise PsuError(
+                "unexpected reply header: "
+                f"got {reply[0]:02x} {reply[1]:02x}, "
+                f"wanted {command[0]:02x} {command[1]:02x}"
+            )
+        return reply
+
+    def product(self) -> str:
+        reply = self.request(PRODUCT_COMMAND)
+        return reply[2:44].split(b"\0", 1)[0].decode("ascii", "replace")
+
+    def telemetry(self) -> dict[str, float]:
+        reply = self.request(TELEMETRY_COMMAND)
+        values: dict[str, float] = {}
+
+        for index, metric in enumerate(AI1600T_METRICS):
+            offset = 2 + index * 2
+            raw = reply[offset] | (reply[offset + 1] << 8)
+            values[metric.key] = linear11_to_float(raw)
+
+        return values
+
+    def runtime_hours(self) -> float:
+        reply = self.request(RUNTIME_COMMAND)
+        return int.from_bytes(reply[2:6], "little", signed=False) / 100
+
+
+def format_metric(metric: Metric, value: float) -> str:
+    if metric.unit == "RPM":
+        return f"{metric.label:14s} {value:8.0f} {metric.unit}"
+    if metric.unit in {"W", "%", "C"}:
+        return f"{metric.label:14s} {value:8.1f} {metric.unit}"
+    return f"{metric.label:14s} {value:8.3f} {metric.unit}"
+
+
+def read_sample(psu: MsiPsu, include_static: bool = False) -> dict[str, Any]:
+    sample: dict[str, Any] = {
+        "timestamp": time.time(),
+        "telemetry": psu.telemetry(),
+    }
+    if include_static:
+        sample["product"] = psu.product()
+        sample["runtime_hours"] = psu.runtime_hours()
+    return sample
+
+
+def print_text(product: str, runtime_hours: float, telemetry: dict[str, float], clear: bool) -> None:
+    if clear:
+        print("\033[2J\033[H", end="")
+
+    print(f"MSI PSU: {product}")
+    print(f"Runtime: {runtime_hours:.2f} hours")
+    print()
+
+    for metric in AI1600T_METRICS:
+        print(format_metric(metric, telemetry[metric.key]))
+
+    sys.stdout.flush()
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Watch MSI MEG Ai1600T PSU telemetry via Linux hidraw."
+    )
+    parser.add_argument(
+        "-d",
+        "--device",
+        default=DEFAULT_DEVICE,
+        help=f"hidraw device path or symlink (default: {DEFAULT_DEVICE})",
+    )
+    parser.add_argument(
+        "-i",
+        "--interval",
+        type=float,
+        default=1.0,
+        help="seconds between samples (default: 1.0)",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=2.0,
+        help="seconds to wait for each HID reply (default: 2.0)",
+    )
+    parser.add_argument("--once", action="store_true", help="print one sample and exit")
+    parser.add_argument("--json", action="store_true", help="print newline-delimited JSON")
+    parser.add_argument("--no-clear", action="store_true", help="do not clear the screen")
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+
+    if args.interval <= 0:
+        print("interval must be greater than 0", file=sys.stderr)
+        return 2
+
+    try:
+        with MsiPsu(args.device, args.timeout) as psu:
+            if args.json:
+                while True:
+                    print(json.dumps(read_sample(psu, include_static=True), sort_keys=True))
+                    sys.stdout.flush()
+                    if args.once:
+                        break
+                    time.sleep(args.interval)
+            else:
+                product = psu.product()
+                runtime_hours = psu.runtime_hours()
+                while True:
+                    telemetry = psu.telemetry()
+                    print_text(product, runtime_hours, telemetry, clear=not args.no_clear)
+                    if args.once:
+                        break
+                    time.sleep(args.interval)
+    except KeyboardInterrupt:
+        return 130
+    except PsuError as exc:
+        print(f"msi-psu-watch: {exc}", file=sys.stderr)
+        return 1
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
