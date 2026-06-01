@@ -47,12 +47,12 @@ order = 100
 
 [[devices.sensors]]
 key = "fan2"
-label = "SYS_FAN1"
+label = "BACK_80_2X"
 order = 110
 
 [[devices.sensors]]
 key = "fan3"
-label = "SYS_FAN2"
+label = "FRONT_180_2X"
 order = 120
 
 [[devices.sensors]]
@@ -98,7 +98,7 @@ hidden = true
 
 [[devices.sensors]]
 key = "fan3"
-label = "SYS_FAN8_PUMP"
+label = "BACK_140"
 order = 180
 
 [psu]
