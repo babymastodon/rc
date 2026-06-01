@@ -62,8 +62,8 @@ order = 150
 
 [[devices.sensors]]
 key = "fan5"
-label = "SYS_FAN6_PUMP"
-order = 160
+label = "CPU_OPT"
+order = 105
 
 [[devices]]
 match = "it87952"
@@ -88,12 +88,12 @@ order = 30
 
 [[devices.sensors]]
 key = "fan1"
-label = "SYS_FAN7_PUMP"
+label = "SYS_FAN6_PUMP"
 hidden = true
 
 [[devices.sensors]]
 key = "fan2"
-label = "unknown/unpopulated"
+label = "SYS_FAN7_PUMP"
 hidden = true
 
 [[devices.sensors]]
