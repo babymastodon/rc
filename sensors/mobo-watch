@@ -828,11 +828,8 @@ def metric_value(metrics: dict[str, dict[str, Any]], key: str) -> float | None:
 
 
 def power_token(label: str, value: str, color: str) -> tuple[str, str]:
-    plain = f"{label}{value}" if label in {"η"} else f"{label} {value}"
-    if label == "η":
-        colored = f"{style(label, POWER_COLOR)}{style(value, color)}"
-    else:
-        colored = f"{style(label, POWER_COLOR)} {style(value, color)}"
+    plain = f"{label} {value}"
+    colored = f"{style(label, POWER_COLOR)} {style(value, color)}"
     return plain, colored
 
 
