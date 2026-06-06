@@ -112,6 +112,11 @@ label = "Output"
 order = 10
 
 [[psu.metrics]]
+key = "input_power"
+label = "Input"
+order = 15
+
+[[psu.metrics]]
 key = "efficiency"
 label = "Efficiency"
 order = 20

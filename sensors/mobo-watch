@@ -40,6 +40,21 @@ BOARD_HWMON_NAMES = (
     "w836",
     "f718",
 )
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+BORDER_COLOR = "38;5;240"
+HEADER_COLOR = "1;38;5;81"
+DIM_COLOR = "38;5;245"
+OK_COLOR = "38;5;114"
+WARN_COLOR = "38;5;221"
+BAD_COLOR = "1;38;5;203"
+FAN_COLOR = "38;5;117"
+POWER_COLOR = "38;5;220"
+TEMP_ICON = "\uf2c9"
+FAN_ICON = "\U000f0210"
+POWER_ICON = "\U000f06a5"
+PANEL_MIN_WIDTH = 24
+PANEL_GAP = 2
+UNAVAILABLE_WIDTH = 44
 
 
 class ConfigError(RuntimeError):
@@ -230,6 +245,17 @@ def linear11_to_float(value: int) -> float:
     return mantissa * (2**exponent)
 
 
+def calculate_input_power(output_power: float | None, efficiency: float | None) -> float | None:
+    if output_power is None or efficiency is None or output_power < 0 or efficiency <= 0:
+        return None
+
+    efficiency_ratio = efficiency / 100 if efficiency > 1 else efficiency
+    if efficiency_ratio <= 0:
+        return None
+
+    return output_power / efficiency_ratio
+
+
 class MsiPsu:
     def __init__(self, device: str, timeout: float) -> None:
         self.device = device
@@ -329,6 +355,13 @@ def collect_psu(config: PsuConfig) -> dict[str, Any]:
             "error": str(exc),
         }
 
+    input_power = calculate_input_power(
+        telemetry.get("output_power"),
+        telemetry.get("efficiency"),
+    )
+    if input_power is not None:
+        telemetry["input_power"] = input_power
+
     metrics = [
         {
             "key": metric.key,
@@ -339,6 +372,16 @@ def collect_psu(config: PsuConfig) -> dict[str, Any]:
         }
         for index, metric in enumerate(AI1600T_METRICS)
     ]
+    if input_power is not None:
+        metrics.append(
+            {
+                "key": "input_power",
+                "label": "Input power",
+                "value": input_power,
+                "unit": "W",
+                "order": 15,
+            }
+        )
 
     runtime_seconds = round(runtime_minutes * 60)
 
@@ -647,57 +690,412 @@ def format_duration(total_seconds: int) -> str:
     return f"{hours}:{minutes:02d}:{seconds:02d}"
 
 
-def print_device(device: dict[str, Any]) -> None:
-    title = device["label"]
-    if title == device["name"]:
-        print(f"{title} ({device['hwmon']})")
+def use_color() -> bool:
+    return sys.stdout.isatty() and "NO_COLOR" not in os.environ
+
+
+def style(text: str, color: str) -> str:
+    if not use_color():
+        return text
+    return f"\033[{color}m{text}\033[0m"
+
+
+def visible_width(text: str) -> int:
+    return len(ANSI_RE.sub("", text))
+
+
+def fit_text(text: str, width: int) -> str:
+    if width <= 0:
+        return ""
+    if visible_width(text) <= width:
+        return text
+
+    plain = ANSI_RE.sub("", text)
+    if width == 1:
+        return "…"
+    return f"{plain[: width - 1]}…"
+
+
+def pad_visible(text: str, width: int) -> str:
+    fitted = fit_text(text, width)
+    return fitted + (" " * max(0, width - visible_width(fitted)))
+
+
+def row(content: str, content_width: int) -> str:
+    return (
+        style("│ ", BORDER_COLOR)
+        + pad_visible(content, content_width)
+        + style(" │", BORDER_COLOR)
+    )
+
+
+def rule(left: str, right: str, icon: str, title: str, content_width: int) -> str:
+    label = f" {icon} {title} "
+    fill = "─" * max(0, content_width + 1 - visible_width(label))
+    return (
+        style(f"{left}─", BORDER_COLOR)
+        + style(label, HEADER_COLOR)
+        + style(fill, BORDER_COLOR)
+        + style(right, BORDER_COLOR)
+    )
+
+
+def bottom_rule(content_width: int) -> str:
+    return style("╰" + ("─" * (content_width + 2)) + "╯", BORDER_COLOR)
+
+
+def color_temperature(value: float) -> str:
+    if value >= 75:
+        return BAD_COLOR
+    if value >= 65:
+        return WARN_COLOR
+    return OK_COLOR
+
+
+def color_efficiency(value: float) -> str:
+    if value >= 90:
+        return OK_COLOR
+    if value >= 80:
+        return WARN_COLOR
+    return BAD_COLOR
+
+
+def color_voltage(nominal: float, value: float) -> str:
+    if nominal <= 0:
+        return OK_COLOR
+
+    ratio = value / nominal
+    if 0.95 <= ratio <= 1.05:
+        return OK_COLOR
+    if 0.90 <= ratio <= 1.10:
+        return WARN_COLOR
+    return BAD_COLOR
+
+
+def format_sensor_token(sensor: dict[str, Any]) -> tuple[str, str]:
+    label = sensor["label"]
+    value = sensor["value"]
+
+    if sensor["kind"] == "temperature":
+        plain_value = f"{value:.0f}°C"
+        return f"{label} {plain_value}", f"{label} {style(plain_value, color_temperature(value))}"
+
+    plain_value = f"{value:.0f}rpm"
+    color = DIM_COLOR if value <= 0 else FAN_COLOR
+    return f"{label} {plain_value}", f"{label} {style(plain_value, color)}"
+
+
+def two_column_width(tokens: list[tuple[str, str]]) -> int:
+    if not tokens:
+        return 0
+    left_width = max(visible_width(token[0]) for token in tokens[::2])
+    right_items = tokens[1::2]
+    if not right_items:
+        return left_width
+    right_width = max(visible_width(token[0]) for token in right_items)
+    return left_width + PANEL_GAP + right_width
+
+
+def render_sensor_rows(sensors: list[dict[str, Any]], content_width: int) -> list[str]:
+    tokens = [format_sensor_token(sensor) for sensor in sensors]
+    if not tokens:
+        return []
+
+    rows: list[str] = []
+    if two_column_width(tokens) <= content_width and len(tokens) > 1:
+        left_width = max(visible_width(token[0]) for token in tokens[::2])
+        for index in range(0, len(tokens), 2):
+            left = pad_visible(tokens[index][1], left_width)
+            right = tokens[index + 1][1] if index + 1 < len(tokens) else ""
+            rows.append(row(f"{left}{' ' * PANEL_GAP}{right}".rstrip(), content_width))
+        return rows
+
+    for _, token in tokens:
+        rows.append(row(token, content_width))
+    return rows
+
+
+def metric_map(psu: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    return {metric["key"]: metric for metric in psu.get("metrics", [])}
+
+
+def metric_value(metrics: dict[str, dict[str, Any]], key: str) -> float | None:
+    metric = metrics.get(key)
+    if metric is None:
+        return None
+    value = metric.get("value")
+    return value if isinstance(value, (int, float)) else None
+
+
+def power_token(label: str, value: str, color: str) -> tuple[str, str]:
+    plain = f"{label}{value}" if label in {"η"} else f"{label} {value}"
+    if label == "η":
+        colored = f"{style(label, POWER_COLOR)}{style(value, color)}"
     else:
-        print(f"{title} ({device['name']}, {device['hwmon']})")
-
-    for sensor in device["sensors"]:
-        print(f"  {sensor['label']:<24s} {format_value(sensor)}")
+        colored = f"{style(label, POWER_COLOR)} {style(value, color)}"
+    return plain, colored
 
 
-def print_psu(psu: dict[str, Any]) -> None:
-    if psu["available"]:
-        print(f"{psu['label']}: {psu['product']}")
-        print(f"  Runtime                 {psu['runtime_display']:>8s}")
-        for metric in psu["metrics"]:
-            print(f"  {metric['label']:<24s} {format_value(metric)}")
+def rail_token(
+    label: str,
+    nominal: float,
+    voltage: float | None,
+    current: float | None,
+) -> tuple[str, str] | None:
+    if voltage is None and current is None:
+        return None
+    if voltage is None:
+        return power_token(label, f"{current:.1f} A", POWER_COLOR)
+    if current is None:
+        return power_token(label, f"{voltage:.1f} V", color_voltage(nominal, voltage))
+    return power_token(label, f"{voltage:.1f} V {current:.1f} A", color_voltage(nominal, voltage))
+
+
+def compact_metric_token(metric: dict[str, Any]) -> tuple[str, str] | None:
+    value = metric.get("value")
+    if not isinstance(value, (int, float)):
+        return None
+
+    key = metric["key"]
+    label = str(metric.get("label") or key).replace(" power", "").replace(" voltage", "")
+    unit = metric.get("unit")
+    color = OK_COLOR
+
+    if unit == "RPM":
+        label = "fan" if key == "fan_speed" else label
+        value_text = f"{value:.0f}rpm"
+        color = DIM_COLOR if value <= 0 else FAN_COLOR
+    elif unit == "C":
+        label = "temp" if key == "temperature" else label
+        value_text = f"{value:.0f}°C"
+        color = color_temperature(value)
+    elif unit == "%":
+        label = "η" if key == "efficiency" else label
+        value_text = f"{value:.0f}%"
+        color = color_efficiency(value) if key == "efficiency" else OK_COLOR
+    elif unit == "W":
+        label = {"output_power": "out", "input_power": "in"}.get(key, label)
+        value_text = f"{value:.0f} W"
+        color = WARN_COLOR if key == "input_power" else OK_COLOR
+    elif unit in {"V", "A"}:
+        value_text = f"{value:.1f} {unit}"
     else:
-        print(f"{psu['label']}: unavailable")
-        print(f"  {psu['error']}")
+        value_text = f"{value:.1f} {unit}" if unit else f"{value:.1f}"
+
+    return power_token(label, value_text, color)
+
+
+def format_power_tokens(psu: dict[str, Any]) -> list[tuple[str, str]]:
+    metrics = metric_map(psu)
+    consumed: set[str] = {"temperature", "fan_speed"}
+    tokens: list[tuple[str, str]] = []
+
+    for key in ("output_power", "input_power", "efficiency"):
+        metric = metrics.get(key)
+        token = compact_metric_token(metric) if metric else None
+        if token:
+            tokens.append(token)
+            consumed.add(key)
+
+    for label, nominal, voltage_key, current_key in (
+        ("+12", 12.0, "voltage_12v", "current_12v"),
+        ("+5", 5.0, "voltage_5v", "current_5v"),
+        ("+3.3", 3.3, "voltage_3v3", "current_3v3"),
+    ):
+        token = rail_token(
+            label,
+            nominal,
+            metric_value(metrics, voltage_key),
+            metric_value(metrics, current_key),
+        )
+        if token:
+            tokens.append(token)
+            consumed.update({voltage_key, current_key})
+
+    for metric in psu.get("metrics", []):
+        if metric["key"] in consumed:
+            continue
+        token = compact_metric_token(metric)
+        if token:
+            tokens.append(token)
+            consumed.add(metric["key"])
+
+    if not tokens and psu.get("runtime_display"):
+        tokens.append(power_token("up", str(psu["runtime_display"]), DIM_COLOR))
+    return tokens
+
+
+def joined_width(tokens: list[tuple[str, str]]) -> int:
+    if not tokens:
+        return 0
+    return sum(visible_width(token[0]) for token in tokens) + PANEL_GAP * (len(tokens) - 1)
+
+
+def preferred_power_width(tokens: list[tuple[str, str]]) -> int:
+    if len(tokens) <= 4:
+        return joined_width(tokens)
+
+    rail_count = min(3, len(tokens))
+    return max(joined_width(tokens[:rail_count]), joined_width(tokens[rail_count:]))
+
+
+def render_power_rows(psu: dict[str, Any], content_width: int) -> list[str]:
+    if not psu["available"]:
+        return [row(style(f"unavailable: {psu['error']}", BAD_COLOR), content_width)]
+
+    token_groups = power_token_groups(psu)
+    rows: list[str] = []
+
+    for tokens in token_groups:
+        rows.extend(wrapped_power_rows(tokens, content_width))
+
+    return rows or [row(style("no PSU telemetry values", DIM_COLOR), content_width)]
+
+
+def wrapped_power_rows(tokens: list[tuple[str, str]], content_width: int) -> list[str]:
+    if not tokens:
+        return []
+
+    rows: list[str] = []
+    current_plain = ""
+    current_colored = ""
+
+    for plain, colored in tokens:
+        separator = " " * PANEL_GAP if current_plain else ""
+        candidate_plain = f"{current_plain}{separator}{plain}"
+        candidate_colored = f"{current_colored}{separator}{colored}"
+        if current_plain and visible_width(candidate_plain) > content_width:
+            rows.append(row(current_colored, content_width))
+            current_plain = plain
+            current_colored = colored
+        else:
+            current_plain = candidate_plain
+            current_colored = candidate_colored
+
+    if current_colored:
+        rows.append(row(current_colored, content_width))
+
+    return rows
+
+
+def power_token_groups(psu: dict[str, Any]) -> list[list[tuple[str, str]]]:
+    tokens = format_power_tokens(psu)
+    if len(tokens) <= 3:
+        return [tokens]
+
+    metrics = metric_map(psu)
+    wattage_count = sum(1 for key in ("output_power", "input_power", "efficiency") if key in metrics)
+    if 0 < wattage_count < len(tokens):
+        return [tokens[:wattage_count], tokens[wattage_count:]]
+
+    return [tokens]
+
+
+def psu_sensor(psu: dict[str, Any] | None, key: str, kind: str, label: str) -> dict[str, Any] | None:
+    if not psu or not psu["available"]:
+        return None
+
+    metrics = metric_map(psu)
+    metric = metrics.get(key)
+    value = metric_value(metrics, key)
+    if not metric or value is None:
+        return None
+
+    return {
+        "kind": kind,
+        "key": f"psu_{key}",
+        "label": label,
+        "value": value,
+        "unit": metric["unit"],
+        "order": psu["order"],
+        "source_label": metric["label"],
+        "source_order": len(metrics),
+    }
+
+
+def sensor_sections(data: dict[str, Any]) -> list[tuple[int, str, str, list[dict[str, Any]]]]:
+    temps: list[dict[str, Any]] = []
+    fans: list[dict[str, Any]] = []
+    first_order = 0
+
+    for device_index, device in enumerate(data["devices"]):
+        if device_index == 0:
+            first_order = device["order"]
+        for sensor in device["sensors"]:
+            if sensor["kind"] == "temperature":
+                temps.append(sensor)
+            elif sensor["kind"] == "fan":
+                fans.append(sensor)
+
+    psu = data.get("psu")
+    psu_temp = psu_sensor(psu, "temperature", "temperature", "PSU")
+    psu_fan = psu_sensor(psu, "fan_speed", "fan", "PSU")
+    if psu_temp:
+        temps.append(psu_temp)
+    if psu_fan:
+        fans.append(psu_fan)
+
+    sections: list[tuple[int, str, str, list[dict[str, Any]]]] = []
+    if temps:
+        sections.append((first_order, TEMP_ICON, "Temps", temps))
+    if fans:
+        sections.append((first_order + 1, FAN_ICON, "Fans", fans))
+    return sections
+
+
+def render_panel(data: dict[str, Any]) -> list[str]:
+    sensor_section_data = sensor_sections(data)
+    psu = data.get("psu")
+
+    if not sensor_section_data and not psu:
+        return [
+            "No hwmon temperature or fan sensors are currently exposed.",
+            "Run `mobo-watch --check` for kernel/device diagnostics.",
+        ]
+
+    terminal_width = shutil.get_terminal_size(fallback=(80, 24)).columns
+    max_content_width = max(PANEL_MIN_WIDTH, terminal_width - 4)
+    required_width = PANEL_MIN_WIDTH
+
+    for _, icon, title, sensors in sensor_section_data:
+        tokens = [format_sensor_token(sensor) for sensor in sensors]
+        required_width = max(required_width, visible_width(f" {icon} {title} "))
+        required_width = max(required_width, two_column_width(tokens))
+
+    if psu:
+        required_width = max(required_width, visible_width(f" {POWER_ICON} Power "))
+        if psu["available"]:
+            required_width = max(required_width, preferred_power_width(format_power_tokens(psu)))
+        else:
+            required_width = max(
+                required_width,
+                min(UNAVAILABLE_WIDTH, visible_width(f"unavailable: {psu['error']}")),
+            )
+
+    content_width = min(required_width, max_content_width)
+    lines: list[str] = []
+
+    first = True
+    for _, icon, title, sensors in sorted(sensor_section_data):
+        lines.append(rule("╭" if first else "├", "╮" if first else "┤", icon, title, content_width))
+        lines.extend(render_sensor_rows(sensors, content_width))
+        first = False
+
+    if psu:
+        lines.append(rule("╭" if first else "├", "╮" if first else "┤", POWER_ICON, "Power", content_width))
+        lines.extend(render_power_rows(psu, content_width))
+        first = False
+
+    lines.append(bottom_rule(content_width))
+    return lines
 
 
 def print_text(data: dict[str, Any], clear: bool) -> None:
     if clear:
         print("\033[2J\033[H", end="")
 
-    sections: list[tuple[int, int, str | None, str, dict[str, Any]]] = []
-    for index, device in enumerate(data["devices"]):
-        sections.append((device["order"], index, device["group"], "device", device))
-
-    psu = data.get("psu")
-    if psu:
-        sections.append((psu["order"], len(sections), psu.get("group"), "psu", psu))
-
-    if not sections:
-        print("No hwmon temperature or fan sensors are currently exposed.")
-        print("Run `mobo-watch --check` for kernel/device diagnostics.")
-        sys.stdout.flush()
-        return
-
-    previous_group: str | None = None
-    for index, (_, _, group, section_type, section_data) in enumerate(sorted(sections)):
-        if index:
-            print()
-        if group and group != previous_group:
-            print(group)
-            previous_group = group
-        if section_type == "device":
-            print_device(section_data)
-        else:
-            print_psu(section_data)
+    for line in render_panel(data):
+        print(line)
 
     sys.stdout.flush()
 

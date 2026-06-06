@@ -70,7 +70,8 @@ mobo-watch --config ./sensors.toml
 
 Device rules match by `match`, `name`, `hwmon`, or `path`. Sensor and PSU metric
 rules match by `key` or `match`. The most useful keys are raw kernel names such
-as `temp1`, `fan3`, or PSU metric keys like `output_power`.
+as `temp1`, `fan3`, or PSU metric keys like `output_power` and computed
+`input_power`.
 
 The local config sets:
 
