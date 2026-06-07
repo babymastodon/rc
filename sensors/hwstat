@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import csv
+import errno
+import fcntl
 import json
 import os
 import re
@@ -25,6 +27,7 @@ except ModuleNotFoundError:  # pragma: no cover - only relevant on older Python.
 
 HWMON_ROOT = Path("/sys/class/hwmon")
 DEFAULT_PSU_DEVICE = "/dev/msi-ai1600t"
+PSU_LOCK_PATH = Path("/tmp/hwstat-msi-psu.lock")
 DEFAULT_CONFIG_PATHS = (
     Path.home() / ".config" / "hwstat" / "config.toml",
     Path.home() / ".config" / "mobo-watch" / "config.toml",
@@ -277,25 +280,49 @@ class MsiPsu:
         self.device = device
         self.timeout = timeout
         self.fd: int | None = None
+        self.lock_fd: int | None = None
 
     def __enter__(self) -> "MsiPsu":
         try:
+            self.lock_fd = os.open(PSU_LOCK_PATH, os.O_CREAT | os.O_RDWR, 0o600)
+        except OSError as exc:
+            raise PsuError(f"could not open PSU lock {PSU_LOCK_PATH}: {exc.strerror}") from exc
+        try:
+            fcntl.flock(self.lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            self.release_lock()
+            if exc.errno in (errno.EACCES, errno.EAGAIN):
+                raise PsuError("another hwstat instance is reading PSU telemetry") from exc
+            raise PsuError(f"could not lock PSU telemetry: {exc.strerror}") from exc
+        try:
             self.fd = os.open(self.device, os.O_RDWR | os.O_NONBLOCK)
         except PermissionError as exc:
+            self.release_lock()
             raise PsuError(
                 f"permission denied opening {self.device}; install the udev rule "
                 "or run as root"
             ) from exc
         except FileNotFoundError as exc:
+            self.release_lock()
             raise PsuError(
                 f"{self.device} not found; check the USB cable and udev symlink"
             ) from exc
+        except OSError:
+            self.release_lock()
+            raise
         return self
 
     def __exit__(self, *_: object) -> None:
         if self.fd is not None:
             os.close(self.fd)
             self.fd = None
+        self.release_lock()
+
+    def release_lock(self) -> None:
+        if self.lock_fd is not None:
+            fcntl.flock(self.lock_fd, fcntl.LOCK_UN)
+            os.close(self.lock_fd)
+            self.lock_fd = None
 
     def request(self, command: tuple[int, int], min_length: int = 2) -> bytes:
         if self.fd is None:
