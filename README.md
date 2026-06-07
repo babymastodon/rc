@@ -203,11 +203,11 @@ For motherboard temperatures, fan speeds, and MSI PSU telemetry:
 
 ```bash
 ./sensors/install_sensors.sh
-mobo-watch --check
+hwstat --check
 ```
 
-`mobo-watch` uses `sensors/sensors.toml` for labels, ordering, hidden sensors,
-groups, and PSU display.
+`hwstat` uses `sensors/sensors.toml` for labels, ordering, hidden sensors,
+groups, and PSU/GPU display.
 
 On the Gigabyte TRX50 AI TOP, the full temperature/fan set needs the
 out-of-tree `it87` DKMS install:

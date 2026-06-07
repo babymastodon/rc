@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Watch Linux hwmon telemetry, with optional MSI PSU telemetry."""
+"""Watch Linux hwmon telemetry, with optional PSU and GPU telemetry."""
 
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import os
 import re
 import select
 import shutil
+import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
@@ -24,6 +26,7 @@ except ModuleNotFoundError:  # pragma: no cover - only relevant on older Python.
 HWMON_ROOT = Path("/sys/class/hwmon")
 DEFAULT_PSU_DEVICE = "/dev/msi-ai1600t"
 DEFAULT_CONFIG_PATHS = (
+    Path.home() / ".config" / "hwstat" / "config.toml",
     Path.home() / ".config" / "mobo-watch" / "config.toml",
     Path(__file__).resolve().with_name("sensors.toml"),
 )
@@ -62,6 +65,10 @@ class ConfigError(RuntimeError):
 
 
 class PsuError(RuntimeError):
+    pass
+
+
+class GpuError(RuntimeError):
     pass
 
 
@@ -136,6 +143,14 @@ class PsuConfig:
 
 
 @dataclass(frozen=True)
+class GpuConfig:
+    enabled: bool = False
+    provider: str = "auto"
+    label: str = "GPU"
+    order: int = 150
+
+
+@dataclass(frozen=True)
 class DisplayConfig:
     show_unconfigured: bool = True
 
@@ -146,6 +161,7 @@ class WatchConfig:
     display: DisplayConfig = field(default_factory=DisplayConfig)
     devices: tuple[DeviceRule, ...] = ()
     psu: PsuConfig = field(default_factory=PsuConfig)
+    gpu: GpuConfig = field(default_factory=GpuConfig)
 
 
 def natural_key(value: str) -> list[int | str]:
@@ -400,6 +416,99 @@ def collect_psu(config: PsuConfig) -> dict[str, Any]:
     }
 
 
+def optional_float(value: Any) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip()
+    if not text or text.upper() == "N/A":
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def collect_nvidia_smi(config: GpuConfig) -> dict[str, Any]:
+    command = [
+        "nvidia-smi",
+        "--query-gpu=index,name,temperature.gpu,power.draw,power.limit,utilization.gpu,memory.used,memory.total",
+        "--format=csv,noheader,nounits",
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=2.0,
+        )
+    except FileNotFoundError as exc:
+        raise GpuError("nvidia-smi is not installed") from exc
+    except subprocess.SubprocessError as exc:
+        message = getattr(exc, "stderr", None) or str(exc)
+        raise GpuError(message.strip()) from exc
+
+    rows = list(csv.reader(result.stdout.splitlines(), skipinitialspace=True))
+    gpus: list[dict[str, Any]] = []
+    for fallback_index, fields in enumerate(rows):
+        if len(fields) < 8:
+            continue
+        index_float = optional_float(fields[0])
+        index = int(index_float) if index_float is not None else fallback_index
+        label = f"{config.label}{index}" if len(rows) > 1 else config.label
+        gpus.append(
+            {
+                "index": index,
+                "name": fields[1],
+                "label": label,
+                "temperature": optional_float(fields[2]),
+                "power_draw": optional_float(fields[3]),
+                "power_limit": optional_float(fields[4]),
+                "utilization": optional_float(fields[5]),
+                "memory_used": optional_float(fields[6]),
+                "memory_total": optional_float(fields[7]),
+                "order": config.order + index,
+            }
+        )
+
+    return {"available": True, "provider": "nvidia-smi", "gpus": gpus}
+
+
+def collect_gpus(config: GpuConfig) -> dict[str, Any]:
+    errors: list[str] = []
+    collectors = []
+
+    if config.provider in {"auto", "nvidia-smi"}:
+        collectors.append(collect_nvidia_smi)
+    if not collectors:
+        return {
+            "available": False,
+            "provider": config.provider,
+            "error": f"unsupported GPU provider: {config.provider}",
+            "gpus": [],
+        }
+
+    for collector in collectors:
+        try:
+            data = collector(config)
+        except GpuError as exc:
+            errors.append(str(exc))
+            continue
+        if data.get("gpus"):
+            return data
+        errors.append(f"{data.get('provider', 'gpu')} returned no GPUs")
+
+    return {
+        "available": False,
+        "provider": config.provider,
+        "error": "; ".join(error for error in errors if error) or "GPU telemetry unavailable",
+        "gpus": [],
+    }
+
+
 def str_value(data: dict[str, Any], key: str, context: str) -> str | None:
     value = data.get(key)
     if value is None:
@@ -497,6 +606,24 @@ def parse_psu_config(item: Any) -> PsuConfig:
     )
 
 
+def parse_gpu_config(item: Any) -> GpuConfig:
+    if item is None:
+        return GpuConfig()
+    if not isinstance(item, dict):
+        raise ConfigError("gpu must be a table")
+
+    provider = str_value(item, "provider", "gpu") or "auto"
+    if provider not in {"auto", "nvidia-smi"}:
+        raise ConfigError("gpu.provider must be one of: auto, nvidia-smi")
+
+    return GpuConfig(
+        enabled=bool_value(item, "enabled", False, "gpu"),
+        provider=provider,
+        label=str_value(item, "label", "gpu") or "GPU",
+        order=int_value(item, "order", 150, "gpu"),
+    )
+
+
 def parse_display_config(item: Any) -> DisplayConfig:
     if item is None:
         return DisplayConfig()
@@ -526,6 +653,7 @@ def parse_config(path: Path) -> WatchConfig:
         display=parse_display_config(raw.get("display")),
         devices=parse_device_rules(raw.get("devices")),
         psu=parse_psu_config(raw.get("psu")),
+        gpu=parse_gpu_config(raw.get("gpu")),
     )
 
 
@@ -665,12 +793,13 @@ def apply_device_config(devices: list[HwmonDevice], config: WatchConfig) -> list
     )
 
 
-def sample(board_only: bool, include_psu: bool, config: WatchConfig) -> dict[str, Any]:
+def sample(board_only: bool, include_psu: bool, include_gpu: bool, config: WatchConfig) -> dict[str, Any]:
     return {
         "timestamp": time.time(),
         "config": str(config.path) if config.path else None,
         "devices": apply_device_config(collect_devices(board_only), config),
         "psu": collect_psu(config.psu) if include_psu else None,
+        "gpu": collect_gpus(config.gpu) if include_gpu else None,
     }
 
 
@@ -760,6 +889,17 @@ def color_efficiency(value: float) -> str:
     return BAD_COLOR
 
 
+def color_power_draw(value: float, limit: float | None) -> str:
+    if limit is None or limit <= 0:
+        return OK_COLOR
+    ratio = value / limit
+    if ratio >= 0.9:
+        return BAD_COLOR
+    if ratio >= 0.75:
+        return WARN_COLOR
+    return OK_COLOR
+
+
 def color_voltage(nominal: float, value: float) -> str:
     if nominal <= 0:
         return OK_COLOR
@@ -785,31 +925,59 @@ def format_sensor_token(sensor: dict[str, Any]) -> tuple[str, str]:
     return f"{label} {plain_value}", f"{label} {style(plain_value, color)}"
 
 
-def two_column_width(tokens: list[tuple[str, str]]) -> int:
-    if not tokens:
+def column_width(tokens: list[tuple[str, str]], columns: int) -> int:
+    if not tokens or columns <= 0:
         return 0
-    left_width = max(visible_width(token[0]) for token in tokens[::2])
-    right_items = tokens[1::2]
-    if not right_items:
-        return left_width
-    right_width = max(visible_width(token[0]) for token in right_items)
-    return left_width + PANEL_GAP + right_width
+
+    widths: list[int] = []
+    for column in range(columns):
+        column_tokens = tokens[column::columns]
+        if column_tokens:
+            widths.append(max(visible_width(token[0]) for token in column_tokens))
+
+    return sum(widths) + PANEL_GAP * max(0, len(widths) - 1)
 
 
-def render_sensor_rows(sensors: list[dict[str, Any]], content_width: int) -> list[str]:
+def render_column_sensor_rows(
+    tokens: list[tuple[str, str]],
+    content_width: int,
+    columns: int,
+) -> list[str]:
+    widths = [
+        max(visible_width(token[0]) for token in tokens[column::columns])
+        for column in range(columns)
+        if tokens[column::columns]
+    ]
+
+    rows: list[str] = []
+    for index in range(0, len(tokens), columns):
+        cells: list[str] = []
+        for column, width in enumerate(widths):
+            token_index = index + column
+            if token_index >= len(tokens):
+                continue
+            cell = tokens[token_index][1]
+            if column < len(widths) - 1:
+                cell = pad_visible(cell, width)
+            cells.append(cell)
+        rows.append(row((" " * PANEL_GAP).join(cells).rstrip(), content_width))
+    return rows
+
+
+def render_sensor_rows(
+    sensors: list[dict[str, Any]],
+    content_width: int,
+    preferred_columns: int = 2,
+) -> list[str]:
     tokens = [format_sensor_token(sensor) for sensor in sensors]
     if not tokens:
         return []
 
-    rows: list[str] = []
-    if two_column_width(tokens) <= content_width and len(tokens) > 1:
-        left_width = max(visible_width(token[0]) for token in tokens[::2])
-        for index in range(0, len(tokens), 2):
-            left = pad_visible(tokens[index][1], left_width)
-            right = tokens[index + 1][1] if index + 1 < len(tokens) else ""
-            rows.append(row(f"{left}{' ' * PANEL_GAP}{right}".rstrip(), content_width))
-        return rows
+    for columns in range(min(preferred_columns, len(tokens)), 1, -1):
+        if column_width(tokens, columns) <= content_width:
+            return render_column_sensor_rows(tokens, content_width, columns)
 
+    rows: list[str] = []
     for _, token in tokens:
         rows.append(row(token, content_width))
     return rows
@@ -988,6 +1156,64 @@ def power_token_groups(psu: dict[str, Any]) -> list[list[tuple[str, str]]]:
     return [tokens]
 
 
+def gpu_temperature_sensors(gpu: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not gpu or not gpu.get("available"):
+        return []
+
+    sensors: list[dict[str, Any]] = []
+    for item in gpu.get("gpus", []):
+        value = item.get("temperature")
+        if not isinstance(value, (int, float)):
+            continue
+        sensors.append(
+            {
+                "kind": "temperature",
+                "key": f"gpu{item['index']}_temperature",
+                "label": item["label"],
+                "value": value,
+                "unit": "C",
+                "order": item["order"],
+                "source_label": item["name"],
+                "source_order": item["index"],
+            }
+        )
+    return sensors
+
+
+def gpu_power_tokens(gpu: dict[str, Any] | None) -> list[tuple[str, str]]:
+    if not gpu or not gpu.get("available"):
+        return []
+
+    tokens: list[tuple[str, str]] = []
+    for item in gpu.get("gpus", []):
+        value = item.get("power_draw")
+        if not isinstance(value, (int, float)):
+            continue
+        limit = item.get("power_limit")
+        limit_value = limit if isinstance(limit, (int, float)) else None
+        value_text = f"{value:.0f} W"
+        if limit_value:
+            value_text = f"{value:.0f}/{limit_value:.0f} W"
+        tokens.append(power_token(item["label"], value_text, color_power_draw(value, limit_value)))
+    return tokens
+
+
+def render_power_section_rows(
+    psu: dict[str, Any] | None,
+    gpu: dict[str, Any] | None,
+    content_width: int,
+) -> list[str]:
+    rows: list[str] = []
+    if psu:
+        rows.extend(render_power_rows(psu, content_width))
+
+    gpu_tokens = gpu_power_tokens(gpu)
+    if gpu_tokens:
+        rows.extend(wrapped_power_rows(gpu_tokens, content_width))
+
+    return rows or [row(style("no power telemetry values", DIM_COLOR), content_width)]
+
+
 def psu_sensor(psu: dict[str, Any] | None, key: str, kind: str, label: str) -> dict[str, Any] | None:
     if not psu or not psu["available"]:
         return None
@@ -1031,6 +1257,7 @@ def sensor_sections(data: dict[str, Any]) -> list[tuple[int, str, str, list[dict
         temps.append(psu_temp)
     if psu_fan:
         fans.append(psu_fan)
+    temps.extend(gpu_temperature_sensors(data.get("gpu")))
 
     sections: list[tuple[int, str, str, list[dict[str, Any]]]] = []
     if temps:
@@ -1043,11 +1270,14 @@ def sensor_sections(data: dict[str, Any]) -> list[tuple[int, str, str, list[dict
 def render_panel(data: dict[str, Any]) -> list[str]:
     sensor_section_data = sensor_sections(data)
     psu = data.get("psu")
+    gpu = data.get("gpu")
+    gpu_power = gpu_power_tokens(gpu)
+    has_power = bool(psu or gpu_power)
 
-    if not sensor_section_data and not psu:
+    if not sensor_section_data and not has_power:
         return [
             "No hwmon temperature or fan sensors are currently exposed.",
-            "Run `mobo-watch --check` for kernel/device diagnostics.",
+            "Run `hwstat --check` for kernel/device diagnostics.",
         ]
 
     terminal_width = shutil.get_terminal_size(fallback=(80, 24)).columns
@@ -1056,18 +1286,21 @@ def render_panel(data: dict[str, Any]) -> list[str]:
 
     for _, icon, title, sensors in sensor_section_data:
         tokens = [format_sensor_token(sensor) for sensor in sensors]
+        preferred_columns = 3 if title == "Temps" else 2
         required_width = max(required_width, visible_width(f" {icon} {title} "))
-        required_width = max(required_width, two_column_width(tokens))
+        required_width = max(required_width, column_width(tokens, preferred_columns))
 
-    if psu:
+    if has_power:
         required_width = max(required_width, visible_width(f" {POWER_ICON} Power "))
-        if psu["available"]:
+        if psu and psu["available"]:
             required_width = max(required_width, preferred_power_width(format_power_tokens(psu)))
-        else:
+        elif psu:
             required_width = max(
                 required_width,
                 min(UNAVAILABLE_WIDTH, visible_width(f"unavailable: {psu['error']}")),
             )
+        if gpu_power:
+            required_width = max(required_width, preferred_power_width(gpu_power))
 
     content_width = min(required_width, max_content_width)
     lines: list[str] = []
@@ -1075,12 +1308,12 @@ def render_panel(data: dict[str, Any]) -> list[str]:
     first = True
     for _, icon, title, sensors in sorted(sensor_section_data):
         lines.append(rule("╭" if first else "├", "╮" if first else "┤", icon, title, content_width))
-        lines.extend(render_sensor_rows(sensors, content_width))
+        lines.extend(render_sensor_rows(sensors, content_width, preferred_columns=3 if title == "Temps" else 2))
         first = False
 
-    if psu:
+    if has_power:
         lines.append(rule("╭" if first else "├", "╮" if first else "┤", POWER_ICON, "Power", content_width))
-        lines.extend(render_power_rows(psu, content_width))
+        lines.extend(render_power_section_rows(psu, gpu, content_width))
         first = False
 
     lines.append(bottom_rule(content_width))
@@ -1152,12 +1385,29 @@ def print_check(config: WatchConfig) -> int:
 
     print(f"lm-sensors command installed: {'yes' if command_exists('sensors') else 'no'}")
     print(f"MSI PSU enabled by config: {'yes' if config.psu.enabled else 'no'}")
+    print(f"NVIDIA GPU enabled by config: {'yes' if config.gpu.enabled else 'no'}")
+    print(f"nvidia-smi command installed: {'yes' if command_exists('nvidia-smi') else 'no'}")
+    if config.gpu.enabled:
+        gpu = collect_gpus(config.gpu)
+        if gpu["available"]:
+            print(f"NVIDIA GPU telemetry provider: {gpu['provider']}")
+            for item in gpu["gpus"]:
+                temp = item.get("temperature")
+                power = item.get("power_draw")
+                print(
+                    f"  GPU{item['index']}: {item['name']} "
+                    f"({temp:.0f} C, {power:.0f} W)"
+                    if isinstance(temp, (int, float)) and isinstance(power, (int, float))
+                    else f"  GPU{item['index']}: {item['name']}"
+                )
+        else:
+            print(f"NVIDIA GPU telemetry unavailable: {gpu['error']}")
     return 0 if devices else 1
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Watch Linux hwmon sensors, with optional MSI PSU telemetry."
+        description="Watch Linux hwmon sensors, with optional PSU and GPU telemetry."
     )
     parser.add_argument(
         "-i",
@@ -1172,7 +1422,8 @@ def parse_args() -> argparse.Namespace:
         "--config",
         help=(
             "TOML config path (default: first existing "
-            "~/.config/mobo-watch/config.toml or sensors.toml next to this script)"
+            "~/.config/hwstat/config.toml, legacy "
+            "~/.config/mobo-watch/config.toml, or sensors.toml next to this script)"
         ),
     )
     parser.add_argument(
@@ -1187,6 +1438,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--check", action="store_true", help="print setup diagnostics and exit")
     parser.add_argument("--psu", action="store_true", help="include MSI MEG Ai1600T PSU telemetry")
+    parser.add_argument("--gpu", action="store_true", help="include NVIDIA GPU telemetry")
     parser.add_argument(
         "--psu-device",
         default=None,
@@ -1199,6 +1451,7 @@ def parse_args() -> argparse.Namespace:
         help="seconds to wait for each PSU HID reply (default from config, otherwise 2.0)",
     )
     parser.add_argument("--no-psu", action="store_true", help="disable PSU telemetry, overriding config")
+    parser.add_argument("--no-gpu", action="store_true", help="disable GPU telemetry, overriding config")
     parser.add_argument("--no-clear", action="store_true", help="do not clear the screen")
     return parser.parse_args()
 
@@ -1216,7 +1469,7 @@ def merge_cli_config(config: WatchConfig, args: argparse.Namespace) -> WatchConf
             order=psu.order,
             metrics=psu.metrics,
         )
-    return WatchConfig(path=config.path, display=display, devices=config.devices, psu=psu)
+    return WatchConfig(path=config.path, display=display, devices=config.devices, psu=psu, gpu=config.gpu)
 
 
 def main() -> int:
@@ -1229,19 +1482,25 @@ def main() -> int:
     try:
         config = merge_cli_config(load_config(args.config), args)
     except ConfigError as exc:
-        print(f"mobo-watch: {exc}", file=sys.stderr)
+        print(f"hwstat: {exc}", file=sys.stderr)
         return 2
 
     if args.check:
         return print_check(config)
 
     include_psu = (args.psu or config.psu.enabled) and not args.no_psu
+    include_gpu = (args.gpu or config.gpu.enabled) and not args.no_gpu
     board_only = args.board_only
 
     try:
         next_sample = time.monotonic()
         while True:
-            data = sample(board_only=board_only, include_psu=include_psu, config=config)
+            data = sample(
+                board_only=board_only,
+                include_psu=include_psu,
+                include_gpu=include_gpu,
+                config=config,
+            )
             if args.json:
                 print(json.dumps(data, sort_keys=True))
                 sys.stdout.flush()

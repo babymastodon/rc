@@ -1,5 +1,5 @@
-# Copy to ~/.config/mobo-watch/config.toml or pass with:
-#   mobo-watch --config ./sensors.toml
+# Copy to ~/.config/hwstat/config.toml or pass with:
+#   hwstat --config ./sensors.toml
 
 [display]
 show_unconfigured = false
@@ -128,3 +128,9 @@ order = 20
 key = "fan_speed"
 label = "PSU fan"
 order = 30
+
+[gpu]
+enabled = true
+provider = "auto"
+label = "GPU"
+order = 150

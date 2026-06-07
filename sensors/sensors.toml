@@ -125,3 +125,9 @@ order = 20
 key = "fan_speed"
 label = "PSU fan"
 order = 30
+
+[gpu]
+enabled = true
+provider = "auto"
+label = "GPU"
+order = 150

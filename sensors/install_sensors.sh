@@ -7,8 +7,8 @@ warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
 err()   { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
 
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
-BIN_NAMES=("mobo-watch")
-LEGACY_BIN_NAMES=("msi-psu-watch")
+BIN_NAMES=("hwstat")
+LEGACY_BIN_NAMES=("mobo-watch" "msi-psu-watch")
 
 if [[ "$(uname -s)" != "Linux" ]]; then
   err "sensor watchers only support Linux hwmon and hidraw devices."
@@ -66,7 +66,7 @@ for bin_name in "${LEGACY_BIN_NAMES[@]}"; do
 
   target="$(readlink "$dest")"
   case "$target" in
-    "$SCRIPT_DIR/$bin_name"|"$SCRIPT_DIR"/../psu/"$bin_name"|*/code/rc/psu/"$bin_name")
+    "$SCRIPT_DIR/$bin_name"|"$SCRIPT_DIR/mobo-watch"|"$SCRIPT_DIR"/../psu/"$bin_name"|*/code/rc/sensors/"$bin_name"|*/code/rc/sensors/mobo-watch|*/code/rc/psu/"$bin_name")
       rm -f "$dest"
       log "Removed legacy link: $dest -> $target"
       ;;
@@ -78,9 +78,9 @@ done
 
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
   warn "$BIN_DIR is not currently in PATH."
-  warn "Add it to your shell config or run $BIN_DIR/mobo-watch directly."
+  warn "Add it to your shell config or run $BIN_DIR/hwstat directly."
 fi
 
 log "Current sensor check:"
-"$SCRIPT_DIR/mobo-watch" --check || true
+"$SCRIPT_DIR/hwstat" --check || true
 log "Done."

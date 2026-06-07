@@ -188,8 +188,8 @@ else
 fi
 
 log "Verifying sensors"
-if command -v mobo-watch >/dev/null 2>&1; then
-  mobo-watch --check
+if command -v hwstat >/dev/null 2>&1; then
+  hwstat --check
 else
-  "$SCRIPT_DIR/mobo-watch" --check
+  "$SCRIPT_DIR/hwstat" --check
 fi
