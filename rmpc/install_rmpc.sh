@@ -14,6 +14,63 @@ print_shell_setup_guidance() {
   printf 'Run `./install.sh` from the repo root, then `source ~/.bashrc`, then rerun this script.\n' >&2
 }
 
+configured_music_dir() {
+  local config="${1:-$SCRIPT_DIR/mpd.conf}"
+  local raw
+
+  raw="$(awk '
+    /^[[:space:]]*#/ { next }
+    /^[[:space:]]*music_directory[[:space:]]+/ {
+      sub(/^[[:space:]]*music_directory[[:space:]]+/, "")
+      gsub(/^"|"$/, "")
+      print
+      exit
+    }
+  ' "$config")"
+
+  case "$raw" in
+    "~") printf '%s\n' "$HOME" ;;
+    "~/"*) printf '%s/%s\n' "$HOME" "${raw#\~/}" ;;
+    "\$HOME"*) printf '%s%s\n' "$HOME" "${raw#\$HOME}" ;;
+    "\${HOME}"*) printf '%s%s\n' "$HOME" "${raw#\${HOME}}" ;;
+    "\$XDG_MUSIC_DIR") xdg-user-dir MUSIC 2>/dev/null || printf '%s/Music\n' "$HOME" ;;
+    "") printf '%s/Music\n' "$HOME" ;;
+    *) printf '%s\n' "$raw" ;;
+  esac
+}
+
+has_music_files() {
+  local dir="$1"
+
+  [[ -d "$dir" ]] || return 1
+  find -L "$dir" -type f \( \
+    -iname '*.mp3' -o \
+    -iname '*.flac' -o \
+    -iname '*.m4a' -o \
+    -iname '*.ogg' -o \
+    -iname '*.opus' -o \
+    -iname '*.wav' \
+  \) -print -quit 2>/dev/null | grep -q .
+}
+
+check_music_library() {
+  local music_dir
+  music_dir="$(configured_music_dir "$SCRIPT_DIR/mpd.conf")"
+
+  if has_music_files "$music_dir"; then
+    log "MPD music directory has audio files: $music_dir"
+    return
+  fi
+
+  warn "No audio files found in MPD music directory: $music_dir"
+  warn "If your music lives elsewhere, point this directory at it, then rescan MPD. Example:
+    [[ ! -e \"\$HOME/Music\" && ! -L \"\$HOME/Music\" ]] || mv \"\$HOME/Music\" \"\$HOME/Music.empty\"
+    ln -s /path/to/your/music \"\$HOME/Music\"
+    systemctl --user restart mpd.service
+
+  Replace /path/to/your/music with your actual library path."
+}
+
 # robust symlink creator
 maybe_link() {
   local src="$1" dest="$2"
@@ -111,6 +168,7 @@ fi
 log "Linking configs…"
 mkdir -p "$HOME/.config/mpd/" "$HOME/.local/share/mpd/"
 maybe_link "$SCRIPT_DIR/mpd.conf" "$HOME/.config/mpd/mpd.conf"
+check_music_library
 
 mkdir -p "$HOME/.config/rmpc/"
 maybe_link "$SCRIPT_DIR/config.ron" "$HOME/.config/rmpc/config.ron"
