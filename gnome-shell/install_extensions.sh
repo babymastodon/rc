@@ -17,6 +17,7 @@ EXTENSIONS=(
   "monitor-brightness-volume@ailin.nemui"
   "azwallpaper@azwallpaper.gitlab.com"
   "blur-my-shell@aunetx"
+  "no-screenshot-box@screenshot"
 )
 
 # ----- helpers -----

@@ -17,6 +17,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #   Example: "org.gnome.shell.keybindings|toggle-overview|<Super>slash"
 GNOME_SHORTCUTS=(
   "org.gnome.shell.keybindings|toggle-overview|<Super>slash"
+  "org.gnome.shell.keybindings|show-screenshot-ui|Print"
+  "org.gnome.shell.keybindings|screenshot|<Shift>Print"
+  "org.gnome.shell.keybindings|screenshot-window|<Alt>Print"
   "org.gnome.desktop.wm.keybindings|switch-to-workspace-left|Back"
   "org.gnome.desktop.wm.keybindings|switch-to-workspace-right|Forward"
 )
