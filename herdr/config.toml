@@ -21,8 +21,7 @@ delivery = "terminal"
 detach = "prefix+d"
 previous_tab = "shift+left"
 next_tab = "shift+right"
-previous_workspace = "ctrl+shift+tab"
-next_workspace = "ctrl+tab"
 
 [keys.indexed]
-tabs = "ctrl"
+tabs = "alt"
+workspaces = "ctrl"
