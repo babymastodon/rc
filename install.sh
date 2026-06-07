@@ -227,6 +227,7 @@ fi
 git config --global user.name "$git_name"
 git config --global user.email "$git_email"
 git config --global core.editor "vim"
+git config --global core.pager "less -R --mouse --wheel-lines=3"
 git config --global push.default "current"
 git config --global pull.rebase true
 log "Git identity and defaults configured."
