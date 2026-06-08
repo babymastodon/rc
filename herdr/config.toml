@@ -21,6 +21,14 @@ delivery = "terminal"
 detach = "prefix+d"
 previous_tab = "shift+left"
 next_tab = "shift+right"
+previous_workspace = "shift+up"
+next_workspace = "shift+down"
+previous_agent = "ctrl+up"
+next_agent = "ctrl+down"
+focus_pane_left = ["prefix+h", "ctrl+shift+left"]
+focus_pane_down = ["prefix+j", "ctrl+shift+down"]
+focus_pane_up = ["prefix+k", "ctrl+shift+up"]
+focus_pane_right = ["prefix+l", "ctrl+shift+right"]
 
 [keys.indexed]
 tabs = "alt"

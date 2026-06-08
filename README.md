@@ -99,6 +99,15 @@ hoo workbox
 
 It is very convenient to run Herdr on a remote VM, since agents can keep working in the background after you disconnect.
 
+To quickly navigate between tabs/agents/panes, use these shortcuts:
+
+```text
+tabs: Shift-Left / Shift-Right
+workspaces: Shift-Up / Shift-Down
+agents: Ctrl-Up / Ctrl-Down
+panes: Ctrl-Shift-Arrow or prefix+h/j/k/l
+```
+
 ## Git shortcuts&nbsp;`💻` `🗄️`
 
 The install script sets up these aliases:
