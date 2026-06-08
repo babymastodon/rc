@@ -38,14 +38,26 @@ fi
 
 export PATH
 
-# store the ssh auth sock in the home folder for access from tmux and mosh
-if [ ! -z "$SSH_AUTH_SOCK" -a "$SSH_AUTH_SOCK" != "$HOME/.ssh/agent_sock" ] ; then
-  unlink "$HOME/.ssh/agent_sock" 2>/dev/null
-  ln -s "$SSH_AUTH_SOCK" "$HOME/.ssh/agent_sock"
-  export SSH_AUTH_SOCK="$HOME/.ssh/agent_sock"
+# Stable SSH agent path for tmux/mosh; fix-ssh-agent owns probing and repair.
+__ssh_agent_in="${SSH_AUTH_SOCK:-}"
+export SSH_AUTH_SOCK="$HOME/.ssh/agent_sock"
+if [[ -n "$__ssh_agent_in" && "$__ssh_agent_in" != "$SSH_AUTH_SOCK" ]]; then
+  fix-ssh-agent "$__ssh_agent_in" >/dev/null 2>&1 || true
+elif [[ ! -S "$SSH_AUTH_SOCK" ]]; then
+  fix-ssh-agent --if-missing >/dev/null 2>&1 || true
 fi
-if [ -z "$SSH_AUTH_SOCK" ] ; then
-  export SSH_AUTH_SOCK="$HOME/.ssh/agent_sock"
+unset __ssh_agent_in
+
+__ssh_agent_fix_if_missing() {
+  [[ -S "${SSH_AUTH_SOCK:-}" ]] || fix-ssh-agent --if-missing >/dev/null 2>&1 || true
+  return 0
+}
+
+if [[ $- == *i* ]]; then
+  case "${PROMPT_COMMAND:-}" in
+    *__ssh_agent_fix_if_missing*) ;;
+    *) PROMPT_COMMAND="__ssh_agent_fix_if_missing${PROMPT_COMMAND:+; $PROMPT_COMMAND}" ;;
+  esac
 fi
 
 # yazi with cd on exit

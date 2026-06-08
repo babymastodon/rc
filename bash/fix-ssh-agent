@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# Keep one stable SSH agent socket for tmux/mosh.
+#
+# SSH shells register their incoming forwarded socket under ~/.ssh/agent/.
+# ~/.ssh/agent_sock points at the selected registered socket. When that stable
+# link is missing, repair scans registered sockets, removes dead links, and
+# falls back to common local desktop/user agent sockets. ssh-add only runs
+# after a path already looks like a socket.
+set -u
+
+link="${SSH_AUTH_SOCK_LINK:-$HOME/.ssh/agent_sock}"
+dir="${SSH_AUTH_SOCK_DIR:-$HOME/.ssh/agent}"
+session="${dir}/${HOSTNAME:-host}.${PPID}"
+ssh_add=
+
+find_ssh_add() {
+  [[ -n "$ssh_add" ]] && return 0
+  ssh_add="$(command -v ssh-add 2>/dev/null || true)"
+  [[ -n "$ssh_add" ]]
+}
+
+agent_ok() {
+  local sock="$1" status
+  [[ -n "$sock" && -S "$sock" ]] || return 1
+  find_ssh_add || return 1
+
+  SSH_AUTH_SOCK="$sock" "$ssh_add" -l >/dev/null 2>&1
+  status=$?
+  [[ $status -eq 0 || $status -eq 1 ]]
+}
+
+is_self_ssh() {
+  local client_ip server_ip
+  [[ -n "${SSH_CONNECTION:-}" ]] || return 1
+
+  read -r client_ip _ server_ip _ <<< "$SSH_CONNECTION"
+  [[ -n "$client_ip" && "$client_ip" == "$server_ip" ]] && return 0
+
+  case "$client_ip" in
+    127.*|::1|::ffff:127.*) return 0 ;;
+  esac
+  return 1
+}
+
+relink() {
+  local target="$1" dest="$2" tmp
+  [[ "$target" != "$dest" ]] || return 0
+
+  mkdir -p "${dest%/*}" || return 1
+  tmp="${dest}.$$"
+  rm -f "$tmp" 2>/dev/null
+  ln -s "$target" "$tmp" 2>/dev/null || return 1
+  mv -Tf "$tmp" "$dest" 2>/dev/null \
+    || mv -f "$tmp" "$dest" 2>/dev/null \
+    || { rm -f "$tmp" 2>/dev/null; return 1; }
+}
+
+register_incoming() {
+  local sock="$1"
+  [[ -n "$sock" && "$sock" != "$link" ]] || return 1
+  is_self_ssh && agent_ok "$link" && return 0
+  agent_ok "$sock" || return 1
+
+  mkdir -p "$dir" || return 1
+  chmod 700 "$HOME/.ssh" "$dir" 2>/dev/null || true
+  relink "$sock" "$session" || return 1
+  relink "$session" "$link"
+}
+
+repair() {
+  local mode="${1:-force}" selected= sock uid="${UID:-$(id -u)}"
+  local runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$uid}"
+
+  if [[ "$mode" == "missing" && -S "$link" ]]; then
+    return 0
+  fi
+  if [[ "$mode" == "force" && -S "$link" ]] && agent_ok "$link"; then
+    return 0
+  fi
+
+  for sock in "$dir"/*; do
+    [[ -e "$sock" || -L "$sock" ]] || continue
+    if agent_ok "$sock"; then
+      [[ -n "$selected" ]] || selected="$sock"
+      continue
+    fi
+    [[ -L "$sock" ]] && rm -f "$sock" 2>/dev/null
+  done
+  if [[ -n "$selected" ]]; then
+    relink "$selected" "$link"
+    return $?
+  fi
+
+  for sock in "$runtime_dir/keyring/ssh" "$runtime_dir/openssh_agent"; do
+    if agent_ok "$sock"; then
+      relink "$sock" "$link"
+      return $?
+    fi
+  done
+
+  return 1
+}
+
+if [[ $# -eq 0 ]]; then
+  repair force
+  exit
+fi
+
+case "$1" in
+  "")
+    repair missing
+    ;;
+  --if-missing)
+    repair missing
+    ;;
+  --repair|repair|refresh|fix)
+    repair force
+    ;;
+  status)
+    agent_ok "$link"
+    ;;
+  register|sync)
+    register_incoming "${2:-${SSH_AUTH_SOCK:-}}" || true
+    repair missing
+    ;;
+  *)
+    register_incoming "$1" || true
+    repair missing
+    ;;
+esac

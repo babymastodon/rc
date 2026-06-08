@@ -123,6 +123,7 @@ ensure_source_in_file "$HOME/.bashrc" "$HOME/.bash_profile"
 # ----- install scripts into ~/.local/bin (only if missing) -----
 mkdir -p "$HOME/.local/bin"
 maybe_link "$SCRIPT_DIR/bash/git-commit-all" "$HOME/.local/bin/git-commit-all"
+maybe_link "$SCRIPT_DIR/bash/fix-ssh-agent" "$HOME/.local/bin/fix-ssh-agent"
 maybe_link "$SCRIPT_DIR/tmux/tmux-git-badge" "$HOME/.local/bin/tmux-git-badge"
 maybe_link "$SCRIPT_DIR/tmux/tmux-ssh-host"  "$HOME/.local/bin/tmux-ssh-host"
 maybe_link "$SCRIPT_DIR/tmux/tmux-pane-label" "$HOME/.local/bin/tmux-pane-label"
