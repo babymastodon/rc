@@ -33,7 +33,7 @@ add_to_path "$GOBIN"
 add_to_path "${KREW_ROOT:-$HOME/.krew}/bin"
 
 if [[ -x "$HOME/.local/bin/mise" ]]; then
-  eval "$("$HOME/.local/bin/mise" activate bash)"
+  eval "$("$HOME/.local/bin/mise" activate -q bash)"
 fi
 
 export PATH
