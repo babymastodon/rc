@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+__git_pager_less=(less -R)
+__git_pager_input_args=("$@")
+
+page_diff_so_fancy() {
+  local pager_status formatter_status
+  local -a pager=("$@")
+  local -a pipe_status
+
+  set +e
+  diff-so-fancy "${__git_pager_input_args[@]}" | "${pager[@]}"
+  pipe_status=("${PIPESTATUS[@]}")
+  set -e
+  formatter_status="${pipe_status[0]}"
+  pager_status="${pipe_status[1]}"
+
+  if (( pager_status != 0 )); then
+    exit "$pager_status"
+  fi
+
+  # Pager quit can close the pipe before diff-so-fancy finishes writing.
+  if (( formatter_status == 141 )); then
+    exit 0
+  fi
+
+  exit "$formatter_status"
+}
+
+if command -v diff-so-fancy >/dev/null 2>&1; then
+  page_diff_so_fancy "${__git_pager_less[@]}"
+fi
+
+exec "${__git_pager_less[@]}" "$@"
