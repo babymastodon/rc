@@ -16,3 +16,4 @@ rust-analyzer = "latest"
 "npm:typescript-language-server" = "latest"
 "npm:yaml-language-server" = "latest"
 "npm:bash-language-server" = "latest"
+aws-cli = { version = "latest", symlink_bins = "true" }

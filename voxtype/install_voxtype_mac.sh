@@ -249,6 +249,7 @@ validate_config() {
 
 enforce_cohere_config() {
   local config_file="$CONFIG_DEST"
+  local tmp_file
 
   if [[ ! -f "$config_file" ]]; then
     err "Config file not found: $config_file"
@@ -262,8 +263,15 @@ enforce_cohere_config() {
   if grep -q '^engine = ' "$config_file"; then
     sed -i '' 's/^engine = .*/engine = "cohere"/' "$config_file"
   else
-    printf 'engine = "cohere"\n%s' "$(cat "$config_file")" > "$config_file"
+    tmp_file="${config_file}.tmp.$$"
+    {
+      printf 'engine = "cohere"\n'
+      cat "$config_file"
+    } > "$tmp_file"
+    mv "$tmp_file" "$config_file"
   fi
+
+  log "Ensured macOS config uses Cohere engine."
 }
 
 file_size_gt() {
@@ -395,9 +403,12 @@ PLIST
   plutil -lint "$LAUNCH_AGENT_PLIST" >/dev/null
 
   launchctl bootout "gui/${uid}" "$LAUNCH_AGENT_PLIST" >/dev/null 2>&1 || true
+  if command -v pkill >/dev/null 2>&1; then
+    pkill -u "$uid" -x voxtype >/dev/null 2>&1 || true
+    pkill -u "$uid" -x voxtype-bin >/dev/null 2>&1 || true
+  fi
   launchctl bootstrap "gui/${uid}" "$LAUNCH_AGENT_PLIST"
   launchctl enable "gui/${uid}/${LAUNCH_AGENT_LABEL}"
-  launchctl kickstart -k "gui/${uid}/${LAUNCH_AGENT_LABEL}"
 }
 
 confirm_running() {
@@ -429,8 +440,9 @@ main() {
 
   link_cli "$voxtype_bin"
   link_config
-  validate_config "$voxtype_bin"
+  enforce_cohere_config
   install_cohere_model
+  validate_config "$voxtype_bin"
   run_setup_check "$voxtype_bin"
   install_app_bundle "$voxtype_bin"
   enforce_cohere_config

@@ -52,6 +52,33 @@ macos_developer_dir_for_herdr_build() {
   exit 1
 }
 
+zig_for_herdr_build() {
+  local candidate version
+
+  if [[ -n "${ZIG:-}" ]]; then
+    printf '%s\n' "$ZIG"
+    return
+  fi
+
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    return
+  fi
+
+  # Homebrew's zig@0.15 includes a backported Darwin linker fix needed by
+  # Xcode/CommandLineTools 26 SDKs, while the upstream 0.15.2 tarball does not.
+  for candidate in /opt/homebrew/opt/zig@0.15/bin/zig /usr/local/opt/zig@0.15/bin/zig; do
+    if [[ ! -x "$candidate" ]]; then
+      continue
+    fi
+
+    version="$("$candidate" version 2>/dev/null || true)"
+    if [[ "$version" == "0.15.2" ]]; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+  done
+}
+
 clone_source() {
   local dest="$1"
 
@@ -81,7 +108,7 @@ patch_source() {
 }
 
 install_binary() {
-  local source_dir="$1" built_binary="$1/target/release/herdr" target="$HOME/.local/bin/herdr" developer_dir
+  local source_dir="$1" built_binary="$1/target/release/herdr" target="$HOME/.local/bin/herdr" developer_dir zig
 
   if [[ -f "$HERDR_MISE_CONFIG" ]]; then
     cp "$HERDR_MISE_CONFIG" "$source_dir/mise.toml"
@@ -96,6 +123,12 @@ install_binary() {
 
   log "Building herdr from source..."
   developer_dir="$(macos_developer_dir_for_herdr_build)"
+  zig="$(zig_for_herdr_build)"
+  if [[ -n "$zig" ]]; then
+    log "Using Zig for herdr build: ${zig}"
+    export ZIG="$zig"
+  fi
+
   if [[ -n "$developer_dir" ]]; then
     DEVELOPER_DIR="$developer_dir" mise exec -C "$source_dir" -- cargo build --release --locked
   else
