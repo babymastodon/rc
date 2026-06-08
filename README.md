@@ -102,8 +102,8 @@ It is very convenient to run Herdr on a remote VM, since agents can keep working
 To quickly navigate between tabs/agents/panes, use these shortcuts:
 
 ```text
-tabs: Shift-Left / Shift-Right
-workspaces: Shift-Up / Shift-Down
+tabs: Shift-Left / Shift-Right, Alt/Cmd-1..9
+workspaces: Shift-Up / Shift-Down, Ctrl-1..9
 agents: Ctrl-Up / Ctrl-Down
 panes: Ctrl-Shift-Arrow or prefix+h/j/k/l
 ```
@@ -116,12 +116,12 @@ The install script sets up these aliases:
 g='git'
 ga='git add .'
 st='git status && git diff --stat'
-gd='git diff origin/master'
+gd='git diff <upstream-or-default-branch>'
 gs='git -c color.status=always status -s && ...'
 cm='git-commit-all'
 pl='git pull'
 ph='git push --force-with-lease'
-mg='git fetch && git merge origin/master --no-edit'
+mg='git fetch && git merge <upstream-or-default-branch> --no-edit'
 br='git log --graph --oneline --decorate --all'
 lg='lazygit'
 ```

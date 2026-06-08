@@ -93,9 +93,54 @@ alias ga='git add .'
 alias st='git status && git diff --stat'
 alias pl='git pull'
 alias ph='git push --force-with-lease'
-alias mg='git fetch && git merge origin/master --no-edit'
 alias fh='git fetch'
-alias gd='git diff origin/master'
+unalias mg gd 2>/dev/null || true
+__git_default_base() {
+  local ref
+
+  ref="$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null)" && [[ -n "$ref" ]] && {
+    printf '%s\n' "$ref"
+    return 0
+  }
+
+  for ref in origin/HEAD origin/main origin/master main master; do
+    if git rev-parse --verify --quiet "$ref^{commit}" >/dev/null; then
+      printf '%s\n' "$ref"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+mg() {
+  local base remote
+  base="$(__git_default_base)" || {
+    printf 'No upstream or default branch found to merge.\n' >&2
+    return 1
+  }
+
+  remote="${base%%/*}"
+  if [[ "$remote" != "$base" ]]; then
+    git fetch "$remote" || return
+  fi
+  git merge "$base" --no-edit
+}
+
+gd() {
+  local base
+  if (($#)); then
+    git diff "$@"
+    return
+  fi
+
+  base="$(__git_default_base)" || {
+    printf 'No upstream or default branch found; showing plain git diff.\n' >&2
+    git diff
+    return
+  }
+  git diff "$base"
+}
 alias gs='git -c color.status=always status -s && \
   unstaged=$(git diff --stat) && \
   staged=$(git diff --cached --stat) && \

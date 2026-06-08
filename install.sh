@@ -232,6 +232,7 @@ git config --global user.email "$git_email"
 git config --global core.editor "vim"
 git config --global core.pager "git-pager"
 git config --global interactive.diffFilter "git-diff-filter"
+git config --bool --global diff-so-fancy.markEmptyLines false
 git config --global color.ui true
 git config --global color.diff.old "red"
 git config --global color.diff.new "green"
