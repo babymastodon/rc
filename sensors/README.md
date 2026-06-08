@@ -158,6 +158,11 @@ The reader was tested with this USB device:
 0db0:c9eb Micro-Star International MSI MEG Ai1600T
 ```
 
+PSU HID access is serialized because concurrent command sequences can corrupt
+replies. `hwstat` caches the last successful raw PSU read in
+`/tmp/hwstat-msi-psu.json` for one second, and readers that arrive while another
+process is refreshing the device can reuse that cache for up to five seconds.
+
 ## Gigabyte TRX50 AI TOP
 
 This board uses a Gigabyte/iTE monitoring path. On the tested Linux install,
