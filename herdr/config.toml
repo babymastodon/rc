@@ -25,10 +25,10 @@ previous_workspace = "shift+up"
 next_workspace = "shift+down"
 previous_agent = "ctrl+up"
 next_agent = "ctrl+down"
-focus_pane_left = ["prefix+h", "ctrl+shift+left"]
-focus_pane_down = ["prefix+j", "ctrl+shift+down"]
-focus_pane_up = ["prefix+k", "ctrl+shift+up"]
-focus_pane_right = ["prefix+l", "ctrl+shift+right"]
+focus_pane_left = ["prefix+h", "prefix+ctrl+h", "ctrl+shift+left"]
+focus_pane_down = ["prefix+j", "prefix+ctrl+j", "ctrl+shift+down"]
+focus_pane_up = ["prefix+k", "prefix+ctrl+k", "ctrl+shift+up"]
+focus_pane_right = ["prefix+l", "prefix+ctrl+l", "ctrl+shift+right"]
 
 [keys.indexed]
 tabs = "alt"
