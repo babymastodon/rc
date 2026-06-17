@@ -94,8 +94,8 @@ activate_mise() {
 }
 
 configure_global_tooling() {
-  local in_tools=0 line key value
-  local -a tool_specs=()
+  local in_tools=0 line key value table table_item option_key option_value version tool_spec
+  local -a table_items=() tool_specs=()
 
   echo "Applying global mise defaults from ${MISE_CONFIG_PATH}..."
 
@@ -130,8 +130,56 @@ configure_global_tooling() {
       continue
     fi
 
-    echo "Unsupported mise config line in ${MISE_CONFIG_PATH}: ${line}" >&2
-    exit 1
+    if [[ "$line" =~ ^\"([^\"]+)\"[[:space:]]*=[[:space:]]*\{[[:space:]]*(.*)[[:space:]]*\}$ ]]; then
+      key="${BASH_REMATCH[1]}"
+      table="${BASH_REMATCH[2]}"
+    elif [[ "$line" =~ ^([A-Za-z0-9_.-]+)[[:space:]]*=[[:space:]]*\{[[:space:]]*(.*)[[:space:]]*\}$ ]]; then
+      key="${BASH_REMATCH[1]}"
+      table="${BASH_REMATCH[2]}"
+    else
+      echo "Unsupported mise config line in ${MISE_CONFIG_PATH}: ${line}" >&2
+      exit 1
+    fi
+
+    version=""
+    tool_spec=""
+
+    IFS=',' read -ra table_items <<< "$table"
+    for table_item in "${table_items[@]}"; do
+      table_item="${table_item#"${table_item%%[![:space:]]*}"}"
+      table_item="${table_item%"${table_item##*[![:space:]]}"}"
+
+      if [[ "$table_item" =~ ^([A-Za-z0-9_.-]+)[[:space:]]*=[[:space:]]*\"([^\"]+)\"$ ]]; then
+        option_key="${BASH_REMATCH[1]}"
+        option_value="${BASH_REMATCH[2]}"
+      elif [[ "$table_item" =~ ^([A-Za-z0-9_.-]+)[[:space:]]*=[[:space:]]*(true|false|[0-9]+)$ ]]; then
+        option_key="${BASH_REMATCH[1]}"
+        option_value="${BASH_REMATCH[2]}"
+      else
+        echo "Unsupported mise config table item in ${MISE_CONFIG_PATH}: ${table_item}" >&2
+        exit 1
+      fi
+
+      if [[ "$option_key" == "version" ]]; then
+        version="$option_value"
+      elif [[ -z "$tool_spec" ]]; then
+        tool_spec="${option_key}=${option_value}"
+      else
+        tool_spec="${tool_spec},${option_key}=${option_value}"
+      fi
+    done
+
+    if [[ -z "$version" ]]; then
+      echo "Unsupported mise config table without version in ${MISE_CONFIG_PATH}: ${line}" >&2
+      exit 1
+    fi
+
+    if [[ -n "$tool_spec" ]]; then
+      tool_specs+=("${key}@${version}[${tool_spec}]")
+    else
+      tool_specs+=("${key}@${version}")
+    fi
+
   done < "$MISE_CONFIG_PATH"
 
   if (( ${#tool_specs[@]} == 0 )); then
