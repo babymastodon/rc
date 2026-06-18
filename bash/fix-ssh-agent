@@ -12,6 +12,8 @@ link="${SSH_AUTH_SOCK_LINK:-$HOME/.ssh/agent_sock}"
 dir="${SSH_AUTH_SOCK_DIR:-$HOME/.ssh/agent}"
 session="${dir}/${HOSTNAME:-host}.${PPID}"
 ssh_add=
+# Resolve `timeout` once; used to bound ssh-add against wedged forwarded agents.
+timeout_bin="$(command -v timeout 2>/dev/null || true)"
 
 find_ssh_add() {
   [[ -n "$ssh_add" ]] && return 0
@@ -24,7 +26,10 @@ agent_ok() {
   [[ -n "$sock" && -S "$sock" ]] || return 1
   find_ssh_add || return 1
 
-  SSH_AUTH_SOCK="$sock" "$ssh_add" -l >/dev/null 2>&1
+  # `timeout` bounds the probe: a forwarded agent socket can accept the
+  # connection but never reply, making `ssh-add -l` hang indefinitely. A
+  # timeout (exit 124) is treated as "not ok" so the dead link gets reaped.
+  SSH_AUTH_SOCK="$sock" ${timeout_bin:+$timeout_bin 2} "$ssh_add" -l >/dev/null 2>&1
   status=$?
   [[ $status -eq 0 || $status -eq 1 ]]
 }
