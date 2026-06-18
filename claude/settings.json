@@ -1,3 +1,4 @@
 {
-  "theme": "auto"
+  "theme": "custom:terminal-ansi",
+  "copyOnSelect": true
 }

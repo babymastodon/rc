@@ -1,0 +1,9 @@
+{
+  "name": "terminal-ansi",
+  "base": "dark-ansi",
+  "overrides": {
+    "selectionBg": "ansi:blackBright",
+    "userMessageBackground": "ansi:black",
+    "userMessageBackgroundHover": "ansi:blackBright"
+  }
+}

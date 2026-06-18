@@ -31,6 +31,21 @@ ensure_claude_settings() {
   log "Updated $dest"
 }
 
+# Install the repo's custom themes into ~/.claude/themes/. Claude Code reads each
+# JSON file there as a theme whose slug is the filename; settings.json references
+# one via "theme": "custom:<slug>". We copy (not symlink) since Claude Code also
+# writes themes here via its interactive editor.
+ensure_claude_themes() {
+  local src_dir="$1" dest_dir="$2" f
+  [[ -d "$src_dir" ]] || return 0
+  mkdir -p "$dest_dir"
+  for f in "$src_dir"/*.json; do
+    [[ -e "$f" ]] || continue
+    cp "$f" "$dest_dir/"
+    log "Installed theme $(basename "$f")"
+  done
+}
+
 if ! command -v jq >/dev/null 2>&1; then
   err "jq is required to merge Claude settings."
   print_shell_setup_guidance
@@ -51,6 +66,7 @@ fi
 export PATH="${HOME}/.local/bin:$PATH"
 
 ensure_claude_settings "$SCRIPT_DIR/settings.json" "$HOME/.claude/settings.json"
+ensure_claude_themes "$SCRIPT_DIR/themes" "$HOME/.claude/themes"
 
 if command -v claude >/dev/null 2>&1; then
   log "Claude Code installed: $(claude --version 2>/dev/null | head -n1 || echo 'version lookup skipped')"
