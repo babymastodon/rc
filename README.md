@@ -160,6 +160,16 @@ Install and link the Codex config from this repo:
 
 Then run `codex` and log in with ChatGPT, not an API key. When logging in on a remote VM, port-forward the Codex login port so the browser callback can reach the VM.
 
+## Claude Code&nbsp;`💻` `🗄️`
+
+Install Claude Code and merge the shared settings from this repo:
+
+```bash
+./claude/install_claude.sh
+```
+
+Then run `claude` and `/login`. On a remote/headless machine, choose the paste-the-code option instead of the browser callback.
+
 ## SSH&nbsp;`💻`
 
 Read [`ssh/README.md`](ssh/README.md) first.
