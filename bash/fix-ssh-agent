@@ -3,9 +3,13 @@
 #
 # SSH shells register their incoming forwarded socket under ~/.ssh/agent/.
 # ~/.ssh/agent_sock points at the selected registered socket. When that stable
-# link is missing, repair scans registered sockets, removes dead links, and
-# falls back to common local desktop/user agent sockets. ssh-add only runs
-# after a path already looks like a socket.
+# link is missing or dead, repair scans registered sockets, removes dead links,
+# and falls back to common local desktop/user agent sockets.
+#
+# The forwarding/stable-link path is for anonymous VMs that hold no private key
+# of their own. On a host that already has a key loaded in its own running agent
+# (desktop keyring, gcr, a user ssh-agent), that local agent wins: an incoming
+# forwarded agent must not shadow it.
 set -u
 
 link="${SSH_AUTH_SOCK_LINK:-$HOME/.ssh/agent_sock}"
@@ -21,17 +25,25 @@ find_ssh_add() {
   [[ -n "$ssh_add" ]]
 }
 
-agent_ok() {
-  local sock="$1" status
-  [[ -n "$sock" && -S "$sock" ]] || return 1
-  find_ssh_add || return 1
-
-  # `timeout` bounds the probe: a forwarded agent socket can accept the
-  # connection but never reply, making `ssh-add -l` hang indefinitely. A
-  # timeout (exit 124) is treated as "not ok" so the dead link gets reaped.
+# Probe a socket with `ssh-add -l`, bounded by `timeout` so a forwarded agent
+# that accepts the connection but never replies can't hang us. Returns ssh-add's
+# exit code: 0 = has keys, 1 = reachable but empty, anything else (2 unreachable,
+# 124 timeout, missing socket / no ssh-add) = treat as dead.
+agent_probe() {
+  local sock="$1"
+  [[ -n "$sock" && -S "$sock" ]] || return 2
+  find_ssh_add || return 2
   SSH_AUTH_SOCK="$sock" ${timeout_bin:+$timeout_bin 2} "$ssh_add" -l >/dev/null 2>&1
-  status=$?
-  [[ $status -eq 0 || $status -eq 1 ]]
+}
+
+agent_ok()       { agent_probe "$1"; local s=$?; (( s == 0 || s == 1 )); }
+agent_has_keys() { agent_probe "$1"; local s=$?; (( s == 0 )); }
+
+# Well-known agent sockets owned by the host itself (not an incoming forward),
+# in preference order.
+local_agent_socks() {
+  local rt="${XDG_RUNTIME_DIR:-/run/user/${UID:-$(id -u)}}"
+  printf '%s\n' "$rt/keyring/ssh" "$rt/openssh_agent" "$rt/gcr/ssh"
 }
 
 is_self_ssh() {
@@ -61,74 +73,54 @@ relink() {
 }
 
 register_incoming() {
-  local sock="$1"
+  local sock="$1" cand
   [[ -n "$sock" && "$sock" != "$link" ]] || return 1
   is_self_ssh && agent_ok "$link" && return 0
-  agent_ok "$sock" || return 1
 
+  # If this host already has a key loaded — in the current link or a local
+  # desktop/keyring agent — keep that and ignore the incoming forward. Only
+  # anonymous VMs (no local key) fall through to registering the forward.
+  agent_has_keys "$link" && return 0
+  while IFS= read -r cand; do
+    agent_has_keys "$cand" || continue
+    relink "$cand" "$link"
+    return $?
+  done < <(local_agent_socks)
+
+  agent_ok "$sock" || return 1
   mkdir -p "$dir" || return 1
   chmod 700 "$HOME/.ssh" "$dir" 2>/dev/null || true
   relink "$sock" "$session" || return 1
   relink "$session" "$link"
 }
 
+# Point the stable link at a working agent: keep it if already live, else adopt
+# a live registered session socket (reaping dead ones), else a local agent. The
+# link is probed, not just stat'd: a forwarded socket orphaned by a dropped
+# connection stays a live socket but never replies, so -S alone isn't enough.
 repair() {
-  local selected= sock uid="${UID:-$(id -u)}"
-  local runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$uid}"
+  local selected= sock
 
-  # Probe the stable link before trusting it: a forwarded socket orphaned by a
-  # dropped connection stays a live socket but never replies, so -S is not enough.
-  if [[ -S "$link" ]] && agent_ok "$link"; then
-    return 0
-  fi
+  [[ -S "$link" ]] && agent_ok "$link" && return 0
 
   for sock in "$dir"/*; do
     [[ -e "$sock" || -L "$sock" ]] || continue
     if agent_ok "$sock"; then
       [[ -n "$selected" ]] || selected="$sock"
-      continue
+    elif [[ -L "$sock" ]]; then
+      rm -f "$sock" 2>/dev/null
     fi
-    [[ -L "$sock" ]] && rm -f "$sock" 2>/dev/null
   done
-  if [[ -n "$selected" ]]; then
-    relink "$selected" "$link"
-    return $?
-  fi
+  [[ -n "$selected" ]] && { relink "$selected" "$link"; return $?; }
 
-  for sock in "$runtime_dir/keyring/ssh" "$runtime_dir/openssh_agent" "$runtime_dir/gcr/ssh"; do
-    if agent_ok "$sock"; then
-      relink "$sock" "$link"
-      return $?
-    fi
-  done
+  while IFS= read -r sock; do
+    agent_ok "$sock" && { relink "$sock" "$link"; return $?; }
+  done < <(local_agent_socks)
 
   return 1
 }
 
-if [[ $# -eq 0 ]]; then
-  repair force
-  exit
-fi
-
-case "$1" in
-  "")
-    repair missing
-    ;;
-  --if-missing)
-    repair missing
-    ;;
-  --repair|repair|refresh|fix)
-    repair force
-    ;;
-  status)
-    agent_ok "$link"
-    ;;
-  register|sync)
-    register_incoming "${2:-${SSH_AUTH_SOCK:-}}" || true
-    repair missing
-    ;;
-  *)
-    register_incoming "$1" || true
-    repair missing
-    ;;
-esac
+# Register the inherited $SSH_AUTH_SOCK (an incoming forward at login), then
+# repair the stable link. Both no-op when there's nothing new, so this just fixes.
+register_incoming "${SSH_AUTH_SOCK:-}"
+repair

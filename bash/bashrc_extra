@@ -38,18 +38,19 @@ fi
 
 export PATH
 
-# Stable SSH agent path for tmux/mosh; fix-ssh-agent owns probing and repair.
-__ssh_agent_in="${SSH_AUTH_SOCK:-}"
-export SSH_AUTH_SOCK="$HOME/.ssh/agent_sock"
-if [[ -n "$__ssh_agent_in" && "$__ssh_agent_in" != "$SSH_AUTH_SOCK" ]]; then
-  fix-ssh-agent "$__ssh_agent_in" >/dev/null 2>&1 || true
-elif [[ ! -S "$SSH_AUTH_SOCK" ]]; then
-  fix-ssh-agent --if-missing >/dev/null 2>&1 || true
+# Stable SSH agent path for tmux/mosh. Run fix-ssh-agent while $SSH_AUTH_SOCK
+# still holds the incoming forward (it reads that to register), then pin the
+# shell at the stable link. Skip the call only when nothing could have changed:
+# already pinned at a live link.
+__ssh_agent_link="$HOME/.ssh/agent_sock"
+if [[ ( -n "${SSH_AUTH_SOCK:-}" && "$SSH_AUTH_SOCK" != "$__ssh_agent_link" ) || ! -S "$__ssh_agent_link" ]]; then
+  fix-ssh-agent >/dev/null 2>&1 || true
 fi
-unset __ssh_agent_in
+export SSH_AUTH_SOCK="$__ssh_agent_link"
+unset __ssh_agent_link
 
 __ssh_agent_fix_if_missing() {
-  [[ -S "${SSH_AUTH_SOCK:-}" ]] || fix-ssh-agent --if-missing >/dev/null 2>&1 || true
+  [[ -S "${SSH_AUTH_SOCK:-}" ]] || fix-ssh-agent >/dev/null 2>&1 || true
   return 0
 }
 
