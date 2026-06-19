@@ -201,10 +201,52 @@ def sensor_label(hwmon: Path, stem: str, fallback: str) -> str:
     return label if label else fallback
 
 
+def nvme_controller_name(hwmon: Path) -> str | None:
+    """Return the backing nvme controller name (e.g. ``nvme0``) for an nvme hwmon."""
+    try:
+        parent = hwmon.resolve().parent
+    except OSError:
+        return None
+    return parent.name if parent.name.startswith("nvme") else None
+
+
+def collect_nvme_device(hwmon: Path) -> HwmonDevice | None:
+    """Collapse an nvme hwmon to a single Composite temperature, labeled by drive.
+
+    NVMe drives expose Composite plus per-die/controller sensors; the latter are
+    noisy (often pinned ~100C) and unlabeled per drive, so we keep only Composite
+    and name it after the kernel controller (``nvme0``..) so the four identical
+    drives stay distinguishable.
+    """
+    controller = nvme_controller_name(hwmon) or "nvme"
+    composite: float | None = None
+    fallback: float | None = None
+    for path in sorted(hwmon.glob("temp*_input"), key=lambda p: natural_key(p.name)):
+        raw = read_number(path)
+        if raw is None:
+            continue
+        stem = path.name.removesuffix("_input")
+        if fallback is None:
+            fallback = raw / 1000
+        if (read_text(hwmon / f"{stem}_label") or "").lower() == "composite":
+            composite = raw / 1000
+            break
+
+    value = composite if composite is not None else fallback
+    if value is None:
+        return None
+
+    sensor = Sensor(kind="temperature", key="composite", label=controller, value=value, unit="C")
+    return HwmonDevice(path=hwmon, name="nvme", sensors=(sensor,))
+
+
 def collect_device(hwmon: Path) -> HwmonDevice | None:
     name = read_text(hwmon / "name")
     if not name:
         return None
+
+    if name == "nvme":
+        return collect_nvme_device(hwmon)
 
     sensors: list[Sensor] = []
 
@@ -258,6 +300,10 @@ def collect_devices(board_only: bool) -> list[HwmonDevice]:
 def is_board_device(device: HwmonDevice) -> bool:
     name = device.name.lower().replace("-", "_")
     return any(name.startswith(prefix) or prefix in name for prefix in BOARD_HWMON_NAMES)
+
+
+def is_storage_device(device: HwmonDevice) -> bool:
+    return device.name == "nvme"
 
 
 def linear11_to_float(value: int) -> float:
@@ -938,7 +984,7 @@ def apply_device_config(devices: list[HwmonDevice], config: WatchConfig) -> list
         device_rule = match_device_rule(config, device)
         if device_rule and device_rule.hidden:
             continue
-        if device_rule is None and not config.display.show_unconfigured:
+        if device_rule is None and not config.display.show_unconfigured and not is_storage_device(device):
             continue
 
         sensors: list[dict[str, Any]] = []
@@ -1475,7 +1521,7 @@ def render_panel(data: dict[str, Any]) -> list[str]:
 
     for _, icon, title, sensors in sensor_section_data:
         tokens = [format_sensor_token(sensor) for sensor in sensors]
-        preferred_columns = 3 if title == "Temps" else 2
+        preferred_columns = 4 if title == "Temps" else 2
         required_width = max(required_width, visible_width(f" {icon} {title} "))
         required_width = max(required_width, column_width(tokens, preferred_columns))
 
@@ -1497,7 +1543,7 @@ def render_panel(data: dict[str, Any]) -> list[str]:
     first = True
     for _, icon, title, sensors in sorted(sensor_section_data):
         lines.append(rule("╭" if first else "├", "╮" if first else "┤", icon, title, content_width))
-        lines.extend(render_sensor_rows(sensors, content_width, preferred_columns=3 if title == "Temps" else 2))
+        lines.extend(render_sensor_rows(sensors, content_width, preferred_columns=4 if title == "Temps" else 2))
         first = False
 
     if has_power:
