@@ -1680,6 +1680,11 @@ def main() -> int:
     include_gpu = (args.gpu or config.gpu.enabled) and not args.no_gpu
     board_only = args.board_only
 
+    hide_cursor = not args.json and not args.once and sys.stdout.isatty()
+    if hide_cursor:
+        print("\033[?25l", end="")
+        sys.stdout.flush()
+
     try:
         next_sample = time.monotonic()
         while True:
@@ -1704,6 +1709,10 @@ def main() -> int:
                 next_sample = time.monotonic()
     except KeyboardInterrupt:
         return 130
+    finally:
+        if hide_cursor:
+            print("\033[?25h", end="")
+            sys.stdout.flush()
 
     return 0
 
