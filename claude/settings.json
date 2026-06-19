@@ -1,4 +1,10 @@
 {
   "theme": "custom:terminal-ansi",
-  "copyOnSelect": true
+  "copyOnSelect": true,
+  "permissions": {
+    "defaultMode": "auto"
+  },
+  "attribution": {
+    "commit": ""
+  }
 }

@@ -1509,12 +1509,11 @@ def render_panel(data: dict[str, Any]) -> list[str]:
     return lines
 
 
-def print_text(data: dict[str, Any], clear: bool) -> None:
+def print_text(data: dict[str, Any], clear: bool, final_newline: bool = True) -> None:
     if clear:
         print("\033[2J\033[H", end="")
 
-    for line in render_panel(data):
-        print(line)
+    print("\n".join(render_panel(data)), end="\n" if final_newline else "")
 
     sys.stdout.flush()
 
@@ -1694,7 +1693,7 @@ def main() -> int:
                 print(json.dumps(data, sort_keys=True))
                 sys.stdout.flush()
             else:
-                print_text(data, clear=not args.no_clear)
+                print_text(data, clear=not args.no_clear, final_newline=not args.once)
             if args.once:
                 break
             next_sample += args.interval
