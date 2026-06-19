@@ -95,7 +95,7 @@ repair() {
     return $?
   fi
 
-  for sock in "$runtime_dir/keyring/ssh" "$runtime_dir/openssh_agent"; do
+  for sock in "$runtime_dir/keyring/ssh" "$runtime_dir/openssh_agent" "$runtime_dir/gcr/ssh"; do
     if agent_ok "$sock"; then
       relink "$sock" "$link"
       return $?
