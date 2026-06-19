@@ -73,13 +73,12 @@ register_incoming() {
 }
 
 repair() {
-  local mode="${1:-force}" selected= sock uid="${UID:-$(id -u)}"
+  local selected= sock uid="${UID:-$(id -u)}"
   local runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$uid}"
 
-  if [[ "$mode" == "missing" && -S "$link" ]]; then
-    return 0
-  fi
-  if [[ "$mode" == "force" && -S "$link" ]] && agent_ok "$link"; then
+  # Probe the stable link before trusting it: a forwarded socket orphaned by a
+  # dropped connection stays a live socket but never replies, so -S is not enough.
+  if [[ -S "$link" ]] && agent_ok "$link"; then
     return 0
   fi
 
