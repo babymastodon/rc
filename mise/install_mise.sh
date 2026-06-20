@@ -7,6 +7,8 @@ echo "=== Setting up runtimes, CLI tools, and CoC language servers with mise ===
 OS="$(uname -s)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MISE_CONFIG_PATH="${SCRIPT_DIR}/config.toml"
+GLOBAL_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/mise"
+GLOBAL_CONFIG_PATH="${GLOBAL_CONFIG_DIR}/config.toml"
 
 if [[ "$OS" == "Darwin" ]] && ! command -v brew >/dev/null 2>&1; then
   echo "Homebrew not found. Install Homebrew first: https://brew.sh/" >&2
@@ -94,101 +96,33 @@ activate_mise() {
 }
 
 configure_global_tooling() {
-  local in_tools=0 line key value table table_item option_key option_value version tool_spec
-  local -a table_items=() tool_specs=()
+  # Make this repo's config.toml the global mise config by symlinking it into
+  # mise's default global config location, then let mise install from it
+  # directly. We deliberately do NOT reparse the TOML into `mise use -g` specs:
+  # mise does not accept tool options (e.g. aws-cli's symlink_bins) via the
+  # inline `tool@version[opts]` CLI form, so flattening tables that way feeds the
+  # option into the version string and breaks resolution. Reading config.toml is
+  # what mise is for.
+  echo "Linking ${MISE_CONFIG_PATH} as the global mise config (${GLOBAL_CONFIG_PATH})..."
+  mkdir -p "$GLOBAL_CONFIG_DIR"
 
-  echo "Applying global mise defaults from ${MISE_CONFIG_PATH}..."
-
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    line="${line#"${line%%[![:space:]]*}"}"
-    line="${line%"${line##*[![:space:]]}"}"
-
-    [[ -z "$line" || "$line" == \#* ]] && continue
-
-    if [[ "$line" =~ ^\[(.*)\]$ ]]; then
-      if [[ "${BASH_REMATCH[1]}" == "tools" ]]; then
-        in_tools=1
-      else
-        in_tools=0
-      fi
-      continue
+  if [[ -L "$GLOBAL_CONFIG_PATH" && "$(readlink "$GLOBAL_CONFIG_PATH")" == "$MISE_CONFIG_PATH" ]]; then
+    : # already linked correctly
+  else
+    if [[ -e "$GLOBAL_CONFIG_PATH" || -L "$GLOBAL_CONFIG_PATH" ]]; then
+      echo "  Existing ${GLOBAL_CONFIG_PATH} found; backing it up to ${GLOBAL_CONFIG_PATH}.bak"
+      mv -f "$GLOBAL_CONFIG_PATH" "${GLOBAL_CONFIG_PATH}.bak"
     fi
-
-    (( in_tools )) || continue
-
-    if [[ "$line" =~ ^\"([^\"]+)\"[[:space:]]*=[[:space:]]*\"([^\"]+)\"$ ]]; then
-      key="${BASH_REMATCH[1]}"
-      value="${BASH_REMATCH[2]}"
-      tool_specs+=("${key}@${value}")
-      continue
-    fi
-
-    if [[ "$line" =~ ^([A-Za-z0-9_.-]+)[[:space:]]*=[[:space:]]*\"([^\"]+)\"$ ]]; then
-      key="${BASH_REMATCH[1]}"
-      value="${BASH_REMATCH[2]}"
-      tool_specs+=("${key}@${value}")
-      continue
-    fi
-
-    if [[ "$line" =~ ^\"([^\"]+)\"[[:space:]]*=[[:space:]]*\{[[:space:]]*(.*)[[:space:]]*\}$ ]]; then
-      key="${BASH_REMATCH[1]}"
-      table="${BASH_REMATCH[2]}"
-    elif [[ "$line" =~ ^([A-Za-z0-9_.-]+)[[:space:]]*=[[:space:]]*\{[[:space:]]*(.*)[[:space:]]*\}$ ]]; then
-      key="${BASH_REMATCH[1]}"
-      table="${BASH_REMATCH[2]}"
-    else
-      echo "Unsupported mise config line in ${MISE_CONFIG_PATH}: ${line}" >&2
-      exit 1
-    fi
-
-    version=""
-    tool_spec=""
-
-    IFS=',' read -ra table_items <<< "$table"
-    for table_item in "${table_items[@]}"; do
-      table_item="${table_item#"${table_item%%[![:space:]]*}"}"
-      table_item="${table_item%"${table_item##*[![:space:]]}"}"
-
-      if [[ "$table_item" =~ ^([A-Za-z0-9_.-]+)[[:space:]]*=[[:space:]]*\"([^\"]+)\"$ ]]; then
-        option_key="${BASH_REMATCH[1]}"
-        option_value="${BASH_REMATCH[2]}"
-      elif [[ "$table_item" =~ ^([A-Za-z0-9_.-]+)[[:space:]]*=[[:space:]]*(true|false|[0-9]+)$ ]]; then
-        option_key="${BASH_REMATCH[1]}"
-        option_value="${BASH_REMATCH[2]}"
-      else
-        echo "Unsupported mise config table item in ${MISE_CONFIG_PATH}: ${table_item}" >&2
-        exit 1
-      fi
-
-      if [[ "$option_key" == "version" ]]; then
-        version="$option_value"
-      elif [[ -z "$tool_spec" ]]; then
-        tool_spec="${option_key}=${option_value}"
-      else
-        tool_spec="${tool_spec},${option_key}=${option_value}"
-      fi
-    done
-
-    if [[ -z "$version" ]]; then
-      echo "Unsupported mise config table without version in ${MISE_CONFIG_PATH}: ${line}" >&2
-      exit 1
-    fi
-
-    if [[ -n "$tool_spec" ]]; then
-      tool_specs+=("${key}@${version}[${tool_spec}]")
-    else
-      tool_specs+=("${key}@${version}")
-    fi
-
-  done < "$MISE_CONFIG_PATH"
-
-  if (( ${#tool_specs[@]} == 0 )); then
-    echo "No tools found in ${MISE_CONFIG_PATH}." >&2
-    exit 1
+    ln -s "$MISE_CONFIG_PATH" "$GLOBAL_CONFIG_PATH"
   fi
 
-  echo "  mise use -g ${tool_specs[*]}"
-  mise use -g "${tool_specs[@]}"
+  mise trust "$GLOBAL_CONFIG_PATH" >/dev/null
+
+  # Install one tool at a time: parallel installs race on the gpg keyboxd
+  # database on a cold keyring ("SQL library used incorrectly"), which breaks
+  # node's signature check and cascades to every npm tool that depends on node.
+  echo "Installing tools from ${GLOBAL_CONFIG_PATH}..."
+  MISE_JOBS=1 mise install
 }
 
 ensure_clang_tooling() {
