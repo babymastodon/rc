@@ -1,102 +1,141 @@
+# ASUS Pro WS WRX90E-SAGE SE. Board telemetry comes from the in-tree `asusec`
+# driver (temps + fans) and `k10temp` (CPU Tctl); both expose their own labels,
+# so these blocks only set grouping/ordering and let the driver labels stand.
+
 [display]
 show_unconfigured = false
 
 [[devices]]
-match = "it8689"
+match = "k10temp"
+label = "CPU"
+group = "Board"
+order = 5
+
+[[devices]]
+match = "asusec"
 label = "Motherboard"
 group = "Board"
 order = 10
 
+# Order CPU_Opt just ahead of the nct6798 CPU fan so the two sit together.
 [[devices.sensors]]
-key = "temp1"
-label = "System 1"
+key = "fan1"           # CPU_Opt
+order = 95
+
+# Disconnected VRM-heatsink fan headers (read 0 — no fan wired).
+[[devices.sensors]]
+key = "fan2"           # VRME HS
+hidden = true
+
+[[devices.sensors]]
+key = "fan3"           # VRMW HS
+hidden = true
+
+# Nuvoton NCT6798D Super-I/O chip. The asusec EC driver deliberately skips it,
+# but it carries the system temp and the CPU/chassis fan headers the EC doesn't
+# report. Requires the `nct6775` kernel module (see README). Driver labels are
+# cryptic and many channels are unconnected on this AMD platform, so curate:
+# keep SYSTIN + the real fans, hide CPU-duplicate temps and the dummy PCH_*/
+# unconnected AUXTIN probes. Fan-header numbers are best mapped to physical
+# headers one at a time via BIOS Q-Fan, then relabeled below.
+[[devices]]
+match = "nct6798"
+label = "Super-I/O"
+group = "Board"
+order = 15
+
+[[devices.sensors]]
+key = "temp1"          # SYSTIN
+label = "System"
 order = 10
 
+# CPU-redundant temps (already covered by k10temp Tctl + asusec CPU Package).
 [[devices.sensors]]
-key = "temp2"
-label = "PCH"
-order = 20
+key = "temp2"          # CPUTIN
+hidden = true
 
 [[devices.sensors]]
+key = "temp8"          # PECI Agent 0
+hidden = true
+
+[[devices.sensors]]
+key = "temp13"         # TSI0_TEMP
+hidden = true
+
+# Unconnected AUXTIN probes (read garbage-low / ambient).
+[[devices.sensors]]
 key = "temp3"
-label = "CPU"
-order = 30
+hidden = true
 
 [[devices.sensors]]
 key = "temp4"
-label = "PCIEX16"
-order = 40
+hidden = true
 
 [[devices.sensors]]
 key = "temp5"
-label = "VRM MOS"
-order = 50
+hidden = true
 
 [[devices.sensors]]
 key = "temp6"
-label = "EC_TEMP1"
-order = 60
+hidden = true
 
 [[devices.sensors]]
-key = "fan1"
-label = "CPU_FAN"
+key = "temp7"
+hidden = true
+
+# PCH_* registers — no PCH on Threadripper, always 0.
+[[devices.sensors]]
+key = "temp9"
+hidden = true
+
+[[devices.sensors]]
+key = "temp10"
+hidden = true
+
+[[devices.sensors]]
+key = "temp11"
+hidden = true
+
+[[devices.sensors]]
+key = "temp12"
+hidden = true
+
+# Fan headers, identified by monitoring under CPU load:
+# fan6 tracks CPU_Opt almost exactly -> CPU header. The other three hold a fixed
+# RPM order (fan3 > fan2 > fan4); since larger fans spin slower, that maps to
+# 80mm > 140mm > 180mm by diameter.
+[[devices.sensors]]
+key = "fan6"           # mimics CPU_Opt
+label = "CPU"
+order = 96
+
+[[devices.sensors]]
+key = "fan3"           # fastest of the trio
+label = "back80"
 order = 100
 
 [[devices.sensors]]
 key = "fan2"
-label = "BACK_80_2X"
+label = "back140"
 order = 110
 
 [[devices.sensors]]
-key = "fan3"
-label = "FRONT_180_2X"
+key = "fan4"           # slowest of the trio
+label = "front"
 order = 120
 
+# Disconnected fan headers (read 0 across repeated samples — no fan wired).
 [[devices.sensors]]
-key = "fan4"
-label = "SYS_FAN5_PUMP"
-order = 150
+key = "fan1"
+hidden = true
 
 [[devices.sensors]]
 key = "fan5"
-label = "CPU_OPT"
-order = 105
-
-[[devices]]
-match = "it87952"
-label = "Secondary controller"
-group = "Board"
-order = 20
-
-[[devices.sensors]]
-key = "temp1"
-label = "PCIEX16_2"
-order = 10
-
-[[devices.sensors]]
-key = "temp2"
-label = "EC_TEMP2"
-order = 20
-
-[[devices.sensors]]
-key = "temp3"
-label = "PCIEX16_1"
-order = 30
-
-[[devices.sensors]]
-key = "fan1"
-label = "SYS_FAN6_PUMP"
 hidden = true
 
 [[devices.sensors]]
-key = "fan2"
-label = "SYS_FAN7_PUMP"
+key = "fan7"
 hidden = true
-
-[[devices.sensors]]
-key = "fan3"
-label = "BACK_140"
-order = 180
 
 [psu]
 enabled = true

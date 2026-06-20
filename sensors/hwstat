@@ -46,6 +46,8 @@ BOARD_HWMON_NAMES = (
     "it868",
     "it862",
     "gigabyte",
+    "asusec",
+    "k10temp",
     "nct",
     "w836",
     "f718",
@@ -1494,6 +1496,11 @@ def sensor_sections(data: dict[str, Any]) -> list[tuple[int, str, str, list[dict
         fans.append(psu_fan)
     temps.extend(gpu_temperature_sensors(data.get("gpu")))
 
+    # Fans are gathered device by device; order them across devices so config
+    # `order` can place a sensor next to one from another chip (stable sort
+    # keeps the device/source order for equal values).
+    fans.sort(key=lambda sensor: sensor["order"])
+
     sections: list[tuple[int, str, str, list[dict[str, Any]]]] = []
     if temps:
         sections.append((first_order, TEMP_ICON, "Temps", temps))
@@ -1521,7 +1528,7 @@ def render_panel(data: dict[str, Any]) -> list[str]:
 
     for _, icon, title, sensors in sensor_section_data:
         tokens = [format_sensor_token(sensor) for sensor in sensors]
-        preferred_columns = 4 if title == "Temps" else 2
+        preferred_columns = 4
         required_width = max(required_width, visible_width(f" {icon} {title} "))
         required_width = max(required_width, column_width(tokens, preferred_columns))
 
@@ -1543,7 +1550,7 @@ def render_panel(data: dict[str, Any]) -> list[str]:
     first = True
     for _, icon, title, sensors in sorted(sensor_section_data):
         lines.append(rule("╭" if first else "├", "╮" if first else "┤", icon, title, content_width))
-        lines.extend(render_sensor_rows(sensors, content_width, preferred_columns=4 if title == "Temps" else 2))
+        lines.extend(render_sensor_rows(sensors, content_width, preferred_columns=4))
         first = False
 
     if has_power:

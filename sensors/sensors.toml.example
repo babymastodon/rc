@@ -1,105 +1,47 @@
 # Copy to ~/.config/hwstat/config.toml or pass with:
 #   hwstat --config ./sensors.toml
+#
+# Run `hwstat --check` to list the hwmon device names and sensor keys on this
+# machine, then write `match`/`key` rules against them. `hwstat --all`
+# temporarily shows every unconfigured device while you discover keys.
 
 [display]
+# false: show only the devices configured below (plus nvme storage).
+# true: also show any unconfigured hwmon device.
 show_unconfigured = false
 
+# A device that already exposes good kernel labels (e.g. the ASUS `asusec` EC
+# or `k10temp`) only needs grouping/ordering -- omit [[devices.sensors]] and the
+# driver labels are used as-is.
 [[devices]]
-match = "it8689"
+match = "k10temp"
+label = "CPU"
+group = "Board"
+order = 5
+
+[[devices]]
+match = "asusec"
 label = "Motherboard"
 group = "Board"
 order = 10
 
-[[devices.sensors]]
-key = "temp1"
-label = "System 1"
-order = 10
-
-[[devices.sensors]]
-key = "temp2"
-label = "PCH"
-order = 20
-
-[[devices.sensors]]
-key = "temp3"
-label = "CPU"
-order = 30
-
-[[devices.sensors]]
-key = "temp4"
-label = "PCIEX16"
-order = 40
-
-[[devices.sensors]]
-key = "temp5"
-label = "VRM MOS"
-order = 50
-
-[[devices.sensors]]
-key = "temp6"
-label = "EC_TEMP1"
-order = 60
-
-[[devices.sensors]]
-key = "fan1"
-label = "CPU_FAN"
-order = 100
-
-[[devices.sensors]]
-key = "fan2"
-label = "BACK_80_2X"
-order = 110
-
-[[devices.sensors]]
-key = "fan3"
-label = "FRONT_180_2X"
-order = 120
-
-[[devices.sensors]]
-key = "fan4"
-label = "SYS_FAN5_PUMP"
-order = 150
-
-[[devices.sensors]]
-key = "fan5"
-label = "CPU_OPT"
-order = 105
-
-[[devices]]
-match = "it87952"
-label = "Secondary controller"
-group = "Board"
-order = 20
-
-[[devices.sensors]]
-key = "temp1"
-label = "PCIEX16_2"
-order = 10
-
-[[devices.sensors]]
-key = "temp2"
-label = "EC_TEMP2"
-order = 20
-
-[[devices.sensors]]
-key = "temp3"
-label = "PCIEX16_1"
-order = 30
-
-[[devices.sensors]]
-key = "fan1"
-label = "SYS_FAN6_PUMP"
-hidden = true
-
-[[devices.sensors]]
-key = "fan2"
-label = "SYS_FAN7_PUMP"
-hidden = true
-
-[[devices.sensors]]
-key = "fan3"
-label = "BACK_140"
-order = 180
+# A device with generic kernel labels (temp1/fan2/...) can be relabeled,
+# reordered, or hidden per sensor:
+#
+# [[devices]]
+# match = "nct6798"
+# label = "Super I/O"
+# group = "Board"
+# order = 20
+#
+# [[devices.sensors]]
+# key = "temp1"
+# label = "VRM"
+# order = 10
+#
+# [[devices.sensors]]
+# key = "fan3"
+# hidden = true
 
 [psu]
 enabled = true

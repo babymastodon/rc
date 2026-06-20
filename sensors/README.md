@@ -14,8 +14,6 @@ the PSU and GPU are shown.
 - `install_sensors.sh`: installs the watch command into `~/.local/bin` and
   removes stale `mobo-watch` and `msi-psu-watch` symlinks from older installs.
 - `install_msi_ai1600t_udev.sh`: installs the optional MSI PSU hidraw udev rule.
-- `install_gigabyte_trx50_it87_dkms.sh`: board-specific DKMS helper for the
-  Gigabyte TRX50 AI TOP iTE sensor path.
 
 ## Install
 
@@ -98,49 +96,44 @@ NVIDIA GPU telemetry shells out to `nvidia-smi` through Python's standard
 library. GPU temperatures are shown in `Temps`; GPU power draw is shown in
 `Power`.
 
-## TRX50 AI TOP Sensor Mapping
+## ASUS Pro WS WRX90E-SAGE SE Sensor Mapping
 
-The current TRX50 AI TOP labels are best-effort but evidence-based:
+Board telemetry on this board needs no out-of-tree driver. Two in-tree drivers
+provide everything, and both expose their own labels, so `sensors.toml` only
+sets grouping/ordering and lets the driver labels stand:
 
-- The motherboard exposes two ITE controllers: `it8689` at `0x0a40` and
-  `it87952` at `0x0a60`.
-- The manual lists eight fan-capable headers: `CPU_FAN`, `SYS_FAN1/2`,
-  `SYS_FAN5/6/7/8_PUMP`, and `CPU_OPT`.
-- Linux exposes eight fan channels across those two controllers.
-- `it8689 temp3` reports `temp3_type=5`, which lm-sensors identifies as AMD
-  AMDSI, so it is labeled `CPU`.
-- The main temperature order follows the Gigabyte mappings used by the
-  maintained `it87` sensor configs for recent boards:
-  `System 1`, `PCH`, `CPU`, `PCIEX16`, `VRM MOS`, `EC_TEMP1`.
-- `it87952 temp2` is labeled `EC_TEMP2`.
+- `k10temp` exposes the CPU package temperature as `Tctl`.
+- `asusec` (the ASUS embedded-controller driver) exposes four temperatures —
+  `CPU Package`, `T_Sensor`, `VRM_E`, `VRM_W` — and five fan channels —
+  `CPU_Opt`, `VRME HS`, `VRMW HS`, `USB4`, `M.2`.
 
-The fan header order is inferred as:
+`asusec` only surfaces the EC-monitored headers, not every physical fan header
+on the board. The `VRME HS` / `VRMW HS` channels read `0` when no fan is wired
+to the VRM heatsink headers. Use `hwstat --all` to discover any additional
+hwmon devices a future kernel exposes.
 
-```text
-it8689 fan1  CPU_FAN
-it8689 fan2  SYS_FAN1
-it8689 fan3  SYS_FAN2
-it8689 fan4  SYS_FAN5_PUMP
-it8689 fan5  CPU_OPT
-it87952 fan1 SYS_FAN6_PUMP
-it87952 fan2 SYS_FAN7_PUMP
-it87952 fan3 SYS_FAN8_PUMP
+### Nuvoton NCT6798D Super-I/O (extra fans + system temp)
+
+The board also carries a Nuvoton NCT6798D Super-I/O chip that the `asusec`
+driver intentionally skips. It exposes the `System` (SYSTIN) temperature and the
+CPU/chassis fan headers that the EC does not report. Load the in-tree driver:
+
+```sh
+sudo modprobe nct6775          # try once now
+echo nct6775 | sudo tee /etc/modules-load.d/nct6775.conf   # load on every boot
 ```
 
-The only way to prove fan header mapping fully is to identify headers one at a
-time in BIOS Smart Fan 6 or by temporarily changing one header's speed curve and
-watching which Linux RPM changes.
+On this kernel the driver binds without `acpi_enforce_resources=lax`; if a
+future kernel logs an ACPI resource conflict and refuses to bind, add
+`acpi_enforce_resources=lax` to the kernel command line.
 
-### Secondary Controller Notes
-
-The `it87952` controller exposes three temperature registers through `it87`.
-If `EC_TEMP2` ever reports `-55 C`, treat it as a bad raw reading from Linux
-rather than a valid board temperature.
-
-This board also exposes `048d:5711 ITE Tech. Inc. GIGABYTE Device` as two USB
-HID interfaces. One interface has sensor-like feature reports, and the kernel
-`gigabyte-wmi` driver probes the board WMI GUID but logs `No temperature
-sensors usable`.
+The NCT6798D's channel labels are generic (`SYSTIN`, `CPUTIN`, `AUXTIN*`,
+`fan1`..`fan7`) and several channels are unconnected on this AMD platform, so
+`sensors.toml` hides the CPU-duplicate temps, the always-zero `PCH_*`
+registers, and the unconnected `AUXTIN` probes. The fan channels map to physical
+headers in no documented order — identify each one by changing a single header's
+curve in BIOS Q-Fan (or unplugging it) and watching which `fanN` value moves,
+then relabel it in `sensors.toml`.
 
 ## Optional MSI PSU Setup
 
@@ -162,23 +155,3 @@ PSU HID access is serialized because concurrent command sequences can corrupt
 replies. `hwstat` caches the last successful raw PSU read in
 `/tmp/hwstat-msi-psu.json` for one second, and readers that arrive while another
 process is refreshing the device can reuse that cache for up to five seconds.
-
-## Gigabyte TRX50 AI TOP
-
-This board uses a Gigabyte/iTE monitoring path. On the tested Linux install,
-the in-tree `it87` module exposed only the secondary controller. The full sensor
-set required the maintained out-of-tree driver from `frankcrawford/it87`.
-
-To install that driver with DKMS:
-
-```sh
-./install_gigabyte_trx50_it87_dkms.sh
-```
-
-The helper builds commit `20f2f2f`, applies the local TRX50 AI TOP DMI patch,
-registers the patched module with DKMS, reloads it, and verifies with
-`hwstat --check`.
-
-The DMI patch marks the board's ACPI resource conflict as expected for this
-specific motherboard. That replaces the broader `options it87
-ignore_resource_conflict=1` workaround used by the first local installer.
