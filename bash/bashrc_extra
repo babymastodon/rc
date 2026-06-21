@@ -33,7 +33,11 @@ add_to_path "$GOBIN"
 add_to_path "${KREW_ROOT:-$HOME/.krew}/bin"
 
 if [[ -x "$HOME/.local/bin/mise" ]]; then
-  eval "$("$HOME/.local/bin/mise" activate -q bash)"
+  if [[ -n "${CODEX_THREAD_ID:-}" || -n "${CODEX_SANDBOX_NETWORK_DISABLED:-}" ]]; then
+    eval "$("$HOME/.local/bin/mise" activate --no-hook-env --quiet bash)"
+  else
+    eval "$("$HOME/.local/bin/mise" activate --quiet bash)"
+  fi
 fi
 
 export PATH
