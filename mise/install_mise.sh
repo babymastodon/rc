@@ -81,12 +81,38 @@ ensure_mise() {
   fi
 
   echo "Installing mise..."
-  curl https://mise.run | sh
+  curl -fsSL https://mise.run | MISE_INSTALL_HELP=0 sh
   export PATH="${HOME}/.local/bin:$PATH"
 
   if ! command -v mise >/dev/null 2>&1; then
     echo "mise install completed, but mise is still not on PATH." >&2
     exit 1
+  fi
+}
+
+remove_legacy_mise_bashrc_hook() {
+  local bashrc="${HOME}/.bashrc"
+  local activate_hook_re='^[[:space:]]*eval[[:space:]]+"\$\([^)]*mise"?[[:space:]]+activate[[:space:]]+((-q|--quiet)[[:space:]]+)?bash\)"[[:space:]]*$'
+  local tmp
+
+  [[ -f "$bashrc" ]] || return 0
+
+  if grep -qxF '# >>> mise >>>' "$bashrc" && grep -qxF '# <<< mise <<<' "$bashrc"; then
+    tmp="${bashrc}.tmp.$$"
+    awk '
+      $0 == "# >>> mise >>>" { skip = 1; next }
+      $0 == "# <<< mise <<<" { skip = 0; next }
+      !skip { print }
+    ' "$bashrc" > "$tmp"
+    mv "$tmp" "$bashrc"
+    echo "Removed legacy mise activation block from ${bashrc}."
+  fi
+
+  if grep -Eq "$activate_hook_re" "$bashrc"; then
+    tmp="${bashrc}.tmp.$$"
+    grep -Ev "$activate_hook_re" "$bashrc" > "$tmp" || true
+    mv "$tmp" "$bashrc"
+    echo "Removed legacy mise activate hook from ${bashrc}."
   fi
 }
 
@@ -150,6 +176,7 @@ ensure_clang_tooling() {
 }
 
 ensure_mise
+remove_legacy_mise_bashrc_hook
 configure_global_tooling
 activate_mise
 ensure_clang_tooling
