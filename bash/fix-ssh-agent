@@ -33,7 +33,7 @@ agent_probe() {
   local sock="$1"
   [[ -n "$sock" && -S "$sock" ]] || return 2
   find_ssh_add || return 2
-  SSH_AUTH_SOCK="$sock" ${timeout_bin:+$timeout_bin 2} "$ssh_add" -l >/dev/null 2>&1
+  SSH_AUTH_SOCK="$sock" ${timeout_bin:+$timeout_bin 1} "$ssh_add" -l >/dev/null 2>&1
 }
 
 agent_ok()       { agent_probe "$1"; local s=$?; (( s == 0 || s == 1 )); }
