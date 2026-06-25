@@ -38,19 +38,32 @@ fi
 
 export PATH
 
+# True if a live agent is bound to socket $1. /proc/net/unix drops the path when
+# the listening process dies, while the socket file lingers — so this catches
+# orphaned sockets that `-S` alone reports as present. ~2ms: no ssh-add fork, no
+# agent-protocol roundtrip, no hang (so no `timeout` needed). The `-S` test is
+# free and short-circuits a missing socket before the awk scan.
+__ssh_sock_listening() {
+  local s="$1" t
+  [[ -S "$s" ]] || return 1
+  t=$(readlink -f -- "$s" 2>/dev/null) && [[ -n "$t" ]] || return 1
+  awk -v t="$t" '$NF==t{found=1; exit} END{exit !found}' /proc/net/unix
+}
+
 # Stable SSH agent path for tmux/mosh. Run fix-ssh-agent while $SSH_AUTH_SOCK
 # still holds the incoming forward (it reads that to register), then pin the
 # shell at the stable link. Skip the call only when nothing could have changed:
-# already pinned at a live link.
+# already pinned at a link with a live listener.
 __ssh_agent_link="$HOME/.ssh/agent_sock"
-if [[ ( -n "${SSH_AUTH_SOCK:-}" && "$SSH_AUTH_SOCK" != "$__ssh_agent_link" ) || ! -S "$__ssh_agent_link" ]]; then
+if [[ -n "${SSH_AUTH_SOCK:-}" && "$SSH_AUTH_SOCK" != "$__ssh_agent_link" ]] \
+   || ! __ssh_sock_listening "$__ssh_agent_link"; then
   fix-ssh-agent >/dev/null 2>&1 || true
 fi
 export SSH_AUTH_SOCK="$__ssh_agent_link"
 unset __ssh_agent_link
 
 __ssh_agent_fix_if_missing() {
-  [[ -S "${SSH_AUTH_SOCK:-}" ]] || fix-ssh-agent >/dev/null 2>&1 || true
+  __ssh_sock_listening "${SSH_AUTH_SOCK:-}" || fix-ssh-agent >/dev/null 2>&1 || true
   return 0
 }
 
