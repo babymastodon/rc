@@ -89,7 +89,7 @@ mkdir -p $TMUXTMP
 alias newmoo="TMPDIR=$TMUXTMP echo -ne '\033]0;$(hostname)\007'; tmux new -s moo"
 alias moo="TMPDIR=$TMUXTMP echo -ne '\033]0;$(hostname)\007'; tmux new-session -A -s moo"
 alias fixmoo='TMPDIR=$TMUXTMP killall -s SIGUSR1 moo'
-alias newhoo='herdr'
+alias fixhoo='herdr session stop default; herdr'
 function hoo() {
   if [ "$#" -eq 1 ] && [ "${1#-}" = "$1" ]; then
     herdr --remote "$1"
