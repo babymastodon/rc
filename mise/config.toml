@@ -17,3 +17,4 @@ rust-analyzer = "latest"
 "npm:yaml-language-server" = "latest"
 "npm:bash-language-server" = "latest"
 aws-cli = { version = "latest", symlink_bins = "true" }
+glow = "latest"

@@ -162,6 +162,27 @@ alias gs='git -c color.status=always status -s && \
   if [[ -n "$staged" ]]; then echo && echo -e "\033[1;32mStaged changes:\033[0m" && echo "$staged"; fi'
 alias ch='git cherry-pick'
 alias lg='lazygit'
+alias md='glow --pager --width "$COLUMNS"'
+
+__md_complete() {
+  local current candidate
+  current="${COMP_WORDS[COMP_CWORD]}"
+  COMPREPLY=()
+
+  while IFS= read -r candidate; do
+    if [[ -d "$candidate" ]]; then
+      COMPREPLY+=("${candidate%/}/")
+    elif [[ "$candidate" == *.md ]]; then
+      COMPREPLY+=("$candidate")
+    fi
+  done < <(compgen -f -- "$current")
+
+  # Quote filenames with spaces and keep directory completions open for the
+  # next path component.
+  compopt -o filenames -o nospace 2>/dev/null || true
+}
+complete -F __md_complete md
+
 alias p='ps aux | grep'
 alias br='git log --graph --oneline --decorate --all'
 alias src='source ~/.bashrc'

@@ -126,6 +126,12 @@ br='git log --graph --oneline --decorate --all'
 lg='lazygit'
 ```
 
+The shell setup also adds a paged Markdown viewer:
+
+```bash
+md='glow --pager --width "$COLUMNS"'
+```
+
 ## Keyboard remaps&nbsp;`💻`
 
 Recommended to reduce wrist strain: map Right Cmd/Alt to Control, and Caps Lock to Escape.
