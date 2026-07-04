@@ -20,6 +20,12 @@ EXTENSIONS=(
   "no-screenshot-box@screenshot"
 )
 
+# Install these extensions, but leave them disabled until explicitly enabled.
+DISABLED_EXTENSIONS=(
+  "dash-to-dock@micxgx.gmail.com"
+  "dash-to-panel@jderose9.github.com"
+)
+
 # ----- helpers -----
 require_cmd() { command -v "$1" &>/dev/null; }
 
@@ -129,6 +135,7 @@ install_extension_uuid() {
   local uuid="$1"
   local major="$2"
   local upgrade="${3:-false}"
+  local desired_state="${4:-enabled}"
   local tmpdir; tmpdir="$(mktemp -d)"
   local info dl zip
 
@@ -153,7 +160,13 @@ install_extension_uuid() {
     gnome-extensions install --force "$zip" && log "Installed: $uuid" || err "Failed to install: $uuid"
   fi
 
-  if gnome-extensions list --enabled | grep -Fxq "$uuid"; then
+  if [[ "$desired_state" == "disabled" ]]; then
+    if gnome-extensions list --enabled | grep -Fxq "$uuid"; then
+      gnome-extensions disable "$uuid" && log "Disabled extension: $uuid" || warn "Failed to disable extension: $uuid"
+    else
+      log "Extension already disabled: $uuid"
+    fi
+  elif gnome-extensions list --enabled | grep -Fxq "$uuid"; then
     log "Extension already enabled: $uuid"
   else
     gnome-extensions enable "$uuid" && log "Enabled extension: $uuid" || warn "Failed to enable extension: $uuid"
@@ -279,9 +292,9 @@ set_gnome_input_prefs() {
 usage() {
   cat <<EOF
 Usage:
-  $0                       # install the EXTENSIONS array
-  $0 --status             # print installed/enabled/version for the EXTENSIONS array
-  $0 --upgrade            # upgrade installed extensions in the EXTENSIONS array
+  $0                       # install the configured extensions
+  $0 --status             # print installed/enabled/version for configured extensions
+  $0 --upgrade            # upgrade installed configured extensions
   $0 --status uuid1 ...   # print status for the listed UUIDs too
   $0 uuid1 uuid2 ...       # install extra UUIDs
   $0 --upgrade uuid1 ...   # upgrade/install the listed UUIDs too
@@ -309,7 +322,7 @@ main() {
   local major; major="$(get_major_shell_version)"
   log "Detected GNOME Shell major version: $major"
 
-  local all=("${EXTENSIONS[@]}")
+  local all=("${EXTENSIONS[@]}" "${DISABLED_EXTENSIONS[@]}")
   if [[ -n "$file" ]]; then
     mapfile -t file_uuids < <(read_uuids_from_file "$file")
     all+=("${file_uuids[@]}")
@@ -331,7 +344,15 @@ main() {
     log "Installing ${#all[@]} extension(s)"
   fi
   for u in "${all[@]}"; do
-    install_extension_uuid "$u" "$major" "$upgrade"
+    local desired_state="enabled"
+    local disabled_uuid
+    for disabled_uuid in "${DISABLED_EXTENSIONS[@]}"; do
+      if [[ "$u" == "$disabled_uuid" ]]; then
+        desired_state="disabled"
+        break
+      fi
+    done
+    install_extension_uuid "$u" "$major" "$upgrade" "$desired_state"
   done
 
   load_gnome_extensions
