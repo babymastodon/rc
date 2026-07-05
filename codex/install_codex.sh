@@ -53,10 +53,21 @@ ensure_codex_config() {
           print "model_reasoning_effort = \"medium\""
           reasoning_done=1
         }
+        if (!approvals_reviewer_done) {
+          print "approvals_reviewer = \"auto_review\""
+          approvals_reviewer_done=1
+        }
+      }
+      function print_agent_limit() {
+        if (!agent_limit_done) {
+          print "max_threads = 10"
+          agent_limit_done=1
+        }
       }
       BEGIN {
-        theme_done=0; header_done=0; url_done=0; reasoning_done=0; seen_section=0
-        in_tui=0
+        theme_done=0; header_done=0; url_done=0; reasoning_done=0
+        approvals_reviewer_done=0; seen_section=0
+        agents_seen=0; agent_limit_done=0; in_agents=0; in_tui=0
       }
       /^# Use the basic ANSI theme because Codex'\''s TUI is still hard to read in light-theme terminals:/ {
         if (!header_done) {
@@ -94,22 +105,35 @@ ensure_codex_config() {
         reasoning_done=1
         next
       }
-      /^\[tui\][[:space:]]*$/ {
-        if (!seen_section) {
-          print_top_level_config()
-          seen_section=1
-        }
-        print
-        in_tui=1
+      !seen_section && /^approvals_reviewer[[:space:]]*=/ {
+        print "approvals_reviewer = \"auto_review\""
+        approvals_reviewer_done=1
         next
       }
-      /^\[[^]]+\][[:space:]]*$/ {
+      /^\[[^][]+\][[:space:]]*(#.*)?$/ || /^\[\[[^][]+\]\][[:space:]]*(#.*)?$/ {
         if (!seen_section) {
           print_top_level_config()
           seen_section=1
         }
-        in_tui=0
+        if (in_agents) {
+          print_agent_limit()
+        }
+        if (!agents_seen && $0 ~ /^\[agents\./) {
+          print "[agents]"
+          print_agent_limit()
+          print ""
+          agents_seen=1
+        }
         print
+        in_agents=($0 ~ /^\[agents\][[:space:]]*(#.*)?$/)
+        in_tui=($0 ~ /^\[tui\][[:space:]]*(#.*)?$/)
+        if (in_agents) {
+          agents_seen=1
+        }
+        next
+      }
+      in_agents && /^[[:space:]]*max_threads[[:space:]]*=/ {
+        print_agent_limit()
         next
       }
       in_tui && /^notifications[[:space:]]*=/ {
@@ -123,6 +147,16 @@ ensure_codex_config() {
         if (!seen_section) {
           print_top_level_config()
         }
+        if (in_agents) {
+          print_agent_limit()
+        }
+        if (!agents_seen) {
+          if (NR > 0) {
+            print ""
+          }
+          print "[agents]"
+          print_agent_limit()
+        }
       }
     ' "$dest" > "$tmp"
   else
@@ -131,6 +165,10 @@ ensure_codex_config() {
 # https://github.com/openai/codex/issues/2020
 theme = "ansi"
 model_reasoning_effort = "medium"
+approvals_reviewer = "auto_review"
+
+[agents]
+max_threads = 10
 EOF
   fi
 
