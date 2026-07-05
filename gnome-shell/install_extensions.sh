@@ -132,6 +132,38 @@ print_extension_status() {
   printf "%-40s installed=%-3s enabled=%-3s version=%s\n" "$uuid" "$installed" "$enabled" "$version"
 }
 
+queue_extension_enable() {
+  local uuid="$1"
+  local current updated
+
+  current="$(gsettings get org.gnome.shell enabled-extensions 2>/dev/null || true)"
+  if [[ -z "$current" ]]; then
+    warn "Could not read org.gnome.shell enabled-extensions; cannot queue enable for: $uuid"
+    return 1
+  fi
+
+  if grep -Fq "'$uuid'" <<<"$current"; then
+    log "Extension already queued in enabled-extensions: $uuid"
+    return 0
+  fi
+
+  if [[ "$current" == "@as []" || "$current" == "[]" ]]; then
+    updated="['$uuid']"
+  elif [[ "$current" == \[*\] ]]; then
+    updated="${current%]}, '$uuid']"
+  else
+    warn "Unexpected enabled-extensions value: $current"
+    return 1
+  fi
+
+  if gsettings set org.gnome.shell enabled-extensions "$updated"; then
+    log "Queued extension enable on next GNOME Shell restart: $uuid"
+  else
+    warn "Failed to update org.gnome.shell enabled-extensions for: $uuid"
+    return 1
+  fi
+}
+
 install_extension_uuid() {
   local uuid="$1"
   local major="$2"
@@ -170,7 +202,12 @@ install_extension_uuid() {
   elif gnome-extensions list --enabled | grep -Fxq "$uuid"; then
     log "Extension already enabled: $uuid"
   else
-    gnome-extensions enable "$uuid" && log "Enabled extension: $uuid" || warn "Failed to enable extension: $uuid"
+    if gnome-extensions enable "$uuid"; then
+      log "Enabled extension: $uuid"
+    else
+      warn "Failed to enable extension immediately: $uuid"
+      queue_extension_enable "$uuid" || true
+    fi
   fi
 
   rm -rf "$tmpdir"
