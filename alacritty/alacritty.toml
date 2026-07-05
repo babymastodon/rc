@@ -1,0 +1,43 @@
+[general]
+import = ["current-theme.toml"]
+live_config_reload = true
+
+[window]
+padding = { x = 2, y = 2 }
+dynamic_padding = false
+decorations = "None"
+startup_mode = "Maximized"
+decorations_theme_variant = "None"
+
+[font]
+size = 14.0
+
+[bell]
+duration = 0
+
+[cursor]
+style = { shape = "Block", blinking = "Never" }
+
+[keyboard]
+bindings = [
+  # Send Super-1..9 as Alt/Meta-1..9 for Herdr indexed tab switching.
+  { key = "1", mods = "Super", chars = "\u001b[27;3;49~" },
+  { key = "2", mods = "Super", chars = "\u001b[27;3;50~" },
+  { key = "3", mods = "Super", chars = "\u001b[27;3;51~" },
+  { key = "4", mods = "Super", chars = "\u001b[27;3;52~" },
+  { key = "5", mods = "Super", chars = "\u001b[27;3;53~" },
+  { key = "6", mods = "Super", chars = "\u001b[27;3;54~" },
+  { key = "7", mods = "Super", chars = "\u001b[27;3;55~" },
+  { key = "8", mods = "Super", chars = "\u001b[27;3;56~" },
+  { key = "9", mods = "Super", chars = "\u001b[27;3;57~" },
+
+  # Preserve Herdr pane-navigation sequences across terminal emulators.
+  { key = "ArrowLeft", mods = "Control|Shift", chars = "\u001b[1;6D" },
+  { key = "ArrowRight", mods = "Control|Shift", chars = "\u001b[1;6C" },
+  { key = "ArrowUp", mods = "Control|Shift", chars = "\u001b[1;6A" },
+  { key = "ArrowDown", mods = "Control|Shift", chars = "\u001b[1;6B" },
+
+  # Match Kitty's clipboard bindings instead of pasting the primary selection.
+  { key = "Insert", mods = "Shift", action = "Paste" },
+  { key = "Insert", mods = "Control", action = "Copy" },
+]

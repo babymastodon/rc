@@ -1,0 +1,13 @@
+[Unit]
+Description=Alacritty theme watcher (GNOME light/dark auto-switch)
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/bash %h/.local/bin/alacritty-theme-watcher.sh
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target
