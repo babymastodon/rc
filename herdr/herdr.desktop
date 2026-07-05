@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Herdr
+GenericName=Terminal Session Manager
+Comment=Open Herdr in a terminal
+Exec=xdg-terminal-exec --app-id=io.github.babymastodon.herdr --title=Herdr herdr
+Terminal=false
+Icon=herdr
+StartupWMClass=io.github.babymastodon.herdr
+Categories=System;
+Keywords=terminal;sessions;herder;

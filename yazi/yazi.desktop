@@ -3,8 +3,9 @@ Type=Application
 Name=Yazi
 GenericName=Terminal File Manager
 Comment=Browse and manage files in the terminal
-Exec=yazi
-Terminal=true
+Exec=xdg-terminal-exec --app-id=io.github.sxyazi.yazi --title=Yazi yazi
+Terminal=false
 Icon=yazi
+StartupWMClass=io.github.sxyazi.yazi
 Categories=System;Utility;FileManager;
 Keywords=file manager;terminal;browser;files;

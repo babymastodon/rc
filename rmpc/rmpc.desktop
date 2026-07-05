@@ -3,9 +3,9 @@ Type=Application
 Name=RMPC
 GenericName=Terminal MPD Client
 Comment=Beautiful and modern terminal-based client for MPD with album-art support
-Exec=kitty -e rmpc
+Exec=xdg-terminal-exec --app-id=io.github.mierak.rmpc --title=RMPC rmpc
 Terminal=false
 Icon=rmpc
+StartupWMClass=io.github.mierak.rmpc
 Categories=AudioVideo;Music;Utility;
 Keywords=mpd;music;player;rmpc;
-
