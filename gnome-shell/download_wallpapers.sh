@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install_repos.sh — clone or update multiple git repos into a base directory
+# download_wallpapers.sh — clone or update wallpaper repositories
 # Default example includes dharmx/walls into ~/Pictures/walls
 
 set -euo pipefail
@@ -84,4 +84,3 @@ done
 
 echo ""
 echo "All done! Files are located under: ${BASE_DIR}"
-
