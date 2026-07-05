@@ -18,6 +18,7 @@ EXTENSIONS=(
   "azwallpaper@azwallpaper.gitlab.com"
   "blur-my-shell@aunetx"
   "no-screenshot-box@screenshot"
+  "touchpad-speed-control@ritesh"
 )
 
 # Install these extensions, but leave them disabled until explicitly enabled.
