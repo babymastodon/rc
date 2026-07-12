@@ -482,6 +482,8 @@ syntax on
 " custom colors
 colorscheme default
 highlight Comment                      ctermfg=7
+" Preserve syntax foreground/style in Visual mode; change only the background.
+highlight Visual       cterm=NONE      ctermfg=NONE ctermbg=8
 highlight TabLine      cterm=underline ctermfg=7  ctermbg=NONE
 highlight TabLineSel   cterm=NONE      ctermfg=0  ctermbg=2
 highlight TabLineFill  cterm=underline ctermfg=7  ctermbg=NONE
