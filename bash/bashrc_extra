@@ -38,14 +38,14 @@ fi
 
 export PATH
 
-# True if a live agent is bound to socket $1. /proc/net/unix drops the path when
-# the listening process dies, while the socket file lingers — so this catches
-# orphaned sockets that `-S` alone reports as present. ~2ms: no ssh-add fork, no
-# agent-protocol roundtrip, no hang (so no `timeout` needed). The `-S` test is
-# free and short-circuits a missing socket before the awk scan.
+# True if an agent socket appears usable. On Linux, /proc/net/unix drops the
+# path when the listening process dies, while the socket file lingers — so the
+# procfs check catches orphaned sockets that `-S` alone reports as present.
+# Systems without Linux procfs (including macOS) fall back to the socket check.
 __ssh_sock_listening() {
   local s="$1" t
   [[ -S "$s" ]] || return 1
+  [[ -r /proc/net/unix ]] || return 0
   t=$(readlink -f -- "$s" 2>/dev/null) && [[ -n "$t" ]] || return 1
   awk -v t="$t" '$NF==t{found=1; exit} END{exit !found}' /proc/net/unix
 }
