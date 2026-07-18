@@ -121,6 +121,27 @@ activate_mise() {
   hash -r
 }
 
+ensure_diff_so_fancy_runtime() {
+  command -v diff-so-fancy >/dev/null 2>&1 || return 0
+
+  if diff-so-fancy --version </dev/null >/dev/null 2>&1; then
+    return 0
+  fi
+
+  case "$PM" in
+    dnf|yum)
+      if command -v perl >/dev/null 2>&1 && ! perl -Mopen -e 1 >/dev/null 2>&1; then
+        echo "Installing Fedora's perl-open runtime required by diff-so-fancy..."
+        install_pkg perl-open
+      fi
+      ;;
+  esac
+
+  if ! diff-so-fancy --version </dev/null >/dev/null 2>&1; then
+    echo "diff-so-fancy is installed but cannot run; Git will use its normal pager." >&2
+  fi
+}
+
 configure_global_tooling() {
   # Make this repo's config.toml the global mise config by symlinking it into
   # mise's default global config location, then let mise install from it
@@ -179,6 +200,7 @@ ensure_mise
 remove_legacy_mise_bashrc_hook
 configure_global_tooling
 activate_mise
+ensure_diff_so_fancy_runtime
 ensure_clang_tooling
 
 #############################

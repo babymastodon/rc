@@ -4,6 +4,11 @@ set -euo pipefail
 __git_pager_less=(less -R)
 __git_pager_input_args=("$@")
 
+diff_so_fancy_is_usable() {
+  command -v diff-so-fancy >/dev/null 2>&1 &&
+    diff-so-fancy --version </dev/null >/dev/null 2>&1
+}
+
 page_diff_so_fancy() {
   local pager_status formatter_status
   local -a pager=("$@")
@@ -28,7 +33,7 @@ page_diff_so_fancy() {
   exit "$formatter_status"
 }
 
-if command -v diff-so-fancy >/dev/null 2>&1; then
+if diff_so_fancy_is_usable; then
   page_diff_so_fancy "${__git_pager_less[@]}"
 fi
 

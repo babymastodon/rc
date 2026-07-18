@@ -1,0 +1,8 @@
+{
+  "uuid": "fixed-swipe-direction@babymastodon",
+  "name": "Fixed Swipe Direction",
+  "description": "Keep GNOME Shell three-finger swipe gestures in the same physical direction regardless of the touchpad scroll setting.",
+  "shell-version": ["49", "50"],
+  "url": "https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/8787",
+  "version": 1
+}

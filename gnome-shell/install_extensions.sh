@@ -27,6 +27,11 @@ DISABLED_EXTENSIONS=(
   "dash-to-panel@jderose9.github.com"
 )
 
+# Local extensions stored in this repository as "UUID:directory".
+LOCAL_EXTENSIONS=(
+  "fixed-swipe-direction@babymastodon:fixed-swipe-direction"
+)
+
 # ----- helpers -----
 require_cmd() { command -v "$1" &>/dev/null; }
 
@@ -161,6 +166,39 @@ queue_extension_enable() {
   else
     warn "Failed to update org.gnome.shell enabled-extensions for: $uuid"
     return 1
+  fi
+}
+
+install_local_extension() {
+  local uuid="$1"
+  local source_name="$2"
+  local source_dir="${SCRIPT_DIR}/${source_name}"
+  local extension_dir="$HOME/.local/share/gnome-shell/extensions/$uuid"
+  local metadata_uuid
+
+  if [[ ! -f "$source_dir/extension.js" || ! -f "$source_dir/metadata.json" ]]; then
+    err "Local extension source is incomplete: $source_dir"
+    return 1
+  fi
+
+  metadata_uuid="$(jq -r '.uuid // empty' "$source_dir/metadata.json")"
+  if [[ "$metadata_uuid" != "$uuid" ]]; then
+    err "Local extension UUID mismatch: expected $uuid, found ${metadata_uuid:-none}"
+    return 1
+  fi
+
+  install -d "$extension_dir"
+  install -m 0644 "$source_dir/extension.js" "$extension_dir/extension.js"
+  install -m 0644 "$source_dir/metadata.json" "$extension_dir/metadata.json"
+  log "Installed local extension: $uuid"
+
+  if gnome-extensions list --enabled | grep -Fxq "$uuid"; then
+    log "Extension already enabled: $uuid"
+  elif gnome-extensions enable "$uuid"; then
+    log "Enabled extension: $uuid"
+  else
+    warn "GNOME Shell must restart before it can load the new local extension: $uuid"
+    queue_extension_enable "$uuid" || true
   fi
 }
 
@@ -369,9 +407,12 @@ main() {
   mapfile -t all < <(printf "%s\n" "${all[@]}" | awk 'NF && !seen[$0]++')
 
   if [[ "$status" == true ]]; then
-    log "Extension status for ${#all[@]} extension(s)"
+    log "Extension status for $((${#all[@]} + ${#LOCAL_EXTENSIONS[@]})) extension(s)"
     for u in "${all[@]}"; do
       print_extension_status "$u"
+    done
+    for local_extension in "${LOCAL_EXTENSIONS[@]}"; do
+      print_extension_status "${local_extension%%:*}"
     done
     exit 0
   fi
@@ -391,6 +432,10 @@ main() {
       fi
     done
     install_extension_uuid "$u" "$major" "$upgrade" "$desired_state"
+  done
+
+  for local_extension in "${LOCAL_EXTENSIONS[@]}"; do
+    install_local_extension "${local_extension%%:*}" "${local_extension#*:}"
   done
 
   load_gnome_extensions

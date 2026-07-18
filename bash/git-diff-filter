@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if command -v diff-so-fancy >/dev/null 2>&1; then
+if command -v diff-so-fancy >/dev/null 2>&1 &&
+    diff-so-fancy --version </dev/null >/dev/null 2>&1; then
   exec diff-so-fancy --patch "$@"
 fi
 
