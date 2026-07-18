@@ -7,7 +7,7 @@ err()  { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 HERDR_REPO_URL="${HERDR_REPO_URL:-https://github.com/babymastodon/herdr.git}"
-HERDR_BRANCH="${HERDR_BRANCH:-selection-darkgrey-rebased}"
+HERDR_BRANCH="${HERDR_BRANCH:-selection-darkgrey-on-master}"
 HERDR_SOURCE_URL="${HERDR_SOURCE_URL:-https://github.com/babymastodon/herdr/tree/$HERDR_BRANCH}"
 HERDR_MISE_CONFIG="${HERDR_MISE_CONFIG:-$SCRIPT_DIR/mise.toml}"
 HERDR_CONFIG_SRC="${HERDR_CONFIG_SRC:-$SCRIPT_DIR/config.toml}"
