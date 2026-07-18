@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# download_wallpapers.sh — clone or update wallpaper repositories
+# install_wallpapers.sh — clone or update wallpaper repositories
 # Default example includes dharmx/walls into ~/Pictures/walls
 
 set -euo pipefail
