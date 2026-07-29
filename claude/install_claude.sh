@@ -11,6 +11,27 @@ print_shell_setup_guidance() {
   printf 'Run `./install.sh` from the repo root, then `source ~/.bashrc`, then rerun this script.\n' >&2
 }
 
+maybe_link() {
+  local src="$1" dest="$2" target
+
+  if [[ -L "$dest" ]]; then
+    target="$(readlink "$dest")"
+    if [[ "$target" == "$src" ]]; then
+      log "Link already correct: $dest -> $src"
+    else
+      warn "Link exists but has the wrong target ($target), fixing..."
+      rm "$dest"
+      ln -s "$src" "$dest"
+      log "Fixed link: $dest -> $src"
+    fi
+  elif [[ -e "$dest" ]]; then
+    warn "Destination exists and is not a symlink, leaving it unchanged: $dest"
+  else
+    ln -s "$src" "$dest"
+    log "Linked: $dest -> $src"
+  fi
+}
+
 # Deep-merge the repo's tracked settings into ~/.claude/settings.json without
 # clobbering keys that Claude Code (or the user) writes there itself. The repo
 # file is the source of truth only for the keys it contains; everything else in
@@ -67,6 +88,7 @@ export PATH="${HOME}/.local/bin:$PATH"
 
 ensure_claude_settings "$SCRIPT_DIR/settings.json" "$HOME/.claude/settings.json"
 ensure_claude_themes "$SCRIPT_DIR/themes" "$HOME/.claude/themes"
+maybe_link "$SCRIPT_DIR/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
 
 if command -v claude >/dev/null 2>&1; then
   log "Claude Code installed: $(claude --version 2>/dev/null | head -n1 || echo 'version lookup skipped')"
