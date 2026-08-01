@@ -19,6 +19,7 @@ EXTENSIONS=(
   "blur-my-shell@aunetx"
   "no-screenshot-box@screenshot"
   "touchpad-speed-control@ritesh"
+  "auto-power-profile@dmy3k.github.io"
 )
 
 # Install these extensions, but leave them disabled until explicitly enabled.
