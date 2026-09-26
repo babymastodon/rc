@@ -64,10 +64,17 @@ ensure_codex_config() {
           agent_limit_done=1
         }
       }
+      function print_tui_config() {
+        if (!fullscreen_transcript_done) {
+          print "fullscreen_transcript = false"
+          fullscreen_transcript_done=1
+        }
+      }
       BEGIN {
         theme_done=0; header_done=0; url_done=0; reasoning_done=0
         approvals_reviewer_done=0; seen_section=0
         agents_seen=0; agent_limit_done=0; in_agents=0; in_tui=0
+        tui_seen=0; fullscreen_transcript_done=0
       }
       /^# Use the basic ANSI theme because Codex'\''s TUI is still hard to read in light-theme terminals:/ {
         if (!header_done) {
@@ -118,6 +125,9 @@ ensure_codex_config() {
         if (in_agents) {
           print_agent_limit()
         }
+        if (in_tui) {
+          print_tui_config()
+        }
         if (!agents_seen && $0 ~ /^\[agents\./) {
           print "[agents]"
           print_agent_limit()
@@ -130,10 +140,17 @@ ensure_codex_config() {
         if (in_agents) {
           agents_seen=1
         }
+        if (in_tui) {
+          tui_seen=1
+        }
         next
       }
       in_agents && /^[[:space:]]*max_threads[[:space:]]*=/ {
         print_agent_limit()
+        next
+      }
+      in_tui && /^[[:space:]]*fullscreen_transcript[[:space:]]*=/ {
+        print_tui_config()
         next
       }
       in_tui && /^notifications[[:space:]]*=/ {
@@ -150,12 +167,20 @@ ensure_codex_config() {
         if (in_agents) {
           print_agent_limit()
         }
+        if (in_tui) {
+          print_tui_config()
+        }
         if (!agents_seen) {
           if (NR > 0) {
             print ""
           }
           print "[agents]"
           print_agent_limit()
+        }
+        if (!tui_seen) {
+          print ""
+          print "[tui]"
+          print_tui_config()
         }
       }
     ' "$dest" > "$tmp"
@@ -169,6 +194,9 @@ approvals_reviewer = "auto_review"
 
 [agents]
 max_threads = 10
+
+[tui]
+fullscreen_transcript = false
 EOF
   fi
 
