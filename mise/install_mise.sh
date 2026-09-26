@@ -6,6 +6,7 @@ echo "=== Setting up runtimes, CLI tools, and CoC language servers with mise ===
 
 OS="$(uname -s)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MISE_VERSION="${MISE_VERSION:-2026.9.14}"
 MISE_CONFIG_PATH="${SCRIPT_DIR}/config.toml"
 GLOBAL_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/mise"
 GLOBAL_CONFIG_PATH="${GLOBAL_CONFIG_DIR}/config.toml"
@@ -67,12 +68,9 @@ install_pkg() {
 }
 
 ensure_mise() {
-  if command -v mise >/dev/null 2>&1; then
-    return 0
-  fi
-
-  if [[ -x "${HOME}/.local/bin/mise" ]]; then
-    export PATH="${HOME}/.local/bin:$PATH"
+  local existing_mise
+  existing_mise="$(command -v mise || true)"
+  if [[ -n "$existing_mise" && "$existing_mise" != "${HOME}/.local/bin/mise" ]]; then
     return 0
   fi
 
@@ -80,9 +78,9 @@ ensure_mise() {
     install_pkg curl
   fi
 
-  echo "Installing mise..."
-  curl -fsSL https://mise.run | MISE_INSTALL_HELP=0 sh
-  export PATH="${HOME}/.local/bin:$PATH"
+  echo "Installing mise ${MISE_VERSION}..."
+  curl -fsSL https://mise.run | MISE_VERSION="v${MISE_VERSION}" MISE_INSTALL_SKIP_IF_EXISTS=1 MISE_INSTALL_HELP=0 sh
+  hash -r
 
   if ! command -v mise >/dev/null 2>&1; then
     echo "mise install completed, but mise is still not on PATH." >&2
