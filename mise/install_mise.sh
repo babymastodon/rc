@@ -6,7 +6,6 @@ echo "=== Setting up runtimes, CLI tools, and CoC language servers with mise ===
 
 OS="$(uname -s)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MISE_VERSION="${MISE_VERSION:-2026.9.14}"
 MISE_CONFIG_PATH="${SCRIPT_DIR}/config.toml"
 GLOBAL_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/mise"
 GLOBAL_CONFIG_PATH="${GLOBAL_CONFIG_DIR}/config.toml"
@@ -78,8 +77,8 @@ ensure_mise() {
     install_pkg curl
   fi
 
-  echo "Installing mise ${MISE_VERSION}..."
-  curl -fsSL https://mise.run | MISE_VERSION="v${MISE_VERSION}" MISE_INSTALL_SKIP_IF_EXISTS=1 MISE_INSTALL_HELP=0 sh
+  echo "Installing latest mise..."
+  curl -fsSL https://mise.run | MISE_INSTALL_SKIP_IF_EXISTS=1 MISE_INSTALL_HELP=0 sh
   hash -r
 
   if ! command -v mise >/dev/null 2>&1; then
