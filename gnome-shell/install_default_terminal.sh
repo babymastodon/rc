@@ -32,7 +32,10 @@ install_xdg_terminal_exec() {
     return
   fi
 
-  if command -v dnf >/dev/null 2>&1; then
+  if command -v pacman >/dev/null 2>&1; then
+    log "Installing xdg-terminal-exec with pacman..."
+    $SUDO pacman -S --needed --noconfirm xdg-terminal-exec
+  elif command -v dnf >/dev/null 2>&1; then
     log "Installing xdg-terminal-exec with DNF..."
     $SUDO dnf -y install xdg-terminal-exec
   elif command -v apt-get >/dev/null 2>&1; then

@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$REPO_ROOT/lib/install.sh"
 
 VOXTYPE_VERSION="0.7.4"
 COHERE_MODEL="cohere-transcribe-q4f16"
@@ -30,12 +31,14 @@ require_command() {
 }
 
 pkg_manager() {
-  if command -v apt-get >/dev/null 2>&1; then
+  if command -v pacman >/dev/null 2>&1; then
+    echo pacman
+  elif command -v apt-get >/dev/null 2>&1; then
     echo apt
   elif command -v dnf >/dev/null 2>&1; then
     echo dnf
   else
-    err "Missing apt-get or dnf for system dependency installation."
+    err "Missing pacman, apt-get or dnf for system dependency installation."
     exit 1
   fi
 }
@@ -44,6 +47,7 @@ package_installed() {
   local manager="$1" pkg="$2"
 
   case "$manager" in
+    pacman) pacman -Q "$pkg" >/dev/null 2>&1 ;;
     apt) dpkg -s "$pkg" >/dev/null 2>&1 ;;
     dnf) rpm -q "$pkg" >/dev/null 2>&1 ;;
   esac
@@ -68,9 +72,11 @@ install_system_deps() {
   fi
 
   log "Installing missing system packages: ${missing[*]}"
-  sudo -v
 
   case "$manager" in
+    pacman)
+      rc_install_packages "${missing[@]}"
+      ;;
     apt)
       sudo apt-get update
       sudo apt-get install -y "${missing[@]}"
@@ -105,7 +111,7 @@ preflight() {
   fi
 
   if [[ ! -r /dev/uinput || ! -w /dev/uinput ]]; then
-    err "Current user cannot access /dev/uinput; ydotool cannot type on GNOME."
+    err "Current user cannot access /dev/uinput; ydotool cannot inject keyboard events."
     exit 1
   fi
 }

@@ -17,7 +17,7 @@ OS=""
 PKG_MGR=""
 SUDO=""
 APT_UPDATED=0
-GNOME_DESKTOP=0
+LINUX_DESKTOP=0
 
 detect_os() {
   case "${OSTYPE:-unknown}" in
@@ -32,14 +32,17 @@ detect_os() {
       ;;
     linux-gnu*|linux*)
       OS="linux"
-      if command -v dnf >/dev/null 2>&1; then
+      if command -v pacman >/dev/null 2>&1; then
+        PKG_MGR="pacman"
+        SUDO="$(need_sudo || true)"
+      elif command -v dnf >/dev/null 2>&1; then
         PKG_MGR="dnf"
         SUDO="$(need_sudo || true)"
       elif command -v apt-get >/dev/null 2>&1; then
         PKG_MGR="apt"
         SUDO="$(need_sudo || true)"
       else
-        err "Supported Linux distros: Fedora/RHEL (dnf) or Debian/Ubuntu (apt-get not found)."
+        err "Supported Linux package managers: pacman, dnf, apt-get."
         exit 1
       fi
       ;;
@@ -52,24 +55,27 @@ detect_os() {
   log "Detected OS: $OS (pkg manager: $PKG_MGR)"
 }
 
-detect_gnome() {
+detect_desktop() {
   if [[ "$OS" != "linux" ]]; then
-    GNOME_DESKTOP=0
+    LINUX_DESKTOP=0
     return
   fi
 
-  if [[ "${XDG_CURRENT_DESKTOP:-}" == *GNOME* ]] || [[ "${DESKTOP_SESSION:-}" == *gnome* ]]; then
-    GNOME_DESKTOP=1
-    log "Detected GNOME desktop environment."
+  if [[ -n "${XDG_CURRENT_DESKTOP:-}${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
+    LINUX_DESKTOP=1
+    log "Detected Linux desktop environment."
   else
-    GNOME_DESKTOP=0
-    log "GNOME desktop not detected; skipping desktop integration."
+    LINUX_DESKTOP=0
+    log "Linux desktop not detected; skipping desktop integration."
   fi
 }
 
 install_pkgs() {
   # usage: install_pkgs pkg1 pkg2 ...
   case "$PKG_MGR" in
+    pacman)
+      $SUDO pacman -S --needed --noconfirm "$@"
+      ;;
     dnf)
       $SUDO dnf -y install "$@"
       ;;
@@ -117,10 +123,12 @@ maybe_link() {
 
 # ----- detect OS / desktop -----
 detect_os
-detect_gnome
+detect_desktop
 
-# ----- ensure cargo (and rustc) -----
-if ! command -v cargo >/dev/null 2>&1; then
+# ----- Arch package; other platforms use cargo -----
+if [[ "$PKG_MGR" == "pacman" ]]; then
+  command -v yazi >/dev/null 2>&1 || install_pkgs yazi
+elif ! command -v cargo >/dev/null 2>&1; then
   err "Cargo is required for Yazi."
   print_shell_setup_guidance
   printf 'Then run `%s/mise/install_mise.sh` first to install the shared language tooling, then rerun this script.\n' "$REPO_ROOT" >&2
@@ -133,7 +141,7 @@ fi
 export PATH="$HOME/.local/bin:$PATH"
 
 # ----- ensure native build tools required by cargo dependencies -----
-if ! command -v make >/dev/null 2>&1; then
+if [[ "$PKG_MGR" != "pacman" ]] && ! command -v make >/dev/null 2>&1; then
   log "Installing native build tools for cargo dependencies…"
   case "$PKG_MGR" in
     apt)
@@ -195,9 +203,9 @@ maybe_link "$SCRIPT_DIR/yazi.toml" "$HOME/.config/yazi/yazi.toml"
 mkdir -p "$HOME/.local/share/applications/"
 maybe_link "$SCRIPT_DIR/yazi.desktop" "$HOME/.local/share/applications/yazi.desktop"
 
-# ----- GNOME-only desktop integration (ImageMagick, icon, gtk, desktop-db) -----
-if [[ "$GNOME_DESKTOP" -eq 1 ]]; then
-  log "Setting up GNOME desktop integration for Yazi…"
+# ----- Linux desktop integration (icon and desktop database) -----
+if [[ "$LINUX_DESKTOP" -eq 1 ]]; then
+  log "Setting up Linux desktop integration for Yazi…"
 
   # desktop-file-utils for update-desktop-database (Linux-only)
   if [[ "$OS" == "linux" && "$PKG_MGR" != "brew" ]]; then
@@ -218,7 +226,7 @@ if [[ "$GNOME_DESKTOP" -eq 1 ]]; then
 
   update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
 else
-  log "Skipping ImageMagick/gtk/desktop-db setup (not GNOME)."
+  log "Skipping icon/desktop database setup (no Linux desktop)."
 fi
 
 log "Done."

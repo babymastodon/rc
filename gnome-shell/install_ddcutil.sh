@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# setup-ddcutil-fedora.sh
-# Installs and configures ddcutil on Fedora without requiring full sudo session.
+# Installs and configures ddcutil on Fedora and Arch Linux.
 
 set -euo pipefail
 
@@ -16,13 +15,12 @@ fi
 INVOKING_USER="${SUDO_USER-$(id -un)}"
 USER_HOME="$(getent passwd "$INVOKING_USER" | cut -d: -f6)"
 
-is_fedora() {
-  [[ -f /etc/os-release ]] && . /etc/os-release && [[ "$ID" == "fedora" || "$ID_LIKE" =~ fedora ]]
-}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib/install.sh"
 
 install_ddcutil() {
   log "Installing ddcutil and i2c-tools..."
-  $SUDO dnf -y install ddcutil i2c-tools || {
+  rc_install_packages ddcutil i2c-tools || {
     err "Failed to install packages. Check network or repositories."
     exit 1
   }
@@ -93,10 +91,6 @@ EOF
 }
 
 main() {
-  if ! is_fedora; then
-    warn "This system may not be Fedora-based. Proceeding anyway."
-  fi
-
   install_ddcutil
   setup_i2c_group
   load_i2c_modules

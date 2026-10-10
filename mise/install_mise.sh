@@ -52,7 +52,7 @@ install_pkg() {
       sudo apt install -y "$@"
       ;;
     pacman)
-      sudo pacman -Sy --noconfirm "$@"
+      sudo pacman -S --needed --noconfirm "$@"
       ;;
     dnf)
       sudo dnf install -y "$@"

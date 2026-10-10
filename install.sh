@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/install.sh"
 
 # ----- helpers -----
 log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
 warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
 err()   { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
-need_sudo() { if [[ $EUID -ne 0 ]]; then echo "sudo"; fi; }
-SUDO="$(need_sudo || true)"
 
 maybe_link() {
   local src="$1" dest="$2"
@@ -94,14 +93,12 @@ ensure_source_in_file() {
 }
 
 # ----- prerequisites -----
-if ! command -v curl >/dev/null 2>&1; then
-  if command -v dnf >/dev/null 2>&1; then
-    log "Installing curl via dnf…"
-    $SUDO dnf -y install curl
-  else
-    warn "curl not found and dnf unavailable — please install curl manually."
+for prerequisite in curl git; do
+  if ! command -v "$prerequisite" >/dev/null 2>&1; then
+    log "Installing $prerequisite..."
+    rc_install_packages "$prerequisite"
   fi
-fi
+done
 
 # ----- link config files (only if missing) -----
 maybe_link "$SCRIPT_DIR/vim/vimrc"         "$HOME/.vimrc"
@@ -167,13 +164,14 @@ fi
 # SSH KEY + GIT IDENTITY (run BEFORE the Git defaults section below)
 # ======================================================================
 
-# Ensure ssh-keygen exists (openssh-clients on Fedora)
+# Fedora splits out the OpenSSH client package; Arch ships it in openssh.
 if ! command -v ssh-keygen >/dev/null 2>&1; then
-  if command -v dnf >/dev/null 2>&1; then
-    log "Installing openssh-clients (for ssh-keygen)…"
-    $SUDO dnf -y install openssh-clients
+  if command -v pacman >/dev/null 2>&1; then
+    rc_install_packages openssh
+  elif command -v dnf >/dev/null 2>&1; then
+    rc_install_packages openssh-clients
   else
-    warn "ssh-keygen not found and dnf unavailable — skipping SSH key creation."
+    rc_install_packages openssh-client
   fi
 fi
 

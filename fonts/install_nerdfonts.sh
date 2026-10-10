@@ -47,6 +47,14 @@ install_macos() {
 install_linux() {
   msg "Detected Linux. Installing ${NERD_FONT_NAME} Nerd Font for current user…"
 
+  # Arch desktop installs need these tools even on a minimal system.
+  if have pacman && { ! have curl || ! have unzip || ! have fc-cache; }; then
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source "$script_dir/../lib/install.sh"
+    rc_install_packages curl unzip fontconfig
+  fi
+
   # Tool checks
   for t in curl unzip; do
     have "$t" || { err "Missing '$t'. Install it and re-run."; exit 1; }

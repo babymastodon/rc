@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib/install.sh"
 
 # ----- helpers -----
 log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
 warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
 err()   { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
-need_sudo() { if [[ $EUID -ne 0 ]]; then echo "sudo"; fi; }
-SUDO="$(need_sudo || true)"
 
 # robust symlink creator that verifies/fixes target
 maybe_link() {
@@ -34,17 +33,11 @@ maybe_link() {
   fi
 }
 
-# Ensure DNF exists (Fedora/RHEL family)
-if ! command -v dnf >/dev/null 2>&1; then
-  err "This script expects Fedora (dnf not found)."
-  exit 1
-fi
-
 # ----- install kitty if missing -----
-if ! command -v kitty >/dev/null 2>&1 && ! rpm -q kitty >/dev/null 2>&1; then
+if ! command -v kitty >/dev/null 2>&1; then
   log "Installing Kitty terminal…"
-  $SUDO dnf -y install kitty || {
-    err "Failed to install kitty via DNF."
+  rc_install_packages kitty || {
+    err "Failed to install kitty with the system package manager."
     exit 1
   }
 else

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib/install.sh"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # ----- helpers -----
@@ -100,14 +101,13 @@ maybe_link() {
   fi
 }
 
-# Ensure DNF exists (Fedora/RHEL family)
-if ! command -v dnf >/dev/null 2>&1; then
-  err "This script expects Fedora (dnf not found)."
+# ----- Arch packages; Fedora uses cargo for rmpc -----
+if command -v pacman >/dev/null 2>&1; then
+  rc_install_packages mpd rmpc
+elif ! command -v dnf >/dev/null 2>&1; then
+  err "rmpc installation requires pacman or dnf."
   exit 1
-fi
-
-# ----- ensure cargo (and rustc) -----
-if ! command -v cargo >/dev/null 2>&1; then
+elif ! command -v cargo >/dev/null 2>&1; then
   err "Cargo is required for rmpc."
   print_shell_setup_guidance
   printf 'Then run `%s/mise/install_mise.sh` first to install the shared language tooling, then rerun this script.\n' "$REPO_ROOT" >&2
@@ -132,7 +132,7 @@ mpd_available() {
   dnf -q list --available mpd >/dev/null 2>&1
 }
 
-if ! command -v mpd >/dev/null 2>&1 && ! rpm -q mpd >/dev/null 2>&1; then
+if ! command -v mpd >/dev/null 2>&1; then
   if ! mpd_available; then
     FEDVER="$($SUDO rpm -E %fedora)"
     if ! is_rpmfusion_free_enabled; then

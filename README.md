@@ -33,6 +33,52 @@ cd rc
 source ~/.bashrc
 ```
 
+## Arch Linux, Hyprland, and Omarchy
+
+Start from an installed Arch system with sudo access. On plain Arch, update the
+whole system before running installers so the package databases and installed
+packages agree:
+
+```bash
+sudo pacman -Syu
+sudo pacman -S --needed git
+```
+
+On Omarchy, use `omarchy update` for system updates; its update guard intentionally
+blocks direct `pacman -Syu`. Package installation with `pacman -S --needed` is
+supported by Omarchy.
+
+Then follow Getting started above. The installers use `pacman -S --needed`;
+they do not refresh the database independently or perform a system upgrade.
+Arch derivatives using pacman, including Omarchy, follow the same path.
+
+Arch packages are used for Vim, tmux, btop, Ghostty, Kitty, Alacritty, Yazi,
+rmpc/MPD, keyd, SSHFS, and DDCutil. Yazi and rmpc do not need Cargo on Arch.
+Nerd Fonts installs its curl, unzip, and fontconfig prerequisites on Arch.
+Mise and the Codex, Claude, and Herdr installers use their existing shared
+tooling flow. Voxtype installs its Arch dependencies; its input-group,
+`/dev/uinput`, audio, and CPU requirements still apply.
+
+On Hyprland, keep compositor shortcuts in `~/.config/hypr/` (Omarchy's
+`bindings.conf` for custom bindings). keyd still handles keyboard remaps, but
+the GNOME shortcut and extension installers skip outside GNOME. Alacritty's
+GNOME theme watcher is installed only in a GNOME session; elsewhere a static
+light theme is initialized if missing. Existing regular terminal config files,
+including Omarchy's, are preserved. Yazi desktop entries and icons work on
+Hyprland too. `gnome-shell/install_default_terminal.sh` configures
+`xdg-terminal-exec`; Omarchy's terminal selection remains managed by Omarchy.
+
+The macOS installers, GNOME-specific extensions and scroll preload, Fedora
+TPM enrollment, and motherboard/PSU-specific setup are unnecessary for a
+normal Hyprland VM. Dropbox's dependencies support Arch, but account linking
+is interactive and requires your own account.
+
+To repeat the installation checks in a disposable Arch or Omarchy VM, copy
+this repository into the VM and run `bash tests/vm-installers.sh`. This installs
+packages and changes the VM user's dotfiles; use a test user. It checks fresh
+installs, reruns, desktop config preservation, and the non-GNOME skips.
+Hardware and account-login checks are excluded.
+
 ## Ghostty&nbsp;`💻`
 
 Install Ghostty and link the config:

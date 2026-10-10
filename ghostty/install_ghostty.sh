@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib/install.sh"
 
 # ----- helpers -----
 log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
@@ -58,6 +59,10 @@ maybe_link() {
 
 # ----- install app on macOS -----
 install_ghostty_macos
+if [[ "$(uname -s)" == "Linux" ]] && command -v pacman >/dev/null 2>&1 && ! command -v ghostty >/dev/null 2>&1; then
+  log "Installing Ghostty with pacman..."
+  rc_install_packages ghostty
+fi
 
 # ----- link configs (via maybe_link) -----
 log "Linking Ghostty configuration..."

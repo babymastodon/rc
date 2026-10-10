@@ -28,7 +28,7 @@ case "$os" in
       $SUDO apt-get update
       $SUDO apt-get install -y sshfs
     elif command -v pacman >/dev/null 2>&1; then
-      $SUDO pacman -Sy --noconfirm sshfs
+      $SUDO pacman -S --needed --noconfirm sshfs
     else
       printf 'Unsupported Linux package manager. Install sshfs manually.\n' >&2
       exit 1

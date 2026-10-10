@@ -2,13 +2,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib/install.sh"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 
 log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
 warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
 err()   { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
-need_sudo() { if [[ $EUID -ne 0 ]]; then echo "sudo"; fi; }
-SUDO="$(need_sudo || true)"
 
 maybe_link() {
   local src="$1" dest="$2"
@@ -34,25 +33,20 @@ maybe_link() {
   fi
 }
 
-if ! command -v dnf >/dev/null 2>&1; then
-  err "This script expects Fedora (dnf not found)."
-  exit 1
-fi
-
-if ! command -v alacritty >/dev/null 2>&1 && ! rpm -q alacritty >/dev/null 2>&1; then
+if ! command -v alacritty >/dev/null 2>&1; then
   log "Installing Alacritty..."
-  $SUDO dnf -y install alacritty || {
-    err "Failed to install Alacritty via DNF."
+  rc_install_packages alacritty || {
+    err "Failed to install Alacritty with the system package manager."
     exit 1
   }
 else
   log "Alacritty already installed: $(alacritty --version 2>/dev/null | head -n1 || echo 'version lookup skipped')"
 fi
 
-if ! command -v gsettings >/dev/null 2>&1; then
+if rc_is_gnome && ! command -v gsettings >/dev/null 2>&1; then
   log "Installing gsettings for GNOME theme detection..."
-  $SUDO dnf -y install glib2 || {
-    err "Failed to install gsettings via DNF."
+  rc_install_packages glib2 || {
+    err "Failed to install gsettings with the system package manager."
     exit 1
   }
 fi
@@ -66,27 +60,35 @@ maybe_link "$SCRIPT_DIR/alacritty.toml" "$CONFIG_HOME/alacritty/alacritty.toml"
 maybe_link "$SCRIPT_DIR/MonokaiCustom.toml" "$CONFIG_HOME/alacritty/themes/MonokaiCustom.toml"
 maybe_link "$SCRIPT_DIR/MonokaiCustomLight.toml" "$CONFIG_HOME/alacritty/themes/MonokaiCustomLight.toml"
 
-log "Installing the Alacritty theme watcher..."
-mkdir -p "$HOME/.local/bin"
-maybe_link "$SCRIPT_DIR/alacritty-theme-watcher.sh" "$HOME/.local/bin/alacritty-theme-watcher.sh"
-chmod +x "$SCRIPT_DIR/alacritty-theme-watcher.sh"
+if rc_is_gnome; then
+  log "Installing the Alacritty theme watcher..."
+  mkdir -p "$HOME/.local/bin"
+  maybe_link "$SCRIPT_DIR/alacritty-theme-watcher.sh" "$HOME/.local/bin/alacritty-theme-watcher.sh"
+  chmod +x "$SCRIPT_DIR/alacritty-theme-watcher.sh"
 
-log "Selecting the current GNOME theme..."
-"$HOME/.local/bin/alacritty-theme-watcher.sh" --once
+  log "Selecting the current GNOME theme..."
+  "$HOME/.local/bin/alacritty-theme-watcher.sh" --once
 
-log "Installing the Alacritty theme watcher service..."
-mkdir -p "$CONFIG_HOME/systemd/user"
-maybe_link "$SCRIPT_DIR/alacritty-theme-watcher.service" "$CONFIG_HOME/systemd/user/alacritty-theme-watcher.service"
+  log "Installing the Alacritty theme watcher service..."
+  mkdir -p "$CONFIG_HOME/systemd/user"
+  maybe_link "$SCRIPT_DIR/alacritty-theme-watcher.service" "$CONFIG_HOME/systemd/user/alacritty-theme-watcher.service"
 
-if systemctl --user show-environment >/dev/null 2>&1; then
-  log "Reloading the user systemd daemon and enabling the theme watcher..."
-  systemctl --user daemon-reload
-  systemctl --user enable alacritty-theme-watcher.service
-  systemctl --user restart alacritty-theme-watcher.service
-  systemctl --user status alacritty-theme-watcher.service --no-pager --full || true
+  if systemctl --user show-environment >/dev/null 2>&1; then
+    log "Reloading the user systemd daemon and enabling the theme watcher..."
+    systemctl --user daemon-reload
+    systemctl --user enable alacritty-theme-watcher.service
+    systemctl --user restart alacritty-theme-watcher.service
+    systemctl --user status alacritty-theme-watcher.service --no-pager --full || true
+  else
+    warn "No systemd user instance was detected. Start the watcher manually with:
+      $HOME/.local/bin/alacritty-theme-watcher.sh"
+  fi
+
 else
-  warn "No systemd user instance was detected. Start the watcher manually with:
-    $HOME/.local/bin/alacritty-theme-watcher.sh"
+  log "Using the static Alacritty theme outside GNOME."
+  if [[ ! -e "$CONFIG_HOME/alacritty/current-theme.toml" ]]; then
+    cp "$SCRIPT_DIR/MonokaiCustomLight.toml" "$CONFIG_HOME/alacritty/current-theme.toml"
+  fi
 fi
 
 log "Done."

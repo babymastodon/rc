@@ -8,6 +8,11 @@ err()   { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
 need_sudo() { if [[ $EUID -ne 0 ]]; then echo "sudo"; fi; }
 SUDO="$(need_sudo || true)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib/install.sh"
+if ! rc_is_gnome; then
+  log "Skipping GNOME Shell extensions outside GNOME."
+  exit 0
+fi
 
 # ============================================
 # Configure extensions here (UUIDs)
@@ -58,7 +63,7 @@ install_pkgs() {
       ;;
     arch)
       log "Installing required packages (pacman)"
-      $SUDO pacman -Sy --noconfirm curl jq gnome-extensions gnome-extensions-app || true
+      $SUDO pacman -S --needed --noconfirm curl jq gnome-shell gnome-extensions-app || true
       ;;
     opensuse*|sles)
       log "Installing required packages (zypper)"

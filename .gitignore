@@ -1,2 +1,11 @@
 *.swp
 .codex
+
+# Local credentials, VM disks, and test provisioning artifacts
+.aws/
+.agents/
+.env
+.env.*
+*.qcow2
+*.img
+*.iso

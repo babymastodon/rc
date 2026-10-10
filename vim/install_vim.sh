@@ -65,6 +65,12 @@ install_vim_linux() {
   local distro
   distro="$(detect_linux_distro)"
 
+  if have pacman; then
+    log "Installing Vim with pacman..."
+    $SUDO pacman -S --needed --noconfirm vim
+    return
+  fi
+
   case "$distro" in
     fedora)
       log "Installing Vim with dnf..."
@@ -97,6 +103,9 @@ print_mise_vim_upgrade_guidance() {
     case "$(detect_linux_distro)" in
       ubuntu)
         warn "  sudo apt-get install -y build-essential curl git ca-certificates pkg-config libncurses-dev gettext python3-dev"
+        ;;
+      arch|omarchy)
+        warn "  sudo pacman -S --needed base-devel curl git ca-certificates ncurses gettext python"
         ;;
       fedora)
         warn "  sudo dnf install -y make gcc gcc-c++ curl git ca-certificates pkgconf-pkg-config ncurses-devel gettext python3-devel"

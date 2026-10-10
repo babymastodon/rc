@@ -99,7 +99,7 @@ install_tmux_from_pm() {
       $SUDO yum install -y tmux
       ;;
     pacman)
-      $SUDO pacman -Sy --noconfirm tmux
+      $SUDO pacman -S --needed --noconfirm tmux
       ;;
     zypper)
       $SUDO zypper --non-interactive refresh

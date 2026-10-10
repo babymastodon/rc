@@ -10,6 +10,11 @@
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib/install.sh"
+if ! rc_is_gnome; then
+  printf "Skipping GNOME shortcuts outside GNOME.\n"
+  exit 0
+fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ✏️ EDIT THESE LISTS

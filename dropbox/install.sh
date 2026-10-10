@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ============================================================
-# Dropbox headless + CLI installer for Fedora (x86_64)
+# Dropbox headless + CLI installer for Linux (x86_64)
 # XDG-aware where possible:
 #   - systemd unit: $XDG_CONFIG_HOME/systemd/user/dropbox.service
 #   - CLI script  : ~/.local/bin/dropbox
@@ -23,8 +23,8 @@ log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
 warn()  { printf "\033[1;33m[!]\033[0m %s\n" "$*"; }
 err()   { printf "\033[1;31m[x]\033[0m %s\n" "$*" >&2; }
 
-need_sudo() { if [[ $EUID -ne 0 ]]; then echo "sudo"; fi; }
-SUDO="$(need_sudo || true)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib/install.sh"
 
 DROPBOX_TMPDIR=""
 
@@ -69,12 +69,6 @@ dropbox_info_json="$HOME/.dropbox/info.json"
 
 # ----- sanity checks -----
 
-# Ensure DNF exists (Fedora/RHEL family)
-if ! command -v dnf >/dev/null 2>&1; then
-  err "This script expects Fedora (dnf not found)."
-  exit 1
-fi
-
 # Ensure 64-bit architecture (Dropbox daemon is 64-bit only)
 ARCH="$(uname -m)"
 if [[ "$ARCH" != "x86_64" ]]; then
@@ -85,17 +79,21 @@ fi
 # Ensure basic tools exist (wget, tar, python3)
 if ! command -v wget >/dev/null 2>&1; then
   log "Installing wget…"
-  $SUDO dnf -y install wget || { err "Failed to install wget via dnf."; exit 1; }
+  rc_install_packages wget || { err "Failed to install wget with the system package manager."; exit 1; }
 fi
 
 if ! command -v tar >/dev/null 2>&1; then
   log "Installing tar…"
-  $SUDO dnf -y install tar || { err "Failed to install tar via dnf."; exit 1; }
+  rc_install_packages tar || { err "Failed to install tar with the system package manager."; exit 1; }
 fi
 
 if ! command -v python3 >/dev/null 2>&1; then
   log "Installing python3…"
-  $SUDO dnf -y install python3 || { err "Failed to install python3 via dnf."; exit 1; }
+  if command -v pacman >/dev/null 2>&1; then
+    rc_install_packages python
+  else
+    rc_install_packages python3
+  fi
 fi
 
 # ----- helpers for Dropbox state -----
@@ -292,7 +290,7 @@ Then re-run:
 
 # ----- main flow -----
 
-log "=== Dropbox headless + CLI setup (Fedora, XDG-aware) ==="
+log "=== Dropbox headless + CLI setup (Linux, XDG-aware) ==="
 
 install_dropbox_daemon
 install_dropbox_cli

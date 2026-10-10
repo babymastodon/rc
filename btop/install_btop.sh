@@ -26,14 +26,17 @@ detect_os() {
       ;;
     linux-gnu*|linux*)
       OS="linux"
-      if command -v dnf >/dev/null 2>&1; then
+      if command -v pacman >/dev/null 2>&1; then
+        PKG_MGR="pacman"
+        SUDO="$(need_sudo || true)"
+      elif command -v dnf >/dev/null 2>&1; then
         PKG_MGR="dnf"
         SUDO="$(need_sudo || true)"
       elif command -v apt-get >/dev/null 2>&1; then
         PKG_MGR="apt"
         SUDO="$(need_sudo || true)"
       else
-        err "Supported Linux distros: Fedora/RHEL (dnf) or Debian/Ubuntu (apt-get not found)."
+        err "Supported Linux package managers: pacman, dnf, apt-get."
         exit 1
       fi
       ;;
@@ -48,6 +51,9 @@ detect_os() {
 
 install_pkgs() {
   case "$PKG_MGR" in
+    pacman)
+      $SUDO pacman -S --needed --noconfirm "$@"
+      ;;
     dnf)
       $SUDO dnf -y install "$@"
       ;;

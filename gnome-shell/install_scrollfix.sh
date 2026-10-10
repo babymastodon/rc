@@ -152,7 +152,7 @@ install_deps() {
     pacman)
       log "Installing WSF build/runtime packages via pacman..."
       install_pkgs base-devel meson ninja pkgconf git \
-        python python-gobject gtk4 libadwaita libinput-tools desktop-file-utils
+        python python-gobject gtk4 libadwaita libinput desktop-file-utils
       ;;
     zypper)
       log "Installing WSF build/runtime packages via zypper..."

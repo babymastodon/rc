@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib/install.sh"
 
 # ----- helpers -----
 log()   { printf "\033[1;32m[+]\033[0m %s\n" "$*"; }
@@ -41,36 +42,38 @@ maybe_link() {
   fi
 }
 
-# Ensure Fedora/RHEL family
-if ! command -v dnf >/dev/null 2>&1; then
-  err "This script expects Fedora (dnf not found)."
-  exit 1
-fi
-
 REPO_DIR="$HOME/code/keyd"
 CONF_SRC="$SCRIPT_DIR/default.conf"
 CONF_DST="/etc/keyd/default.conf"
 
 log "Installing/Configuring keyd…"
 
-# ----- ensure build deps -----
-need_group=false
-for c in make gcc; do
-  command -v "$c" >/dev/null 2>&1 || need_group=true
-done
+# ----- ensure build deps on Fedora; Arch ships a keyd package -----
+if command -v pacman >/dev/null 2>&1; then
+  command -v keyd >/dev/null 2>&1 || rc_install_packages keyd
+elif command -v dnf >/dev/null 2>&1; then
+  need_group=false
+  for c in make gcc; do
+    command -v "$c" >/dev/null 2>&1 || need_group=true
+  done
 
-if $need_group; then
-  log "Installing build tools (@development-tools)…"
-  $SUDO dnf -y install @development-tools
-else
-  log "Build tools already present."
-fi
+  if $need_group; then
+    log "Installing build tools (@development-tools)…"
+    $SUDO dnf -y install @development-tools
+  else
+    log "Build tools already present."
+  fi
 
-if ! command -v git >/dev/null 2>&1; then
-  log "Installing git…"
-  $SUDO dnf -y install git
+  if ! command -v git >/dev/null 2>&1; then
+    log "Installing git…"
+    $SUDO dnf -y install git
+  else
+    log "git already present."
+  fi
+
 else
-  log "git already present."
+  err "keyd installation requires pacman or dnf."
+  exit 1
 fi
 
 # ----- place config -----
@@ -112,7 +115,9 @@ else
   $SUDO systemctl restart keyd || warn "Could not restart keyd; check logs with: sudo journalctl -u keyd -e"
 fi
 
-if [[ -x "$SCRIPT_DIR/install_shortcuts.sh" ]]; then
+if ! rc_is_gnome; then
+  log "Skipping GNOME shortcuts outside GNOME; manage Hyprland bindings in its config."
+elif [[ -x "$SCRIPT_DIR/install_shortcuts.sh" ]]; then
   log "Installing GNOME shortcuts…"
   "$SCRIPT_DIR/install_shortcuts.sh" || warn "GNOME shortcut installation failed; run $SCRIPT_DIR/install_shortcuts.sh for details."
 else
