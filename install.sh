@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+os="$(uname -s)"
+case "$os" in
+  Linux)   PLATFORM="linux"; RC_SRC_REL="bashrc_linux"; RC_TARGET="$HOME/.bashrc_linux" ;;
+  Darwin)  PLATFORM="mac";   RC_SRC_REL="bashrc_mac";   RC_TARGET="$HOME/.bashrc_mac" ;;
+  *) printf 'Unsupported OS: %s. On Windows, run windows/install.cmd from PowerShell.\n' "$os" >&2; exit 1 ;;
+esac
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/install.sh"
 
@@ -247,14 +255,6 @@ git config --global pull.rebase true
 log "Git identity and defaults configured."
 
 log "Done."
-
-# ----- OS detection -----
-os="$(uname -s)"
-case "$os" in
-  Linux)   PLATFORM="linux"; RC_SRC_REL="bashrc_linux"; RC_TARGET="$HOME/.bashrc_linux" ;;
-  Darwin)  PLATFORM="mac";   RC_SRC_REL="bashrc_mac";   RC_TARGET="$HOME/.bashrc_mac" ;;
-  *) echo "❌ This script can only run on Linux or macOS. Detected: $os"; exit 1 ;;
-esac
 
 # ----- link per-OS bashrc -----
 RC_SRC_PATH="$SCRIPT_DIR/bash/$RC_SRC_REL"

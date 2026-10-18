@@ -237,7 +237,9 @@ autocmd BufWinLeave * call clearmatches()
 " reset the tmux status line
 augroup TmuxGitBadgeCleanup
   autocmd!
-  autocmd BufWritePost * silent! call system('rm -f /tmp/tmux-badge-git*')
+  if !empty($TMUX)
+    autocmd BufWritePost * silent! call system('rm -f /tmp/tmux-badge-git*')
+  endif
 augroup END
 
 function! TmuxPaneTitle() abort
@@ -277,7 +279,7 @@ let g:ctrlp_max_files=0
 let g:ctrlp_max_depth=40
 let g:ctrlp_regexp = 1
 let g:ctrlp_switch_buffer=0
-let g:ctrlp_user_command = { 'types': { 1: ['.git', 'cd %s && git ls-files'], 2: ['.hg', 'hg --cwd %s locate -I .'], }, 'fallback': 'find %s -type f' }
+let g:ctrlp_user_command = { 'types': { 1: ['.git', 'cd %s && git ls-files'], 2: ['.hg', 'hg --cwd %s locate -I .'], }, 'fallback': 'rg --files --hidden -g !.git %s' }
 
 " enable cscope support
 set nocscopetag
@@ -425,8 +427,8 @@ endfunction
 nnoremap <leader>d <Cmd>call ToggleGdiffsplit()<CR>
 
 " :Rc should open vimrc
-:command! Rc :edit! ~/.vimrc
-:command! Src :source ~/.vimrc
+:command! Rc execute 'edit! ' . fnameescape($MYVIMRC)
+:command! Src execute 'source ' . fnameescape($MYVIMRC)
 
 " Copy to clipboard
 nmap <leader>c <Plug>OSCYankOperator
@@ -434,7 +436,7 @@ nmap <leader>cc <leader>c_
 vmap <leader>c <Plug>OSCYankVisual
 
 " Packages
-call plug#begin('~/.vim/plugged')
+call plug#begin()
 
 Plug 'tpope/vim-fugitive'
 Plug 'majutsushi/tagbar'

@@ -31,8 +31,7 @@ ueberzug_offset = [ 0, 0, 0, 0 ]
 [opener]
 edit = [
 	{ run = 'vim "$@"', desc = "vim", block = true, for = "unix" },
-	{ run = 'code %*',    orphan = true, desc = "code",           for = "windows" },
-	{ run = 'code -w %*', block = true,  desc = "code (block)",   for = "windows" },
+	{ run = 'vim %*', desc = "vim", block = true, for = "windows" },
 ]
 open = [
 	{ run = 'gio open "$1"',                desc = "Open", for = "linux" },

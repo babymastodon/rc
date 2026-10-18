@@ -232,6 +232,11 @@ print_vm_instructions() {
   printf 'Then run `codex` on the VM and choose ChatGPT login, not API key login.\n'
 }
 
+if [[ "${1:-}" == "--config-only" ]]; then
+  ensure_codex_config "${2:-${CODEX_HOME:-$HOME/.codex}/config.toml}"
+  exit 0
+fi
+
 if ! command -v npm >/dev/null 2>&1; then
   err "npm is required to install Codex."
   print_shell_setup_guidance
@@ -250,7 +255,7 @@ else
   npm install -g @openai/codex
 fi
 
-ensure_codex_config "$HOME/.codex/config.toml"
+ensure_codex_config "${CODEX_HOME:-$HOME/.codex}/config.toml"
 
 if command -v codex >/dev/null 2>&1; then
   log "Codex installed: $(codex --version 2>/dev/null | head -n1 || echo 'version lookup skipped')"

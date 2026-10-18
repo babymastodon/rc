@@ -1,6 +1,6 @@
 # rc
 
-Personal dotfiles and setup scripts for a desktop environment that uses Herdr for persistent sessions, Vim for code editing, and works well over SSH. Supports macOS and Linux.
+Personal dotfiles and setup scripts for Herdr, Vim, and CLI tools on macOS, Linux, and Windows.
 
 Where to run each section: `💻` laptop, `🗄️` server
 
@@ -20,6 +20,8 @@ cd rc
 ```bash
 ./install.sh
 ```
+
+On Windows, run `.\windows\install.cmd`, then open PowerShell 7. The remaining setup is for macOS/Linux.
 
 3) If you are on Mac OS, set your default shell to Bash and restart your shell:
 
@@ -233,13 +235,6 @@ hwstat --check
 
 `hwstat` uses `sensors/sensors.toml` for labels, ordering, hidden sensors,
 groups, and PSU/GPU display.
-
-On the Gigabyte TRX50 AI TOP, the full temperature/fan set needs the
-out-of-tree `it87` DKMS install:
-
-```bash
-./sensors/install_gigabyte_trx50_it87_dkms.sh
-```
 
 ## File Explorer&nbsp;`💻` `🗄️`
 
