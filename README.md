@@ -36,6 +36,8 @@ leave identical files alone. `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, and `HERDR_CONFI
 the corresponding default destinations. Alacritty gets both Monokai themes and defaults to
 the light theme, preserving an existing `current-theme.toml`; its app is optional and is not
 installed by this script. Linux/macOS desktop, service, and keyboard configs are excluded.
+The Windows Herdr config omits the unsupported `theme.custom.selection_fg` option;
+the shared Linux/macOS config retains it.
 
 Windows Terminal uses the same Monokai palettes as Ghostty and Alacritty, switching with
 Windows light/dark mode. Setup updates all detected stable, preview, and unpackaged Terminal

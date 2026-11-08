@@ -57,6 +57,20 @@ function Copy-RcFile {
     Write-RcFile -Path $Destination -Content ([IO.File]::ReadAllText($Source))
 }
 
+function Install-RcHerdrConfig {
+    param([string]$Source, [string]$Destination)
+
+    # The standalone Windows release does not support theme.custom.selection_fg.
+    # Keep the shared source intact for the Linux/macOS build.
+    $section = ''
+    $content = foreach ($line in ([IO.File]::ReadAllText($Source) -split '(?<=\n)')) {
+        if ($line -match '^\s*\[([^\]]+)\]') { $section = $Matches[1] }
+        if ($section -eq 'theme.custom' -and $line -match '^\s*selection_fg\s*=') { continue }
+        $line
+    }
+    Write-RcFile -Path $Destination -Content ($content -join '')
+}
+
 function Merge-RcSettings {
     param([System.Collections.IDictionary]$Destination, [System.Collections.IDictionary]$Source)
     foreach ($key in $Source.Keys) {
@@ -94,7 +108,6 @@ function Install-RcConfigs {
         'vim\vimrc' = Join-Path $UserDirectory '_vimrc'
         'vim\ideavimrc' = Join-Path $UserDirectory '.ideavimrc'
         'yazi\yazi.toml' = Join-Path $AppDataDirectory 'yazi\config\yazi.toml'
-        'herdr\config.toml' = $HerdrConfigPath
         'claude\CLAUDE.md' = Join-Path $ClaudeDirectory 'CLAUDE.md'
         'alacritty\alacritty.toml' = Join-Path $AppDataDirectory 'alacritty\alacritty.toml'
         'alacritty\MonokaiCustom.toml' = Join-Path $AppDataDirectory 'alacritty\themes\MonokaiCustom.toml'
@@ -103,6 +116,7 @@ function Install-RcConfigs {
     foreach ($config in $configs.GetEnumerator()) {
         Copy-RcFile (Join-Path $script:RcRepoRoot $config.Key) $config.Value
     }
+    Install-RcHerdrConfig (Join-Path $script:RcRepoRoot 'herdr\config.toml') $HerdrConfigPath
 
     # The shared config imports this file. Keep an existing theme choice.
     $alacrittyTheme = Join-Path $AppDataDirectory 'alacritty\current-theme.toml'

@@ -74,7 +74,11 @@ source "$1"
     Assert-Rc (Test-Path -LiteralPath (Join-Path $userDirectory '_vimrc')) 'Windows Vim configuration is missing.'
     Assert-Rc (Test-Path -LiteralPath (Join-Path $appDataDirectory 'yazi\config\yazi.toml')) 'Windows Yazi configuration is missing.'
     Assert-Rc (Test-Path -LiteralPath (Join-Path $appDataDirectory 'herdr\config.toml')) 'Windows Herdr configuration is missing.'
-    Assert-Rc ([IO.File]::ReadAllText($herdrPath) -ceq [IO.File]::ReadAllText((Join-Path $script:RcRepoRoot 'herdr\config.toml'))) 'Herdr settings do not match the repo.'
+    $sharedHerdr = [IO.File]::ReadAllText((Join-Path $script:RcRepoRoot 'herdr\config.toml'))
+    $windowsHerdr = [IO.File]::ReadAllText($herdrPath)
+    $expectedHerdr = $sharedHerdr -replace '(?m)^selection_fg\s*=[^\r\n]*(?:\r?\n|$)', ''
+    Assert-Rc ($windowsHerdr -ceq $expectedHerdr) 'Windows Herdr settings do not match the supported repo options.'
+    Assert-Rc ($sharedHerdr -match '(?m)^selection_fg\s*=') 'The shared Linux/macOS Herdr option was removed.'
     Assert-Rc (@(Get-ChildItem -LiteralPath (Split-Path $herdrPath -Parent) -Filter 'config.toml.backup-*').Count -eq 1) 'Existing Herdr config was not backed up.'
     Assert-Rc ([IO.File]::ReadAllText($alacrittyTheme) -eq '# Keep my selected theme') 'The Alacritty theme choice was overwritten.'
     foreach ($file in 'alacritty.toml', 'themes\MonokaiCustom.toml', 'themes\MonokaiCustomLight.toml') {
