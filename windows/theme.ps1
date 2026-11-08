@@ -12,8 +12,12 @@ if (-not $SettingsPath) {
         "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json"
         "$env:LOCALAPPDATA\Microsoft\Windows Terminal\settings.json"
     )
-    $SettingsPath = $settingsPaths | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-    if (-not $SettingsPath) { $SettingsPath = $settingsPaths[0] }
+    $existingPaths = @($settingsPaths | Where-Object { Test-Path -LiteralPath $_ })
+    if ($existingPaths.Count -eq 0) { $existingPaths = @($settingsPaths[0]) }
+    foreach ($path in $existingPaths) {
+        & $PSCommandPath -SettingsPath $path
+    }
+    return
 }
 $SettingsPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($SettingsPath)
 
@@ -64,6 +68,17 @@ $settings = if (Test-Path -LiteralPath $SettingsPath) {
 if (-not $settings.profiles) {
     $settings | Add-Member -NotePropertyName profiles -NotePropertyValue ([pscustomobject]@{}) -Force
 }
+if (-not $settings.profiles.defaults) {
+    $settings.profiles | Add-Member -NotePropertyName defaults -NotePropertyValue ([pscustomobject]@{}) -Force
+}
+# Match the shared terminals and let new profiles inherit the same palette.
+$settings | Add-Member -NotePropertyName theme -NotePropertyValue 'system' -Force
+$colorScheme = [pscustomobject]@{
+    light = 'Monokai Custom Light'
+    dark = 'Monokai Custom'
+}
+$settings.profiles.defaults | Add-Member -NotePropertyName colorScheme -NotePropertyValue $colorScheme -Force
+$settings.profiles.defaults | Add-Member -NotePropertyName cursorShape -NotePropertyValue 'filledBox' -Force
 $profileList = @($settings.profiles.list | Where-Object { $null -ne $_ })
 foreach ($standardProfile in @(
     [pscustomobject]@{
@@ -89,6 +104,10 @@ $settings | Add-Member -NotePropertyName schemes -NotePropertyValue @(
     @($settings.schemes | Where-Object { $_.name -notin $schemes.name }) + $schemes
 ) -Force
 foreach ($terminalProfile in $powerShellProfiles) {
+    # Direct color overrides take precedence over the shared color scheme.
+    foreach ($property in 'foreground', 'background', 'cursorColor', 'selectionBackground') {
+        $terminalProfile.PSObject.Properties.Remove($property)
+    }
     # Inherit Windows Terminal's default font size.
     if ($terminalProfile.font) {
         $terminalProfile.font.PSObject.Properties.Remove('size')
@@ -96,10 +115,7 @@ foreach ($terminalProfile in $powerShellProfiles) {
             $terminalProfile.PSObject.Properties.Remove('font')
         }
     }
-    $terminalProfile | Add-Member -NotePropertyName colorScheme -NotePropertyValue ([pscustomobject]@{
-        light = 'Monokai Custom Light'
-        dark = 'Monokai Custom'
-    }) -Force
+    $terminalProfile | Add-Member -NotePropertyName colorScheme -NotePropertyValue $colorScheme -Force
     $terminalProfile | Add-Member -NotePropertyName cursorShape -NotePropertyValue 'filledBox' -Force
 }
 

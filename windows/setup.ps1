@@ -84,7 +84,9 @@ function Install-RcConfigs {
         [string]$AppDataDirectory,
         [string]$ProfilePath,
         [string]$BashPath,
-        [string]$CodexDirectory = (Join-Path $UserDirectory '.codex')
+        [string]$CodexDirectory = (Join-Path $UserDirectory '.codex'),
+        [string]$ClaudeDirectory = (Join-Path $UserDirectory '.claude'),
+        [string]$HerdrConfigPath = (Join-Path $AppDataDirectory 'herdr\config.toml')
     )
 
     $configs = [ordered]@{
@@ -92,11 +94,20 @@ function Install-RcConfigs {
         'vim\vimrc' = Join-Path $UserDirectory '_vimrc'
         'vim\ideavimrc' = Join-Path $UserDirectory '.ideavimrc'
         'yazi\yazi.toml' = Join-Path $AppDataDirectory 'yazi\config\yazi.toml'
-        'herdr\config.toml' = Join-Path $AppDataDirectory 'herdr\config.toml'
-        'claude\CLAUDE.md' = Join-Path $UserDirectory '.claude\CLAUDE.md'
+        'herdr\config.toml' = $HerdrConfigPath
+        'claude\CLAUDE.md' = Join-Path $ClaudeDirectory 'CLAUDE.md'
+        'alacritty\alacritty.toml' = Join-Path $AppDataDirectory 'alacritty\alacritty.toml'
+        'alacritty\MonokaiCustom.toml' = Join-Path $AppDataDirectory 'alacritty\themes\MonokaiCustom.toml'
+        'alacritty\MonokaiCustomLight.toml' = Join-Path $AppDataDirectory 'alacritty\themes\MonokaiCustomLight.toml'
     }
     foreach ($config in $configs.GetEnumerator()) {
         Copy-RcFile (Join-Path $script:RcRepoRoot $config.Key) $config.Value
+    }
+
+    # The shared config imports this file. Keep an existing theme choice.
+    $alacrittyTheme = Join-Path $AppDataDirectory 'alacritty\current-theme.toml'
+    if (-not (Test-Path -LiteralPath $alacrittyTheme)) {
+        Copy-RcFile (Join-Path $script:RcRepoRoot 'alacritty\MonokaiCustomLight.toml') $alacrittyTheme
     }
 
     $profileSource = (Join-Path $script:RcRepoRoot 'windows\profile.ps1').Replace("'", "''")
@@ -106,7 +117,7 @@ function Install-RcConfigs {
         Write-RcFile $ProfilePath ($profileContent.TrimEnd("`r", "`n") + "`n$sourceLine`n")
     }
 
-    $claudePath = Join-Path $UserDirectory '.claude\settings.json'
+    $claudePath = Join-Path $ClaudeDirectory 'settings.json'
     $claudeSettings = if (Test-Path -LiteralPath $claudePath) {
         Get-Content -LiteralPath $claudePath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable
     } else { @{} }
@@ -115,7 +126,7 @@ function Install-RcConfigs {
     Merge-RcSettings $claudeSettings $managedSettings
     Write-RcFile $claudePath (($claudeSettings | ConvertTo-Json -Depth 100) + "`n")
     foreach ($theme in Get-ChildItem -LiteralPath (Join-Path $script:RcRepoRoot 'claude\themes') -Filter *.json) {
-        Copy-RcFile $theme.FullName (Join-Path $UserDirectory ".claude\themes\$($theme.Name)")
+        Copy-RcFile $theme.FullName (Join-Path $ClaudeDirectory "themes\$($theme.Name)")
     }
 
     $codexPath = Join-Path $CodexDirectory 'config.toml'
@@ -171,6 +182,8 @@ function Install-Rc {
         BashPath = Get-RcBash
     }
     if ($env:CODEX_HOME) { $configArguments.CodexDirectory = $env:CODEX_HOME }
+    if ($env:CLAUDE_CONFIG_DIR) { $configArguments.ClaudeDirectory = $env:CLAUDE_CONFIG_DIR }
+    if ($env:HERDR_CONFIG_PATH) { $configArguments.HerdrConfigPath = $env:HERDR_CONFIG_PATH }
     Install-RcConfigs @configArguments
 
     if (-not $ConfigOnly) {

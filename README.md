@@ -23,6 +23,29 @@ cd rc
 
 On Windows, run `.\windows\install.cmd`, then open PowerShell 7. The remaining setup is for macOS/Linux.
 
+To apply just the configs on Windows without installing programs, run:
+
+```powershell
+.\windows\install.cmd -ConfigOnly
+```
+
+The Windows installer copies the shared Herdr, Vim, IdeaVim, Yazi, mise, and Alacritty configs,
+merges Claude and Codex settings, installs Claude instructions and themes, and sets up the
+PowerShell profile and Windows Terminal colors. Changed files are backed up; repeated runs
+leave identical files alone. `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, and `HERDR_CONFIG_PATH` override
+the corresponding default destinations. Alacritty gets both Monokai themes and defaults to
+the light theme, preserving an existing `current-theme.toml`; its app is optional and is not
+installed by this script. Linux/macOS desktop, service, and keyboard configs are excluded.
+
+Windows Terminal uses the same Monokai palettes as Ghostty and Alacritty, switching with
+Windows light/dark mode. Setup updates all detected stable, preview, and unpackaged Terminal
+settings files, sets the shared palette as the profile default, and applies it to PowerShell.
+Other profiles with an explicit color scheme keep their choice. To apply just the Terminal theme:
+
+```powershell
+pwsh -NoProfile -File .\windows\theme.ps1
+```
+
 3) If you are on Mac OS, set your default shell to Bash and restart your shell:
 
 ```bash

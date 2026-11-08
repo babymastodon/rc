@@ -29,6 +29,10 @@ try {
     } finally { $env:PATH = $originalPath }
     Write-RcFile $profilePath "function existing { 'preserved' }`n"
     Write-RcFile $claudePath '{"env":{"KEEP":"yes"},"permissions":{"allow":["Bash(git *)"]}}'
+    $herdrPath = Join-Path $appDataDirectory 'herdr\config.toml'
+    Write-RcFile $herdrPath 'onboarding = true'
+    $alacrittyTheme = Join-Path $appDataDirectory 'alacritty\current-theme.toml'
+    Write-RcFile $alacrittyTheme '# Keep my selected theme'
     Write-RcFile $codexPath @'
 model = "keep-me"
 model_reasoning_effort = "low"
@@ -70,12 +74,32 @@ source "$1"
     Assert-Rc (Test-Path -LiteralPath (Join-Path $userDirectory '_vimrc')) 'Windows Vim configuration is missing.'
     Assert-Rc (Test-Path -LiteralPath (Join-Path $appDataDirectory 'yazi\config\yazi.toml')) 'Windows Yazi configuration is missing.'
     Assert-Rc (Test-Path -LiteralPath (Join-Path $appDataDirectory 'herdr\config.toml')) 'Windows Herdr configuration is missing.'
+    Assert-Rc ([IO.File]::ReadAllText($herdrPath) -ceq [IO.File]::ReadAllText((Join-Path $script:RcRepoRoot 'herdr\config.toml'))) 'Herdr settings do not match the repo.'
+    Assert-Rc (@(Get-ChildItem -LiteralPath (Split-Path $herdrPath -Parent) -Filter 'config.toml.backup-*').Count -eq 1) 'Existing Herdr config was not backed up.'
+    Assert-Rc ([IO.File]::ReadAllText($alacrittyTheme) -eq '# Keep my selected theme') 'The Alacritty theme choice was overwritten.'
+    foreach ($file in 'alacritty.toml', 'themes\MonokaiCustom.toml', 'themes\MonokaiCustomLight.toml') {
+        Assert-Rc (Test-Path -LiteralPath (Join-Path $appDataDirectory "alacritty\$file")) "Alacritty config missing: $file"
+    }
+    Assert-Rc (Test-Path -LiteralPath (Join-Path $userDirectory '.claude\themes\terminal-ansi.json')) 'Claude theme is missing.'
+    Assert-Rc (Test-Path -LiteralPath (Join-Path $userDirectory '.claude\CLAUDE.md')) 'Claude instructions are missing.'
 
     $backupsBefore = @(Get-ChildItem -LiteralPath $userDirectory -Recurse -Filter '*.backup-*').Count
     Install-RcConfigs @configArguments
     Assert-Rc (@(Get-ChildItem -LiteralPath $userDirectory -Recurse -Filter '*.backup-*').Count -eq $backupsBefore) 'A repeated config install rewrote files.'
     $sourceLines = @([IO.File]::ReadAllLines($profilePath) | Where-Object { $_ -like '. *profile.ps1*' })
     Assert-Rc ($sourceLines.Count -eq 1) 'PowerShell profile was sourced more than once.'
+
+    $customArguments = $configArguments.Clone()
+    $customArguments.ClaudeDirectory = Join-Path $userDirectory 'custom Claude'
+    $customArguments.CodexDirectory = Join-Path $userDirectory 'custom Codex'
+    $customArguments.HerdrConfigPath = Join-Path $userDirectory 'custom Herdr\settings.toml'
+    Remove-Item -LiteralPath $alacrittyTheme
+    Install-RcConfigs @customArguments
+    Assert-Rc (Test-Path -LiteralPath (Join-Path $customArguments.ClaudeDirectory 'settings.json')) 'Custom Claude destination was ignored.'
+    Assert-Rc (Test-Path -LiteralPath (Join-Path $customArguments.ClaudeDirectory 'CLAUDE.md')) 'Custom Claude instructions are missing.'
+    Assert-Rc (Test-Path -LiteralPath (Join-Path $customArguments.CodexDirectory 'config.toml')) 'Custom Codex destination was ignored.'
+    Assert-Rc (Test-Path -LiteralPath $customArguments.HerdrConfigPath) 'Custom Herdr destination was ignored.'
+    Assert-Rc ([IO.File]::ReadAllText($alacrittyTheme) -ceq [IO.File]::ReadAllText((Join-Path $script:RcRepoRoot 'alacritty\MonokaiCustomLight.toml'))) 'Fresh Alacritty theme import was not initialized.'
 
     $terminalPath = Join-Path $testRoot 'settings.json'
     Write-RcFile $terminalPath @'
@@ -85,7 +109,7 @@ source "$1"
     "profiles": {
         "defaults": {},
         "list": [
-            {"guid":"{61c54bbd-c2c6-5271-96e7-009a87ff44bf}","name":"Windows PowerShell","font":{"face":"Cascadia Mono","size":14}},
+            {"guid":"{61c54bbd-c2c6-5271-96e7-009a87ff44bf}","name":"Windows PowerShell","background":"#123456","font":{"face":"Cascadia Mono","size":14}},
             {"name":"Command Prompt","commandline":"cmd.exe","colorScheme":"Existing"},
         ]
     },
@@ -96,6 +120,9 @@ source "$1"
     $terminal = Get-Content -LiteralPath $terminalPath -Raw | ConvertFrom-Json
     $powerShell = $terminal.profiles.list | Where-Object { $_.name -eq 'Windows PowerShell' }
     Assert-Rc ($terminal.copyOnSelect -eq $true) 'Unrelated Terminal settings changed.'
+    Assert-Rc ($terminal.theme -eq 'system') 'Terminal does not follow Windows light/dark mode.'
+    Assert-Rc ($terminal.profiles.defaults.colorScheme.light -eq 'Monokai Custom Light' -and $terminal.profiles.defaults.colorScheme.dark -eq 'Monokai Custom') 'New profiles do not inherit the shared palettes.'
+    Assert-Rc ($null -eq $powerShell.background) 'A PowerShell background override still masks the shared theme.'
     Assert-Rc ($powerShell.font.face -eq 'Cascadia Mono' -and $null -eq $powerShell.font.size) 'Font defaults or family were changed incorrectly.'
     Assert-Rc ($powerShell.colorScheme.dark -eq 'Monokai Custom' -and $powerShell.colorScheme.light -eq 'Monokai Custom Light') 'PowerShell palettes are incorrect.'
     Assert-Rc (($terminal.profiles.list | Where-Object { $_.name -eq 'Command Prompt' }).colorScheme -eq 'Existing') 'A different shell profile changed.'
