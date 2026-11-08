@@ -217,6 +217,7 @@ function Install-Rc {
         Install-RcProgram herdr.exe 'https://herdr.dev/install.ps1'
     }
 
+    Install-RcUserPath
     Set-RcTerminalTheme
     Write-Output 'Windows setup complete. Open PowerShell 7; run :PlugInstall in Vim to install plugins.'
 }

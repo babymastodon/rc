@@ -48,6 +48,14 @@ Other profiles with an explicit color scheme keep their choice. To apply just th
 pwsh -NoProfile -File .\windows\theme.ps1
 ```
 
+Setup also adds installed CLI directories to your user PATH, including Git and Herdr's
+stable `current` directory. If an already-open PowerShell cannot find a tool, refresh it:
+
+```powershell
+. .\windows\path.ps1
+Update-RcPath
+```
+
 3) If you are on Mac OS, set your default shell to Bash and restart your shell:
 
 ```bash

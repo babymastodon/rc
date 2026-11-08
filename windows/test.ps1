@@ -180,6 +180,7 @@ source "$1"
         $global:LASTEXITCODE = 0
     }
     function Install-RcConfigs { $script:bootstrapConfigsInstalled = $true }
+    function Install-RcUserPath { $script:bootstrapPathInstalled = $true }
     function Set-RcTerminalTheme { $script:bootstrapThemeInstalled = $true }
     function Invoke-WebRequest { param($Uri, $OutFile); $script:bootstrapDownloads += $Uri }
     $script:ConfigOnly = $false
@@ -187,6 +188,7 @@ source "$1"
     Assert-Rc ($bootstrapPackages.Count -eq 7 -and 'sxyazi.yazi' -in $bootstrapPackages -and 'Amazon.AWSCLI' -in $bootstrapPackages) 'The bootstrap did not select the expected Windows packages.'
     Assert-Rc ($bootstrapPrograms.Count -eq 3 -and 'codex.exe' -in $bootstrapPrograms -and 'herdr.exe' -in $bootstrapPrograms) 'The bootstrap did not select the expected native programs.'
     Assert-Rc ($bootstrapConfigsInstalled -and $bootstrapThemeInstalled) 'The bootstrap omitted configuration or Terminal setup.'
+    Assert-Rc $bootstrapPathInstalled 'The bootstrap did not persist tool paths for future shells.'
     Assert-Rc ('mise.exe install --jobs 1' -in $bootstrapCommands) 'Shared mise tools were not requested.'
     $script:ConfigOnly = $true
     $script:bootstrapPackages = @()
