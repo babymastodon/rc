@@ -14,6 +14,7 @@ try {
     $userDirectory = Join-Path $testRoot "User's home [test]"
     $appDataDirectory = Join-Path $userDirectory 'App Data'
     $profilePath = Join-Path $userDirectory 'Documents\PowerShell\profile.ps1'
+    $windowsPowerShellProfilePath = Join-Path $userDirectory 'Documents\WindowsPowerShell\profile.ps1'
     $claudePath = Join-Path $userDirectory '.claude\settings.json'
     $codexPath = Join-Path $userDirectory '.codex\config.toml'
     $flatVimRoot = Join-Path $testRoot 'Programs\Vim'
@@ -58,7 +59,7 @@ source "$1"
     $configArguments = @{
         UserDirectory = $userDirectory
         AppDataDirectory = $appDataDirectory
-        ProfilePath = $profilePath
+        ProfilePath = $profilePath, $windowsPowerShellProfilePath
         BashPath = $bashPath
     }
     Install-RcConfigs @configArguments
@@ -76,9 +77,11 @@ source "$1"
     Assert-Rc (Test-Path -LiteralPath (Join-Path $appDataDirectory 'herdr\config.toml')) 'Windows Herdr configuration is missing.'
     $sharedHerdr = [IO.File]::ReadAllText((Join-Path $script:RcRepoRoot 'herdr\config.toml'))
     $windowsHerdr = [IO.File]::ReadAllText($herdrPath)
-    $expectedHerdr = $sharedHerdr -replace '(?m)^selection_fg\s*=[^\r\n]*(?:\r?\n|$)', ''
+    $expectedHerdr = ($sharedHerdr -replace '(?m)^selection_fg\s*=[^\r\n]*(?:\r?\n|$)', '').TrimEnd("`r", "`n") +
+        "`n`n[terminal]`ndefault_shell = `"pwsh.exe`"`n"
     Assert-Rc ($windowsHerdr -ceq $expectedHerdr) 'Windows Herdr settings do not match the supported repo options.'
     Assert-Rc ($sharedHerdr -match '(?m)^selection_fg\s*=') 'The shared Linux/macOS Herdr option was removed.'
+    Assert-Rc ($sharedHerdr -notmatch 'default_shell') 'The shared Linux/macOS Herdr config sets a Windows shell.'
     Assert-Rc (@(Get-ChildItem -LiteralPath (Split-Path $herdrPath -Parent) -Filter 'config.toml.backup-*').Count -eq 1) 'Existing Herdr config was not backed up.'
     Assert-Rc ([IO.File]::ReadAllText($alacrittyTheme) -eq '# Keep my selected theme') 'The Alacritty theme choice was overwritten.'
     foreach ($file in 'alacritty.toml', 'themes\MonokaiCustom.toml', 'themes\MonokaiCustomLight.toml') {
@@ -90,8 +93,10 @@ source "$1"
     $backupsBefore = @(Get-ChildItem -LiteralPath $userDirectory -Recurse -Filter '*.backup-*').Count
     Install-RcConfigs @configArguments
     Assert-Rc (@(Get-ChildItem -LiteralPath $userDirectory -Recurse -Filter '*.backup-*').Count -eq $backupsBefore) 'A repeated config install rewrote files.'
-    $sourceLines = @([IO.File]::ReadAllLines($profilePath) | Where-Object { $_ -like '. *profile.ps1*' })
-    Assert-Rc ($sourceLines.Count -eq 1) 'PowerShell profile was sourced more than once.'
+    foreach ($path in $profilePath, $windowsPowerShellProfilePath) {
+        $sourceLines = @([IO.File]::ReadAllLines($path) | Where-Object { $_ -like '. *profile.ps1*' })
+        Assert-Rc ($sourceLines.Count -eq 1) "PowerShell profile was not sourced exactly once: $path"
+    }
 
     $customArguments = $configArguments.Clone()
     $customArguments.ClaudeDirectory = Join-Path $userDirectory 'custom Claude'
@@ -125,6 +130,7 @@ source "$1"
     $powerShell = $terminal.profiles.list | Where-Object { $_.name -eq 'Windows PowerShell' }
     Assert-Rc ($terminal.copyOnSelect -eq $true) 'Unrelated Terminal settings changed.'
     Assert-Rc ($terminal.theme -eq 'system') 'Terminal does not follow Windows light/dark mode.'
+    Assert-Rc ($terminal.defaultProfile -eq '{574e775e-4f2a-5b96-ac1e-a2962a402336}') 'New Terminal tabs do not open PowerShell 7.'
     Assert-Rc ($terminal.profiles.defaults.colorScheme.light -eq 'Monokai Custom Light' -and $terminal.profiles.defaults.colorScheme.dark -eq 'Monokai Custom') 'New profiles do not inherit the shared palettes.'
     Assert-Rc ($null -eq $powerShell.background) 'A PowerShell background override still masks the shared theme.'
     Assert-Rc ($powerShell.font.face -eq 'Cascadia Mono' -and $null -eq $powerShell.font.size) 'Font defaults or family were changed incorrectly.'
@@ -140,6 +146,7 @@ source "$1"
     & (Join-Path $PSScriptRoot 'theme.ps1') -SettingsPath $freshTerminalPath
     $freshTerminal = Get-Content -LiteralPath $freshTerminalPath -Raw | ConvertFrom-Json
     Assert-Rc ($freshTerminal.profiles.list.Count -eq 2) 'Fresh Terminal profiles were not initialized.'
+    Assert-Rc ($freshTerminal.defaultProfile -eq '{574e775e-4f2a-5b96-ac1e-a2962a402336}') 'Fresh Terminal does not open PowerShell 7.'
 
     function mise.exe { '$env:RC_TEST_MISE_ACTIVATED = "yes"' }
     function herdr { $script:herdrArguments = @($args) }

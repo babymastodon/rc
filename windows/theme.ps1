@@ -95,6 +95,7 @@ foreach ($standardProfile in @(
     if ($standardProfile.guid -notin $profileList.guid) { $profileList += $standardProfile }
 }
 $settings.profiles | Add-Member -NotePropertyName list -NotePropertyValue $profileList -Force
+$settings | Add-Member -NotePropertyName defaultProfile -NotePropertyValue '{574e775e-4f2a-5b96-ac1e-a2962a402336}' -Force
 $powerShellProfiles = @($settings.profiles.list | Where-Object {
     $_.name -match 'PowerShell|^pwsh$' -or
     $_.source -eq 'Windows.Terminal.PowershellCore' -or

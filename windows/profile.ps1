@@ -1,6 +1,7 @@
 . (Join-Path $PSScriptRoot 'path.ps1')
 Update-RcPath
 
+if ($PSVersionTable.PSEdition -eq 'Desktop') { $env:MISE_PWSH_CHPWD_WARNING = '0' }
 if (Get-Command mise.exe -ErrorAction SilentlyContinue) {
     (& mise.exe activate pwsh) -join "`n" | Invoke-Expression
 }
@@ -52,6 +53,45 @@ function mg {
 function hoo {
     if ($args.Count -eq 1 -and -not $args[0].StartsWith('-')) { herdr --remote @args }
     else { herdr @args }
+}
+
+$rcPromptUser = $env:USERNAME
+$rcPromptHost = [Net.Dns]::GetHostName().Split('.')[0].ToLowerInvariant()
+$rcPromptSymbol = if (([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+    [Security.Principal.WindowsBuiltInRole]::Administrator)) { '#' } else { '$' }
+$rcPromptGit = [bool](Get-Command git -ErrorAction SilentlyContinue)
+$rcGitIcons = @{
+    Branch = [char]::ConvertFromUtf32(0xE725)
+    Tag = [char]::ConvertFromUtf32(0xF412)
+    Commit = [char]::ConvertFromUtf32(0xF0718)
+}
+
+function Get-RcGitLabel {
+    if (-not $rcPromptGit) { return '' }
+    $branch = git symbolic-ref --short -q HEAD 2>$null
+    if ($LASTEXITCODE -eq 0) { return "($($rcGitIcons.Branch) $branch)" }
+    if ($LASTEXITCODE -ne 1) { return '' }
+    $tag = git describe --tags --exact-match HEAD 2>$null
+    if ($LASTEXITCODE -eq 0) { return "($($rcGitIcons.Tag) $tag)" }
+    $commit = git rev-parse --short HEAD 2>$null
+    if ($LASTEXITCODE -eq 0) { "($($rcGitIcons.Commit) $commit)" }
+}
+
+function prompt {
+    $exitCode = $global:LASTEXITCODE
+    $location = $executionContext.SessionState.Path.CurrentLocation
+    $path = if ($location.Provider.Name -eq 'FileSystem') { $location.ProviderPath } else { $location.Path }
+    if ($path -eq $HOME -or $path.StartsWith("$HOME\", [StringComparison]::OrdinalIgnoreCase)) {
+        $path = '~' + $path.Substring($HOME.Length)
+    }
+    $escape = [char]27
+    $text = "$escape[32m$rcPromptUser@$rcPromptHost$escape[0m:$($path.Replace('\', '/'))$escape[33m $(Get-RcGitLabel)$escape[0m$rcPromptSymbol "
+    $global:LASTEXITCODE = $exitCode
+    $text
+}
+
+if (Get-Module PSReadLine) {
+    Set-PSReadLineOption -EditMode Emacs -BellStyle None -PromptText "$rcPromptSymbol "
 }
 
 function y {

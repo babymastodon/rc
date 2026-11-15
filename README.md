@@ -31,13 +31,15 @@ To apply just the configs on Windows without installing programs, run:
 
 The Windows installer copies the shared Herdr, Vim, IdeaVim, Yazi, mise, and Alacritty configs,
 merges Claude and Codex settings, installs Claude instructions and themes, and sets up the
-PowerShell profile and Windows Terminal colors. Changed files are backed up; repeated runs
+PowerShell profile and Windows Terminal colors. PowerShell 7 and Windows PowerShell 5.1 both load
+the profile, which uses the same prompt as Bash (`user@host:~/path ( branch)$`) and Bash-style
+Emacs key bindings; new Windows Terminal tabs open PowerShell 7. Changed files are backed up; repeated runs
 leave identical files alone. `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, and `HERDR_CONFIG_PATH` override
 the corresponding default destinations. Alacritty gets both Monokai themes and defaults to
 the light theme, preserving an existing `current-theme.toml`; its app is optional and is not
 installed by this script. Linux/macOS desktop, service, and keyboard configs are excluded.
-The Windows Herdr config omits the unsupported `theme.custom.selection_fg` option;
-the shared Linux/macOS config retains it.
+The Windows Herdr config omits the unsupported `theme.custom.selection_fg` option and opens
+new panes in PowerShell 7; the shared Linux/macOS config is unchanged.
 
 Windows Terminal uses the same Monokai palettes as Ghostty and Alacritty, switching with
 Windows light/dark mode. Setup updates all detected stable, preview, and unpackaged Terminal

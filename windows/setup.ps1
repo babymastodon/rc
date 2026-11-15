@@ -63,12 +63,18 @@ function Install-RcHerdrConfig {
     # The standalone Windows release does not support theme.custom.selection_fg.
     # Keep the shared source intact for the Linux/macOS build.
     $section = ''
+    $shellLine = "default_shell = `"pwsh.exe`"`n"
+    $hasTerminal = $false
     $content = foreach ($line in ([IO.File]::ReadAllText($Source) -split '(?<=\n)')) {
         if ($line -match '^\s*\[([^\]]+)\]') { $section = $Matches[1] }
         if ($section -eq 'theme.custom' -and $line -match '^\s*selection_fg\s*=') { continue }
+        if ($section -eq 'terminal' -and $line -match '^\s*default_shell\s*=') { continue }
         $line
+        if ($line -match '^\s*\[terminal\]\s*$') { $hasTerminal = $true; $shellLine }
     }
-    Write-RcFile -Path $Destination -Content ($content -join '')
+    $text = $content -join ''
+    if (-not $hasTerminal) { $text = $text.TrimEnd("`r", "`n") + "`n`n[terminal]`n$shellLine" }
+    Write-RcFile -Path $Destination -Content $text
 }
 
 function Merge-RcSettings {
@@ -96,7 +102,7 @@ function Install-RcConfigs {
     param(
         [string]$UserDirectory,
         [string]$AppDataDirectory,
-        [string]$ProfilePath,
+        [string[]]$ProfilePath,
         [string]$BashPath,
         [string]$CodexDirectory = (Join-Path $UserDirectory '.codex'),
         [string]$ClaudeDirectory = (Join-Path $UserDirectory '.claude'),
@@ -126,9 +132,11 @@ function Install-RcConfigs {
 
     $profileSource = (Join-Path $script:RcRepoRoot 'windows\profile.ps1').Replace("'", "''")
     $sourceLine = ". '$profileSource'"
-    $profileContent = if (Test-Path -LiteralPath $ProfilePath) { [IO.File]::ReadAllText($ProfilePath) } else { '' }
-    if ($sourceLine -notin @($profileContent -split '\r?\n')) {
-        Write-RcFile $ProfilePath ($profileContent.TrimEnd("`r", "`n") + "`n$sourceLine`n")
+    foreach ($path in $ProfilePath) {
+        $profileContent = if (Test-Path -LiteralPath $path) { [IO.File]::ReadAllText($path) } else { '' }
+        if ($sourceLine -notin @($profileContent -split '\r?\n')) {
+            Write-RcFile $path ($profileContent.TrimEnd("`r", "`n") + "`n$sourceLine`n")
+        }
     }
 
     $claudePath = Join-Path $ClaudeDirectory 'settings.json'
@@ -165,7 +173,10 @@ function Install-Rc {
     param(
         [string]$UserDirectory = $env:USERPROFILE,
         [string]$AppDataDirectory = $env:APPDATA,
-        [string]$ProfilePath = $PROFILE.CurrentUserAllHosts
+        [string[]]$ProfilePath = @(
+            $PROFILE.CurrentUserAllHosts
+            Join-Path (Split-Path (Split-Path $PROFILE.CurrentUserAllHosts)) 'WindowsPowerShell\profile.ps1'
+        )
     )
     if ([Environment]::OSVersion.Platform -ne 'Win32NT') { throw 'This installer requires Windows.' }
     Update-RcPath
