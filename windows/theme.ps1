@@ -79,6 +79,9 @@ $colorScheme = [pscustomobject]@{
 }
 $settings.profiles.defaults | Add-Member -NotePropertyName colorScheme -NotePropertyValue $colorScheme -Force
 $settings.profiles.defaults | Add-Member -NotePropertyName cursorShape -NotePropertyValue 'filledBox' -Force
+$font = if ($settings.profiles.defaults.font) { $settings.profiles.defaults.font } else { [pscustomobject]@{} }
+$font | Add-Member -NotePropertyName face -NotePropertyValue 'Hack Nerd Font Mono' -Force
+$settings.profiles.defaults | Add-Member -NotePropertyName font -NotePropertyValue $font -Force
 $profileList = @($settings.profiles.list | Where-Object { $null -ne $_ })
 foreach ($standardProfile in @(
     [pscustomobject]@{

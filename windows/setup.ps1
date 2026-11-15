@@ -165,6 +165,46 @@ function Install-RcConfigs {
     }
 }
 
+function Add-RcFontResource {
+    param([string[]]$Path)
+    Add-Type -Namespace RcFonts -Name Native -MemberDefinition @'
+[DllImport("gdi32.dll", CharSet = CharSet.Unicode)]
+public static extern int AddFontResource(string fileName);
+[DllImport("user32.dll", CharSet = CharSet.Unicode)]
+public static extern IntPtr SendMessageTimeout(IntPtr window, uint message, IntPtr wParam, IntPtr lParam, uint flags, uint timeout, out IntPtr result);
+'@
+    foreach ($font in $Path) { $null = [RcFonts.Native]::AddFontResource($font) }
+    $result = [IntPtr]::Zero
+    $null = [RcFonts.Native]::SendMessageTimeout([IntPtr]0xffff, 0x1D, [IntPtr]::Zero, [IntPtr]::Zero, 2, 1000, [ref]$result)
+}
+
+function Install-RcNerdFont {
+    param([string]$FontDirectory = (Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'))
+    $registry = 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts'
+    $styles = 'Regular', 'Bold', 'Italic', 'BoldItalic'
+    if (-not @($styles | Where-Object { -not (Test-Path -LiteralPath (Join-Path $FontDirectory "HackNerdFontMono-$_.ttf")) }).Count) {
+        return
+    }
+    $download = Join-Path ([IO.Path]::GetTempPath()) "rc-hack-$([guid]::NewGuid().ToString('N'))"
+    try {
+        Invoke-WebRequest -Uri 'https://github.com/ryanoasis/nerd-fonts/releases/latest/download/Hack.zip' -OutFile "$download.zip"
+        Expand-Archive -LiteralPath "$download.zip" -DestinationPath $download
+        $null = [IO.Directory]::CreateDirectory($FontDirectory)
+        if (-not (Test-Path -LiteralPath $registry)) { $null = New-Item -Path $registry -Force }
+        $fonts = foreach ($style in $styles) {
+            $font = Join-Path $FontDirectory "HackNerdFontMono-$style.ttf"
+            Copy-Item -LiteralPath (Join-Path $download "HackNerdFontMono-$style.ttf") -Destination $font -Force
+            Set-ItemProperty -LiteralPath $registry -Name "Hack Nerd Font Mono $style (TrueType)" -Value $font
+            $font
+        }
+        Add-RcFontResource $fonts
+    } finally {
+        foreach ($path in "$download.zip", $download) {
+            if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force }
+        }
+    }
+}
+
 function Set-RcTerminalTheme {
     & (Join-Path $PSScriptRoot 'theme.ps1')
 }
@@ -229,6 +269,7 @@ function Install-Rc {
     }
 
     Install-RcUserPath
+    Install-RcNerdFont
     Set-RcTerminalTheme
     Write-Output 'Windows setup complete. Open PowerShell 7; run :PlugInstall in Vim to install plugins.'
 }

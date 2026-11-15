@@ -131,6 +131,7 @@ source "$1"
     Assert-Rc ($terminal.copyOnSelect -eq $true) 'Unrelated Terminal settings changed.'
     Assert-Rc ($terminal.theme -eq 'system') 'Terminal does not follow Windows light/dark mode.'
     Assert-Rc ($terminal.defaultProfile -eq '{574e775e-4f2a-5b96-ac1e-a2962a402336}') 'New Terminal tabs do not open PowerShell 7.'
+    Assert-Rc ($terminal.profiles.defaults.font.face -eq 'Hack Nerd Font Mono') 'Terminal does not default to the Nerd Font.'
     Assert-Rc ($terminal.profiles.defaults.colorScheme.light -eq 'Monokai Custom Light' -and $terminal.profiles.defaults.colorScheme.dark -eq 'Monokai Custom') 'New profiles do not inherit the shared palettes.'
     Assert-Rc ($null -eq $powerShell.background) 'A PowerShell background override still masks the shared theme.'
     Assert-Rc ($powerShell.font.face -eq 'Cascadia Mono' -and $null -eq $powerShell.font.size) 'Font defaults or family were changed incorrectly.'
@@ -176,9 +177,35 @@ source "$1"
     try { Invoke-RcCommand cmd.exe @('/d', '/c', 'exit 7') } catch { $failureDetected = $true }
     Assert-Rc $failureDetected 'A failed native command was ignored.'
 
+    $fontDirectory = Join-Path $testRoot 'Fonts'
+    $script:fontDownloads = @()
+    $script:fontRegistry = @{}
+    function Invoke-WebRequest { param($Uri, $OutFile); $script:fontDownloads += $Uri; [IO.File]::WriteAllText($OutFile, 'zip') }
+    function Expand-Archive {
+        param($LiteralPath, $DestinationPath)
+        $null = [IO.Directory]::CreateDirectory($DestinationPath)
+        foreach ($name in 'HackNerdFont-Regular', 'HackNerdFontMono-Regular', 'HackNerdFontMono-Bold', 'HackNerdFontMono-Italic', 'HackNerdFontMono-BoldItalic') {
+            [IO.File]::WriteAllText((Join-Path $DestinationPath "$name.ttf"), $name)
+        }
+    }
+    function Set-ItemProperty { param($LiteralPath, $Name, $Value); $script:fontRegistry[$Name] = $Value }
+    $script:fontsLoaded = @()
+    function Add-RcFontResource { param($Path); $script:fontsLoaded += $Path }
+    Install-RcNerdFont -FontDirectory $fontDirectory
+    Assert-Rc ($fontsLoaded.Count -eq 4 -and $fontsLoaded[0] -eq (Join-Path $fontDirectory 'HackNerdFontMono-Regular.ttf')) 'New fonts were not loaded into the current session.'
+    Assert-Rc ($fontDownloads.Count -eq 1 -and $fontDownloads[0] -like '*/nerd-fonts/releases/latest/download/Hack.zip') 'Hack Nerd Font was not downloaded from the shared release.'
+    Assert-Rc (@(Get-ChildItem -LiteralPath $fontDirectory -Filter 'HackNerdFontMono-*.ttf').Count -eq 4 -and -not (Test-Path -LiteralPath (Join-Path $fontDirectory 'HackNerdFont-Regular.ttf'))) 'The terminal font files were not installed.'
+    Assert-Rc ($fontRegistry['Hack Nerd Font Mono Regular (TrueType)'] -eq (Join-Path $fontDirectory 'HackNerdFontMono-Regular.ttf') -and $fontRegistry.Count -eq 4) 'The fonts were not registered for the user.'
+    Install-RcNerdFont -FontDirectory $fontDirectory
+    Assert-Rc ($fontDownloads.Count -eq 1) 'An installed font was downloaded again.'
+    Assert-Rc (-not @(Get-ChildItem -LiteralPath ([IO.Path]::GetTempPath()) -Filter 'rc-hack-*').Count) 'Font download files were left behind.'
+    Remove-Item Function:\Expand-Archive, Function:\Set-ItemProperty, Function:\Add-RcFontResource
+
     $script:bootstrapPackages = @()
     $script:bootstrapPrograms = @()
     $script:bootstrapCommands = @()
+    function Install-RcNerdFont { $script:bootstrapFontInstalled++ }
+    $script:bootstrapFontInstalled = 0
     function Install-RcPackage { param($Id, $Command); $script:bootstrapPackages += $Id }
     function Install-RcProgram { param($Command, $Url); $script:bootstrapPrograms += $Command }
     function Invoke-RcCommand {
@@ -203,6 +230,7 @@ source "$1"
     $script:bootstrapCommands = @()
     Install-Rc -UserDirectory $userDirectory -AppDataDirectory $appDataDirectory -ProfilePath $profilePath
     Assert-Rc ($bootstrapPackages.Count -eq 0 -and $bootstrapPrograms.Count -eq 0 -and $bootstrapCommands.Count -eq 0) 'Config-only mode attempted package installation.'
+    Assert-Rc ($bootstrapFontInstalled -eq 2) 'The Terminal font was not installed in both setup modes.'
     Write-Output 'Windows checks passed: config merges, backups, repeat installs, JSONC, fresh Terminal setup, shell shortcuts, and bootstrap orchestration.'
 } finally {
     Set-Location -LiteralPath $originalLocation.Path
