@@ -9,3 +9,5 @@
 *.qcow2
 *.img
 *.iso
+/vpn/*.conf
+!/vpn/example.conf

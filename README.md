@@ -56,6 +56,8 @@ stable `current` directory. If an already-open PowerShell cannot find a tool, re
 Update-RcPath
 ```
 
+For a WireGuard tunnel to your VPN server and SSH access on Windows, Fedora or macOS, follow [vpn/README.md](vpn/README.md).
+
 3) If you are on Mac OS, set your default shell to Bash and restart your shell:
 
 ```bash
