@@ -33,7 +33,8 @@ The Windows installer copies the shared Herdr, Vim, IdeaVim, Yazi, mise, and Ala
 merges Claude and Codex settings, installs Claude instructions and themes, and sets up the
 PowerShell profile and Windows Terminal colors. PowerShell 7 and Windows PowerShell 5.1 both load
 the profile, which uses the same prompt as Bash (`user@host:~/path ( branch)$`) and Bash-style
-Emacs key bindings; new Windows Terminal tabs open PowerShell 7. Both modes also install Hack Nerd
+Emacs key bindings, and the Bash Git and tool shortcuts except names PowerShell already uses
+(`gl`, `gp`, `md`). `btop` runs btop4win. New Windows Terminal tabs open PowerShell 7. Both modes also install Hack Nerd
 Font Mono for your account and make it the Terminal font, so the prompt's icons render. Changed files are backed up; repeated runs
 leave identical files alone. `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, and `HERDR_CONFIG_PATH` override
 the corresponding default destinations. Alacritty gets both Monokai themes and defaults to

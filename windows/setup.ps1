@@ -234,6 +234,7 @@ function Install-Rc {
             'jdx.mise' = 'mise.exe'
             'vim.vim' = 'vim.exe'
             'sxyazi.yazi' = 'yazi.exe'
+            'aristocratos.btop4win' = 'btop4win.exe'
             'Amazon.AWSCLI' = 'aws.exe'
             'LLVM.LLVM' = 'clangd.exe'
         }

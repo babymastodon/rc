@@ -166,6 +166,13 @@ source "$1"
     Assert-Rc ($herdrArguments.Count -eq 1 -and $herdrArguments[0] -eq '--version') 'hoo misrouted a flag as a remote host.'
     ga 'file with spaces.txt'
     Assert-Rc ($gitArguments.Count -eq 3 -and $gitArguments[2] -eq 'file with spaces.txt') 'Git shortcut split a filename.'
+    foreach ($shortcut in @(@('ck', 'checkout'), @('fh', 'fetch'), @('ch', 'cherry-pick'))) {
+        & $shortcut[0] 'some ref'
+        Assert-Rc ($gitArguments.Count -eq 2 -and $gitArguments[0] -eq $shortcut[1] -and $gitArguments[1] -eq 'some ref') "$($shortcut[0]) did not run git $($shortcut[1])."
+    }
+    Assert-Rc ((Get-Alias btop).Definition -eq 'btop4win' -and (Get-Alias open).Definition -eq 'Invoke-Item') 'btop or open is not mapped.'
+    Assert-Rc ((Get-Alias gl).Definition -eq 'Get-Location' -and (Get-Alias gp).Definition -eq 'Get-ItemProperty') 'A built-in alias was replaced.'
+    Assert-Rc (@(Get-Command cm, fixhoo, p | Where-Object CommandType -eq 'Function').Count -eq 3) 'Shell shortcuts are missing.'
     $script:nextDirectory = $userDirectory
     y
     Assert-Rc ((Get-Location).Path -eq $userDirectory) 'Yazi did not change to a path containing spaces and brackets.'
@@ -219,7 +226,7 @@ source "$1"
     function Invoke-WebRequest { param($Uri, $OutFile); $script:bootstrapDownloads += $Uri }
     $script:ConfigOnly = $false
     Install-Rc -UserDirectory $userDirectory -AppDataDirectory $appDataDirectory -ProfilePath $profilePath
-    Assert-Rc ($bootstrapPackages.Count -eq 7 -and 'sxyazi.yazi' -in $bootstrapPackages -and 'Amazon.AWSCLI' -in $bootstrapPackages) 'The bootstrap did not select the expected Windows packages.'
+    Assert-Rc ($bootstrapPackages.Count -eq 8 -and 'sxyazi.yazi' -in $bootstrapPackages -and 'Amazon.AWSCLI' -in $bootstrapPackages -and 'aristocratos.btop4win' -in $bootstrapPackages) 'The bootstrap did not select the expected Windows packages.'
     Assert-Rc ($bootstrapPrograms.Count -eq 3 -and 'codex.exe' -in $bootstrapPrograms -and 'herdr.exe' -in $bootstrapPrograms) 'The bootstrap did not select the expected native programs.'
     Assert-Rc ($bootstrapConfigsInstalled -and $bootstrapThemeInstalled) 'The bootstrap omitted configuration or Terminal setup.'
     Assert-Rc $bootstrapPathInstalled 'The bootstrap did not persist tool paths for future shells.'

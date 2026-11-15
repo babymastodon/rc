@@ -8,22 +8,50 @@ if (Get-Command mise.exe -ErrorAction SilentlyContinue) {
 $env:EDITOR = 'vim'
 $env:VISUAL = 'vim'
 
-if (-not $env:YAZI_FILE_ONE -and (Get-Command git.exe -ErrorAction SilentlyContinue)) {
-    $rcGitRoot = Split-Path (Split-Path (Get-Command git.exe).Source -Parent) -Parent
+$rcGit = Get-Command git.exe -ErrorAction SilentlyContinue
+$rcGitRoot = if ($rcGit) { Split-Path (Split-Path $rcGit.Source -Parent) -Parent }
+if (-not $env:YAZI_FILE_ONE -and $rcGitRoot) {
     $rcFileOne = Join-Path $rcGitRoot 'usr\bin\file.exe'
     if (Test-Path -LiteralPath $rcFileOne) { $env:YAZI_FILE_ONE = $rcFileOne }
 }
 
 Set-Alias g git
 Set-Alias lg lazygit
+Set-Alias btop btop4win
+Set-Alias open Invoke-Item
 function ga { git add . @args }
+function ck { git checkout @args }
+function fh { git fetch @args }
+function ch { git cherry-pick @args }
 function st { git status @args; if ($LASTEXITCODE -eq 0) { git diff --stat } }
-function gs { git -c color.status=always status -s; git diff --stat; git diff --cached --stat }
 function pl { git pull @args }
 function ph { git push --force-with-lease @args }
 function br { git log --graph --oneline --decorate --all @args }
 function vimdiff { vim -d @args }
 function src { . (Join-Path $PSScriptRoot 'profile.ps1') }
+function fixhoo { herdr session stop default; herdr }
+
+function gs {
+    git -c color.status=always status -s
+    $unstaged = git diff --stat
+    $staged = git diff --cached --stat
+    $escape = [char]27
+    if ($unstaged) { ''; "$escape[1;33mUnstaged changes:$escape[0m"; $unstaged }
+    if ($staged) { ''; "$escape[1;32mStaged changes:$escape[0m"; $staged }
+}
+
+function cm {
+    if (-not $rcGitRoot) { throw 'cm needs Git for Windows.' }
+    $commitScript = (Join-Path (Split-Path $PSScriptRoot -Parent) 'bash\git-commit-all').Replace('\', '/')
+    & (Join-Path $rcGitRoot 'bin\bash.exe') $commitScript @args
+}
+
+function p {
+    param([Parameter(Mandatory)][string]$Pattern)
+    Get-CimInstance Win32_Process |
+        Where-Object { $_.ProcessId -ne $PID -and ($_.Name -match $Pattern -or $_.CommandLine -match $Pattern) } |
+        Format-Table ProcessId, Name, CommandLine -AutoSize -Wrap
+}
 
 function Get-RcGitBase {
     $base = git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>$null
